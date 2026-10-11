@@ -56,8 +56,15 @@ const TRACK_KEYS = {
   ...Object.fromEntries([1, 2, 3, 4, 5].flatMap((k) => [[`Digit${k}`, `F${k}`], [`Numpad${k}`, `F${k}`]])),
   Digit0: "F0", Numpad0: "F0", Backquote: "F0",
 };
+// The other tracks have letters under the left hand, matched by the letter
+// typed, like the tools': V for voicing, S for the hiss of /s/ (frication),
+// A for aspiration and Z for the nasal zero.
+const TRACK_LETTERS = { v: "AV", s: "AF", a: "AH", z: "FNZ" };
 // The key shown on each track's button, and the fuller list in its tooltip.
-const TRACK_KEY_LABELS = { F1: "1", F2: "2", F3: "3", F4: "4", F5: "5", F0: "0" };
+const TRACK_KEY_LABELS = {
+  F1: "1", F2: "2", F3: "3", F4: "4", F5: "5", F0: "0",
+  ...Object.fromEntries(Object.entries(TRACK_LETTERS).map(([key, name]) => [name, key.toUpperCase()])),
+};
 const TRACK_KEY_TITLES = { ...TRACK_KEY_LABELS, F0: "0 or `" };
 
 function element(name, attributes = {}, parent = null) {
@@ -97,7 +104,7 @@ export function createTracksTab(root, { commit }) {
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="log"> Log (octaves)</label>
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="linear"> Linear</label>
         </fieldset>
-        <p class="hint">Space plays. 1–5 select F1–F5, 0 or \` selects F0. Ctrl+Z undoes. AF and AH are the noises for consonants; FNZ, raised, makes /n/ or /m/.</p>
+        <p class="hint">Space plays. 1–5 select F1–F5, 0 or \` selects F0. V, S, A and Z select AV, AF, AH and FNZ. Ctrl+Z undoes. AF and AH are the noises for consonants; FNZ, raised, makes /n/ or /m/.</p>
       </aside>
     </div>`;
   const panelsNode = root.querySelector(".panels");
@@ -142,7 +149,7 @@ export function createTracksTab(root, { commit }) {
       button.append(" ", kbd);
       button.title = `Select ${name} (${TRACK_KEY_TITLES[name]})`;
     }
-    if (TRACK_TITLES[name]) button.title = TRACK_TITLES[name];
+    if (TRACK_TITLES[name]) button.title = `${TRACK_TITLES[name]} (${TRACK_KEY_TITLES[name]})`;
     button.style.setProperty("--track", TRACKS[name].color);
     button.style.setProperty("--track-bright", TRACKS[name].bright ?? TRACKS[name].color);
     // The selected button is dark, so its label needs a light colour: F0 and AV have none of their own.
@@ -462,6 +469,11 @@ export function createTracksTab(root, { commit }) {
       }
       if (TRACK_KEYS[event.code]) {
         select(TRACK_KEYS[event.code]);
+        return true;
+      }
+      const letter = TRACK_LETTERS[event.key.toLowerCase()];
+      if (letter) {
+        select(letter);
         return true;
       }
       return false;

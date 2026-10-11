@@ -202,7 +202,8 @@ def main() -> None:
 
             # Noise: a line drawn on AF in the Noise strip is frication, and the
             # glide (no parallel formants on) gets the /s/'s settings with it.
-            page.locator(".track-group button", has_text="AF").click()
+            page.keyboard.press("s")  # S selects AF
+            assert "active" in page.locator(".track-group button", has_text="AF").get_attribute("class")
             page.keyboard.press("l")
             page.locator(".panel-noise svg").scroll_into_view_if_needed()
             noise = page.locator(".panel-noise svg").bounding_box()

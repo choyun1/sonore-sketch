@@ -55,7 +55,7 @@ made each time you finish a change.
   clipboard, for a bug report.
 
 **Draw speech.** Select a track with its button, by clicking its line, or with
-the keys 1–5 for F1–F5 and 0 (or `` ` ``) for F0. The tools have keys too:
+the keys 1–5 for F1–F5, 0 (or `` ` ``) for F0, and V, S, A and Z for AV, AF, AH and FNZ. The tools have keys too:
 P, L and F. **Point** adds a breakpoint or drags one;
 double-click removes it. **Line** replaces a span with a straight line.
 **Freehand** draws a stroke, kept as the fewest breakpoints within a small
