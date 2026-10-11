@@ -56,12 +56,12 @@ kbd { font-size: 11px; color: var(--muted); }
   position: relative;
 }
 /* The page's name, set well apart from the tabs beside it */
-.bar h1 { display: flex; align-items: center; gap: 12px; font-size: 26px; line-height: 1; margin: 0 12px 0 0; font-weight: 700; letter-spacing: -0.01em; }
+.bar h1 { display: flex; align-items: center; gap: 14px; font-size: 32px; line-height: 1; margin: 0 12px 0 0; font-weight: 700; letter-spacing: -0.01em; }
 /* sonore's mark (copied from sonore's docs/logo/sonore-mark.svg; it follows light/dark itself) */
 .bar h1 .logo-link { display: flex; }
-.bar h1 .logo { width: 44px; height: 44px; }
+.bar h1 .logo { width: 56px; height: 56px; }
 /* GitHub's mark (Primer Octicons, MIT), top right, level with the tabs row whether or not the controls wrap */
-.bar .about { position: absolute; top: 8px; right: 16px; height: 44px; display: flex; align-items: center; color: var(--muted); }
+.bar .about { position: absolute; top: 8px; right: 16px; height: 56px; display: flex; align-items: center; color: var(--muted); }
 .bar .about:hover { color: var(--ink); }
 /* Loading the synthesizer: a strip under the header, so it is seen without scrolling */
 .loading {
