@@ -1,4 +1,4 @@
-# sonore-sketch
+# <img src="app/logo.svg" alt="" height="36" align="absmiddle"> sonore-sketch
 
 [![test](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml)
 [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml)
@@ -310,7 +310,9 @@ sonore-sketch grew out of TrackDraw (2016), by Adrian Y. Cho and Daniel R
 Guest, whose history this repository keeps; the Draw speech tab is after
 Assmann et al.'s (1994) Track-Draw. Every sound is made by
 [sonore](https://github.com/choyun1/sonore), by Adrian Y. Cho, running in
-the browser under Pyodide (The Pyodide development team, 2021).
+the browser under Pyodide (The Pyodide development team, 2021). The logo
+is sonore's own mark (MIT), drawn from the spectrogram of sonore saying its
+name.
 
 This project is AI-assisted: much of the code and documentation was drafted
 by Claude (Claude Code) for Cho to review. MIT licence (`LICENSE.txt`).

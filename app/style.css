@@ -54,7 +54,9 @@ kbd { font-size: 11px; color: var(--muted); }
   padding: 8px 16px;
   border-bottom: 1px solid var(--line);
 }
-.bar h1 { font-size: 16px; margin: 0; font-weight: 600; }
+.bar h1 { display: flex; align-items: center; gap: 8px; font-size: 16px; margin: 0; font-weight: 600; }
+/* sonore's mark (copied from sonore's docs/logo/sonore-mark.svg; it follows light/dark itself) */
+.bar h1 .logo { width: 24px; height: 24px; }
 .bar .about { color: var(--muted); font-size: 13px; text-decoration: none; margin-left: 4px; }
 .bar .about:hover { color: inherit; text-decoration: underline; }
 /* Loading the synthesizer: a strip under the header, so it is seen without scrolling */
