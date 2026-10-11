@@ -127,19 +127,34 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     )
 
 
+# The starting painting's chord: fundamentals (Hz) and onsets (fractions of
+# the duration). All are harmonics of EXAMPLE_F0, so on the harmonic carrier
+# every painted partial is one the carrier has: A3, E4, A4, C#5 (just tuned).
+EXAMPLE_F0 = 110
+EXAMPLE_NOTES = ((220, 0.0), (330, 0.14), (440, 0.28), (550, 0.42))
+
+
 def example_levels(f_lo: float = 100, f_hi: float = 6400, rows_per_octave: int = 12, columns: int = 256) -> np.ndarray:
-    """The painting the tab starts from (painted.md, P7): a rising glide and
-    a high band, in dB, shape (rows, columns)."""
+    """The painting the tab starts from (painted.md, P7): a slow arpeggio of
+    harmonic tones, each note's partials fading, the higher ones sooner, in
+    dB, shape (rows, columns)."""
     n_rows = max(2, round(math.log2(f_hi / f_lo) * rows_per_octave))
     octaves = math.log2(f_hi / f_lo)
     x = ((np.arange(n_rows) + 0.5) / n_rows * octaves)[:, None]  # octaves above f_lo
     t = ((np.arange(columns) + 0.5) / columns)[None, :]  # fraction of the duration
-    # a glide from 400 to 2000 Hz over 10-70 % of the duration, about a third of an octave wide
-    centre = np.log2(400 / f_lo) + (t - 0.1) / 0.6 * np.log2(2000 / 400)
-    on = (t >= 0.1) & (t <= 0.7)
-    glide = np.where(on, -12.0 * ((x - centre) / (1 / 6)) ** 2, -np.inf)
-    # a band from 3 to 4.5 kHz at -12 dB over 45-95 % of the duration, with soft edges
-    inside = (x >= np.log2(3000 / f_lo)) & (x <= np.log2(4500 / f_lo)) & (t >= 0.45) & (t <= 0.95)
-    band = np.where(inside, -12.0, -np.inf)
-    level = np.maximum(glide, band)
+    row = octaves / n_rows
+    level = np.full((n_rows, columns), -np.inf)
+    for fundamental, onset in EXAMPLE_NOTES:
+        since = t - onset
+        for k in range(1, 7):
+            f = k * fundamental
+            if not f_lo <= f <= f_hi:
+                continue
+            # each partial a ridge about a row wide, 4 dB below the one under it,
+            # rising over 4 % of the duration and fading by 8 + 4k dB per half
+            across = -12.0 * ((x - math.log2(f / f_lo)) / row) ** 2
+            over_time = np.where(since < 0, -np.inf, np.minimum(0.0, -30 + since / 0.04 * 30) - (8 + 4 * k) * since / 0.5)
+            level = np.maximum(level, across + over_time - 4 * (k - 1))
+    # the last 6 % fades out, so the sound ends softly
+    level = level - np.clip((t - 0.94) / 0.06, 0, 1) * 30
     return np.where(level < -60, -np.inf, np.round(level))

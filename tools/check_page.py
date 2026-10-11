@@ -36,6 +36,18 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
+# The Draw speech example before it said "sonore": an /aɪ/-like glide, as a
+# TrackDraw link, which the page still opens.
+GLIDE = {
+    "trackdraw": 1, "sonore": "0.6.0", "duration": 0.6, "fs": 16000, "mode": "klatt",
+    "params": {
+        "F0": [[0, 0.6], [125, 95]], "AV": [[0, 0.03, 0.55, 0.6], [0, 60, 60, 0]],
+        "F1": [[0, 0.15, 0.45, 0.6], [700, 700, 400, 380]], "F2": [[0, 0.15, 0.45, 0.6], [1100, 1100, 2000, 2100]],
+        "F3": [[0, 0.6], [2500, 2700]], "F4": 3500, "F5": 4500, "B1": 60, "B2": 90, "B3": 150, "B4": 200, "B5": 250,
+    },
+}
+
+
 def page_document_in(page) -> dict:
     """The page's document, read back from its link (#state=...)."""
     state = page.evaluate("location.hash").split("state=")[1]
@@ -89,6 +101,18 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=180_000)
             print(f"ready and first sound made in {time.perf_counter() - start:.1f} s: {page.locator('#versions').inner_text()}")
 
+            # The page starts by saying "sonore"; the drawing checks below are
+            # written for the earlier /aɪ/ example, so they start from it.
+            default = document_in(page)
+            assert "AF" in default["params"] and "FNZ" in default["params"], "the default is not sonore's word"
+
+            def open_link(state):
+                encoded = base64.urlsafe_b64encode(json.dumps(state).encode()).decode().rstrip("=")
+                page.goto(f"http://127.0.0.1:{port}/?engine={args.engine}{extra}#state={encoded}")
+                page.reload()
+
+            open_link(GLIDE)
+            expect(status).to_contain_text("Made", timeout=180_000)
             formants = page.locator(".panel-formants svg")
             box = formants.bounding_box()
             doc = document_in(page)
@@ -231,11 +255,6 @@ def main() -> None:
 
             # A link from before breakpoint times were kept increasing (two F0
             # points at 0.3 s) is tidied on opening, and synthesizes.
-            def open_link(state):
-                encoded = base64.urlsafe_b64encode(json.dumps(state).encode()).decode().rstrip("=")
-                page.goto(f"http://127.0.0.1:{port}/?engine={args.engine}{extra}#state={encoded}")
-                page.reload()
-
             repeated = {**doc, "params": {**doc["params"], "F0": [[0, 0.3, 0.3, 0.6], [125, 100, 140, 95]]}}
             open_link(repeated)
             expect(status).to_contain_text("Made", timeout=180_000)
@@ -254,7 +273,7 @@ def main() -> None:
             print("error: shown in the log with its traceback")
             page.click("#reset")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert document_in(page) == doc, "Reset did not restore the default drawing"
+            assert document_in(page) == default, "Reset did not restore the default drawing"
             page.keyboard.press("Control+z")
             assert document_in(page)["fs"] == 1000, "Undo did not bring the drawing back after Reset"
             print("reset: back to the default drawing, and undo brings the old one back")
@@ -302,7 +321,7 @@ def main() -> None:
             assert page_document_in(page)["painted"]["carrier"] == "noise"
             page.click(".tabs [data-tab=tracks]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert document_in(page) == doc, "the Tracks drawing changed while painting"
+            assert document_in(page) == default, "the Tracks drawing changed while painting"
             print("painted: Clear, Undo, the noise carrier and switching tabs work")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,

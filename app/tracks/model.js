@@ -52,8 +52,14 @@ export const DEFAULTS = {
   B1: 60, B2: 90, B3: 150, B4: 200, B5: 250,
 };
 
-// A first drawing to hear at once: a short /aɪ/-like glide with a falling F0.
+// A first drawing to hear at once: sonore saying its name, /sɔnɔʁ/, with the
+// tracks of "sonore says its name" in sonore's gallery
+// (docs/gallery/voice/formants.py), read off a recording of the word. Only
+// F1-F3, F0 and AV can be drawn here; the /s/ (AF, through the high parallel
+// formants), the voiceless /ʁ/ (AH), the /n/'s nasal zero (FNZ) and the voice
+// settings come along as they are.
 export function defaultDocument() {
+  const times = [0.15, 0.21, 0.23, 0.27, 0.29, 0.35, 0.42, 0.46, 0.49, 0.58]; // o, n, o, r
   return {
     trackdraw: FORMAT,
     sonore: SONORE_VERSION,
@@ -61,14 +67,19 @@ export function defaultDocument() {
     fs: 16000,
     mode: "klatt",
     params: {
-      F0: [[0, 0.6], [125, 95]],
-      AV: [[0, 0.03, 0.55, 0.6], [0, 60, 60, 0]],
-      F1: [[0, 0.15, 0.45, 0.6], [700, 700, 400, 380]],
-      F2: [[0, 0.15, 0.45, 0.6], [1100, 1100, 2000, 2100]],
-      F3: [[0, 0.6], [2500, 2700]],
-      F4: 3500,
-      F5: 4500,
+      F0: [[0.14, 0.18, 0.22, 0.26, 0.3, 0.34, 0.38, 0.47], [266, 250, 232, 212, 205, 197, 192, 189]],
+      AV: [[0.135, 0.14, 0.16, 0.21, 0.23, 0.27, 0.29, 0.43, 0.46, 0.48], [0, 56, 60, 56, 50, 50, 55, 54, 47, 0]],
+      F1: [times, [530, 470, 380, 380, 600, 590, 590, 600, 750, 750]],
+      F2: [times, [1750, 1730, 1750, 1750, 1800, 1450, 1250, 1200, 1250, 1250]],
+      F3: [times, [3000, 2950, 2800, 2800, 2950, 2900, 2970, 3050, 2900, 2900]],
+      F4: 4400,
+      F5: 5200,
       B1: 60, B2: 90, B3: 150, B4: 200, B5: 250,
+      AF: [[0, 0.02, 0.125, 0.145], [0, 48, 48, 0]],
+      AH: [[0.45, 0.48, 0.55, 0.6], [0, 34, 32, 0]],
+      F6: 6500, B6: 1500, A4: 34, A5: 50, A6: 60,
+      FNZ: [[0.21, 0.23, 0.27, 0.29], [250, 450, 450, 250]],
+      SS: 3, RD: 1.3,
     },
   };
 }

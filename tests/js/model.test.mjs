@@ -26,7 +26,7 @@ import {
 
 test("a number is a flat track over the whole duration", () => {
   const doc = defaultDocument();
-  assert.deepEqual(points(doc, "F4"), [[0, 3500], [0.6, 3500]]);
+  assert.deepEqual(points(doc, "F4"), [[0, 4400], [0.6, 4400]]);
   assert.deepEqual(points({ ...doc, params: {} }, "B3"), [[0, 150], [0.6, 150]]);
 });
 
@@ -34,7 +34,7 @@ test("withPoints stores [times, values], sorted, and leaves the old document alo
   const doc = defaultDocument();
   const next = withPoints(doc, "F4", [[0.5, 3600], [0.1, 3400]]);
   assert.deepEqual(next.params.F4, [[0.1, 0.5], [3400, 3600]]);
-  assert.equal(doc.params.F4, 3500);
+  assert.equal(doc.params.F4, 4400);
 });
 
 test("valueAt interpolates linearly and holds beyond the ends, as sonore does", () => {
@@ -80,7 +80,7 @@ test("stretching scales breakpoint times exactly and keeps values (tracks.md, C3
   assert.equal(longer.duration, 1.2);
   assert.deepEqual(longer.params.F1[0], doc.params.F1[0].map((t) => t * 2));
   assert.deepEqual(longer.params.F1[1], doc.params.F1[1]);
-  assert.equal(longer.params.F4, 3500);
+  assert.equal(longer.params.F4, 4400);
   assert.equal(clampDuration(30), 10);
   assert.equal(clampDuration(0), 0.05);
 });
@@ -99,8 +99,9 @@ test("a drawing goes into a link and comes back unchanged", () => {
   assert.deepEqual(decodeState(encoded), doc);
   assert.deepEqual(stateFromHash(`#state=${encoded}`), doc);
   assert.equal(stateFromHash("#nothing"), null);
-  // The default drawing is a few hundred bytes, as app.md D8 estimated.
-  assert.ok(encoded.length < 600, `link state is ${encoded.length} characters`);
+  // The default drawing ("sonore", with its consonants) is about a kilobyte:
+  // more than app.md D8's few hundred bytes, still a short link.
+  assert.ok(encoded.length < 1500, `link state is ${encoded.length} characters`);
 });
 
 test("history undoes and redoes, and a new edit drops the redo branch", () => {
@@ -121,8 +122,11 @@ test("history undoes and redoes, and a new edit drops the redo branch", () => {
 // must increase"), so no edit may leave two breakpoints at one time.
 const increasing = (times) => times.every((t, i) => i === 0 || t > times[i - 1]);
 
+// A falling F0 of two breakpoints, the old default.
+const twoPointF0 = () => withPoints(defaultDocument(), "F0", [[0, 125], [0.6, 95]]);
+
 test("a point dragged onto its neighbour stays just beside it", () => {
-  const doc = defaultDocument();
+  const doc = twoPointF0();
   const pts = points(doc, "F0");
   const next = withPoints(doc, "F0", movePoint(pts, 1, -1, 110));
   assert.ok(increasing(next.params.F0[0]));
@@ -130,7 +134,7 @@ test("a point dragged onto its neighbour stays just beside it", () => {
 });
 
 test("a line with no width in time keeps one breakpoint there, the newest", () => {
-  const doc = defaultDocument();
+  const doc = twoPointF0();
   const next = withPoints(doc, "F0", replaceSpan(points(doc, "F0"), [[0.3, 100], [0.30001, 140]]));
   assert.deepEqual(next.params.F0, [[0, 0.3, 0.6], [125, 140, 95]]);
 });
