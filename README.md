@@ -62,7 +62,7 @@ double-click removes it. **Line** replaces a span with a straight line.
 tolerance (Douglas & Peucker, 1973). With any tool, dragging a breakpoint's circle up or down moves
 it; with Line or Freehand, dragging from a circle along time draws from it
 instead. **Bandwidths** shows a strip for the selected formant's bandwidth, and the **F0 axis** can be
-spaced in octaves (Log, from 20 to 800 Hz) or in Hz (Linear). Unticking **Formant tracks** hides
+spaced in octaves (Log, from 20 to 800 Hz) or in Hz (Linear). Unticking **Show formant tracks** hides
 F1–F5 to show the spectrogram under them; they still shape the sound, and selecting one shows them again.
 
 **Paint spectrogram.** Drag to paint at the brush's level (0 dB is the loudest);

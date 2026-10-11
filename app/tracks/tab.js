@@ -89,7 +89,7 @@ export function createTracksTab(root, { commit }) {
       <aside class="side">
         <fieldset class="tool-group"><legend>Tool</legend></fieldset>
         <fieldset class="track-group"><legend>Track</legend></fieldset>
-        <label class="check" title="Show F1–F5 over the spectrogram; hidden, they still shape the sound"><input type="checkbox" class="show-formants" checked> Formant tracks</label>
+        <label class="check" title="Show F1–F5 over the spectrogram; hidden, they still shape the sound"><input type="checkbox" class="show-formants" checked> Show formant tracks</label>
         <label class="check"><input type="checkbox" class="show-bandwidths"> Bandwidths</label>
         <fieldset class="f0-scale-group" title="How the F0 strip spaces its frequencies"><legend>F0 axis</legend>
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="log"> Log (octaves)</label>
