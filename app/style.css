@@ -234,7 +234,7 @@ canvas.measured {
 .track-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 /* Each track's button carries the colour it is drawn in over the spectrogram:
    the bright stripe on a dark edge, and dark with the bright text when chosen. */
-.track-group button { padding: 3px 0; border-left: 5px solid var(--track-bright, var(--track)); box-shadow: inset 1px 0 0 #1b1b24, -1px 0 0 #1b1b24; }
+.track-group button { padding: 3px 0; white-space: nowrap; border-left: 5px solid var(--track-bright, var(--track)); box-shadow: inset 1px 0 0 #1b1b24, -1px 0 0 #1b1b24; }
 .track-group button kbd { font-size: 10px; font-weight: 400; margin-left: 2px; }
 .track-group button.active { background: #1b1b24; color: var(--track-active, #fff); font-weight: 600; }
 .hint { color: var(--muted); font-size: 12px; margin: 0; }
