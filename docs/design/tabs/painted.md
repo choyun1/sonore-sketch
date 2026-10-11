@@ -255,7 +255,9 @@ it and a "Clear" button for a blank canvas.
 *Changed (2026-10-11, Cho):* the glide and high band were too high-pitched;
 the example is now a slow arpeggio of harmonic tones (A3, E4, A4, C#5, each
 with six fading partials) on the harmonic carrier at 110 Hz, so every painted
-partial is one of the carrier's. Draw speech's example became sonore saying
+partial is one of the carrier's. Later the same day Cho asked for something more
+arbitrary in time and frequency: the example now spells "sonore" in block
+letters (5 x 5 cells, 360 Hz to 3.6 kHz) on the harmonic carrier at 100 Hz. Draw speech's example became sonore saying
 its name, with the tracks from sonore's formant-synthesis gallery page.
 
 ## Order of work

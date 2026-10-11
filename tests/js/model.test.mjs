@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { History } from "../../app/history.js";
 import { decodeState, encodeState, stateFromHash } from "../../app/share.js";
 import {
+  FRICATION_SETTINGS,
   check,
   drawnPoints,
   lineSpan,
@@ -21,6 +22,7 @@ import {
   stretch,
   tidyDocument,
   valueAt,
+  withFrication,
   withPoints,
 } from "../../app/tracks/model.js";
 
@@ -199,4 +201,13 @@ test("F0 can be shown linear: 0-800 Hz, strokes simplified in Hz, Lines kept to 
   assert.deepEqual(drawnPoints("F0", [[0, 100], [0.5, 400]], "linear"), [[0, 100], [0.5, 400]]);
   // Tracks with no linear settings stay as they are.
   assert.equal(trackSpec("F1", "log").scale, undefined);
+});
+
+test("drawing frication turns the parallel formants on only when they are all off", () => {
+  const doc = { ...defaultDocument(), params: { F1: 500 } };
+  assert.deepEqual(withFrication(doc).params, { ...FRICATION_SETTINGS, F1: 500 });
+  const own = { ...doc, params: { A5: 20 } };
+  assert.equal(withFrication(own), own);
+  // The example already has its /s/ settings.
+  assert.equal(withFrication(defaultDocument()).params.A4, 34);
 });

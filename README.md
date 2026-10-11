@@ -64,6 +64,10 @@ it; with Line or Freehand, dragging from a circle along time draws from it
 instead. **Bandwidths** shows a strip for the selected formant's bandwidth, and the **F0 axis** can be
 spaced in octaves (Log, from 20 to 800 Hz) or in Hz (Linear). Unticking **Show formant tracks** hides
 F1–F5 to show the spectrogram under them; they still shape the sound, and selecting one shows them again.
+Draw speech starts with sonore saying its name. Its consonants come from three more tracks: **AF**
+(frication, the hiss of /s/, through the high formants) and **AH** (aspiration, breath) in the Noise
+strip, and **FNZ**, the nasal zero, drawn with the formants (raised above 250 Hz for /n/ or /m/).
+Drawing AF in a drawing with the high formants' levels all off turns them on, at the /s/'s settings.
 
 **Paint spectrogram.** Drag to paint at the brush's level (0 dB is the loudest);
 right-drag or **Erase** paints silence (B and E switch between them), and

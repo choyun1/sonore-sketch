@@ -197,8 +197,27 @@ def main() -> None:
             page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
             assert document_in(page)["params"] == before, "a press on hidden formants changed the drawing"
             page.keyboard.press("2")
-            assert page.locator(".show-formants").is_checked() and page.locator(".panel-formants .track").count() == 5
+            assert page.locator(".show-formants").is_checked() and page.locator(".panel-formants .track").count() == 6
             print("formant tracks: hidden and shown again")
+
+            # Noise: a line drawn on AF in the Noise strip is frication, and the
+            # glide (no parallel formants on) gets the /s/'s settings with it.
+            page.locator(".track-group button", has_text="AF").click()
+            page.keyboard.press("l")
+            page.locator(".panel-noise svg").scroll_into_view_if_needed()
+            noise = page.locator(".panel-noise svg").bounding_box()
+            nx = lambda t: noise["x"] + 52 + t / doc["duration"] * (noise["width"] - 62)  # noqa: E731
+            ny = lambda db: noise["y"] + noise["height"] - 8 - db / 80 * (noise["height"] - 16)  # noqa: E731
+            page.mouse.move(nx(0.05), ny(50))
+            page.mouse.down()
+            page.mouse.move(nx(0.2), ny(50), steps=5)
+            page.mouse.up()
+            params = document_in(page)["params"]
+            assert abs(params["AF"][1][1] - 50) < 3 and params["A5"] == 50, params
+            page.keyboard.press("Control+z")
+            assert "AF" not in document_in(page)["params"], "undo did not take the frication away"
+            page.keyboard.press("p")
+            print("noise: AF drawn at 50 dB, with the /s/'s parallel formants, and undone")
 
             # Bandwidths: the strip shows the selected formant's, here B1.
             page.check(".show-bandwidths")

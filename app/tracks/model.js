@@ -38,6 +38,15 @@ export const TRACKS = {
     linear: { min: 0, tolerance: 1.5 },
   },
   AV: { panel: "AV", min: 0, max: 80, unit: "dB", tolerance: 1, color: "#444" },
+  // The noise sources, for consonants: frication (AF, through the parallel
+  // formants: hiss, as in /s/) and aspiration (AH, through the cascade
+  // formants: breath, as in /h/).
+  AF: { panel: "noise", min: 0, max: 80, unit: "dB", tolerance: 1, color: "#b5651d", bright: "#ffb35c" },
+  AH: { panel: "noise", min: 0, max: 80, unit: "dB", tolerance: 1, color: "#6a7f2a", bright: "#d6f07a" },
+  // The nasal zero, drawn with the formants: raised above FNP (250 Hz) it
+  // takes energy out there, as the nasal tract does in /n/ and /m/; at 250
+  // Hz it cancels the nasal pole and does nothing.
+  FNZ: { panel: "formants", min: 0, max: 5000, unit: "Hz", tolerance: 15, color: "#888", bright: "#ff7ab8" },
   ...Object.fromEntries(
     [1, 2, 3, 4, 5].map((k, i) => [
       `B${k}`,
@@ -48,16 +57,17 @@ export const TRACKS = {
 
 // sonore's KLATT_DEFAULTS for the drawable tracks.
 export const DEFAULTS = {
-  F0: 100, AV: 60, F1: 500, F2: 1500, F3: 2500, F4: 3500, F5: 4500,
+  F0: 100, AV: 60, F1: 500, F2: 1500, F3: 2500, F4: 3500, F5: 4500, AF: 0, AH: 0, FNZ: 250,
   B1: 60, B2: 90, B3: 150, B4: 200, B5: 250,
 };
 
 // A first drawing to hear at once: sonore saying its name, /sɔnɔʁ/, with the
 // tracks of "sonore says its name" in sonore's gallery
 // (docs/gallery/voice/formants.py), read off a recording of the word. Only
-// F1-F3, F0 and AV can be drawn here; the /s/ (AF, through the high parallel
-// formants), the voiceless /ʁ/ (AH), the /n/'s nasal zero (FNZ) and the voice
-// settings come along as they are.
+// The /s/ is frication (AF) through the high parallel formants, the
+// voiceless /ʁ/ aspiration (AH), and the /n/ opens the nasal zero (FNZ); all
+// of these can be drawn. The parallel formants' levels (A4-A6, F6, B6) and the
+// voice settings (SS, RD) come along as they are.
 export function defaultDocument() {
   const times = [0.15, 0.21, 0.23, 0.27, 0.29, 0.35, 0.42, 0.46, 0.49, 0.58]; // o, n, o, r
   return {
@@ -82,6 +92,19 @@ export function defaultDocument() {
       SS: 3, RD: 1.3,
     },
   };
+}
+
+// Frication sounds only through the parallel formants, which are off by
+// default (A1-A6 are 0). When AF is drawn in a document that has none of them
+// on, these, the example's /s/, come with it, so the hiss is heard.
+export const FRICATION_SETTINGS = { F6: 6500, B6: 1500, A4: 34, A5: 50, A6: 60 };
+
+export function withFrication(doc) {
+  const on = ["A1", "A2", "A3", "A4", "A5", "A6", "AB"].some((name) => {
+    const value = doc.params[name];
+    return typeof value === "number" ? value > 0 : Array.isArray(value) && value[1].some((v) => v > 0);
+  });
+  return on ? doc : { ...doc, params: { ...FRICATION_SETTINGS, ...doc.params } };
 }
 
 const round = (x, digits) => Number(x.toFixed(digits));

@@ -1,4 +1,4 @@
-// The Tracks tab: draw F1-F5, F0, AV and B1-B5 over time and hear the
+// The Tracks tab: draw F1-F5, FNZ, F0, AV, AF, AH and B1-B5 over time and hear the
 // Klatt speech they describe (docs/design/tabs/tracks.md).
 //
 // One panel per kind of track, all on the same time axis. The selected track
@@ -24,6 +24,7 @@ import {
   toScale,
   trackSpec,
   valueAt,
+  withFrication,
   withPoints,
 } from "./model.js";
 
@@ -35,9 +36,10 @@ const DECIDE_PX = 4; // with Line or Freehand, how far a press on a circle moves
 const SELECT_PX = 7; // a press this close to another track's line selects it
 
 const PANELS = [
-  { id: "formants", label: "Formants", tracks: ["F1", "F2", "F3", "F4", "F5"], ticks: [0, 1000, 2000, 3000, 4000, 5000], format: (v) => `${v / 1000}k` },
+  { id: "formants", label: "Formants", tracks: ["F1", "F2", "F3", "F4", "F5", "FNZ"], ticks: [0, 1000, 2000, 3000, 4000, 5000], format: (v) => `${v / 1000}k` },
   { id: "F0", label: "F0 (Hz)", tracks: ["F0"], ticks: [25, 50, 100, 200, 400, 800], linearTicks: [0, 200, 400, 600, 800] },
   { id: "AV", label: "AV (dB)", tracks: ["AV"], ticks: [0, 20, 40, 60, 80] },
+  { id: "noise", label: "Noise (dB)", tracks: ["AF", "AH"], ticks: [0, 20, 40, 60, 80] },
   { id: "bandwidths", label: "Bandwidth (Hz)", tracks: [], ticks: [0, 200, 400, 600] },
 ];
 
@@ -95,7 +97,7 @@ export function createTracksTab(root, { commit }) {
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="log"> Log (octaves)</label>
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="linear"> Linear</label>
         </fieldset>
-        <p class="hint">Space plays. 1–5 select F1–F5, 0 or \` selects F0. Ctrl+Z undoes.</p>
+        <p class="hint">Space plays. 1–5 select F1–F5, 0 or \` selects F0. Ctrl+Z undoes. AF and AH are the noises for consonants; FNZ, raised, makes /n/ or /m/.</p>
       </aside>
     </div>`;
   const panelsNode = root.querySelector(".panels");
@@ -124,7 +126,13 @@ export function createTracksTab(root, { commit }) {
     toolGroup.appendChild(node);
   }
   const trackButtons = {};
-  for (const name of ["F1", "F2", "F3", "F4", "F5", "F0", "AV"]) {
+  const TRACK_TITLES = {
+    AV: "Voicing level",
+    AF: "Frication: hiss through the high formants, as in /s/",
+    AH: "Aspiration: breath through the formants, as in /h/",
+    FNZ: "Nasal zero: raise it above 250 Hz for /n/ or /m/",
+  };
+  for (const name of ["F1", "F2", "F3", "F4", "F5", "F0", "AV", "AF", "AH", "FNZ"]) {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = name;
@@ -134,6 +142,7 @@ export function createTracksTab(root, { commit }) {
       button.append(" ", kbd);
       button.title = `Select ${name} (${TRACK_KEY_TITLES[name]})`;
     }
+    if (TRACK_TITLES[name]) button.title = TRACK_TITLES[name];
     button.style.setProperty("--track", TRACKS[name].color);
     button.style.setProperty("--track-bright", TRACKS[name].bright ?? TRACKS[name].color);
     // The selected button is dark, so its label needs a light colour: F0 and AV have none of their own.
@@ -185,7 +194,7 @@ export function createTracksTab(root, { commit }) {
     if (/^F[1-5]$/.test(name)) bandwidth = `B${name[1]}`;
     if (/^B[1-5]$/.test(name)) bandwidth = name;
     // Choosing a formant to edit brings the formants back into view.
-    if (/^F[1-5]$/.test(name) && !showFormants) setShowFormants(true);
+    if (/^F([1-5]|NZ)$/.test(name) && !showFormants) setShowFormants(true);
     else render();
   }
 
@@ -402,7 +411,7 @@ export function createTracksTab(root, { commit }) {
       gesture = null;
       if (event.type === "pointercancel") doc = start;
       renderPanel(panel);
-      if (JSON.stringify(doc.params[name]) !== JSON.stringify(start.params[name])) commit(doc);
+      if (JSON.stringify(doc.params[name]) !== JSON.stringify(start.params[name])) commit((doc = name === "AF" ? withFrication(doc) : doc));
       else doc = start;
     };
     svg.addEventListener("pointerup", finish);
