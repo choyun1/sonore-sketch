@@ -363,6 +363,11 @@ def main() -> None:
             start = example["items"]
             assert len(start) == 1 and start[0]["rate"] > 0 and start[0]["density"] > 0, start  # one blob, upper right
             expect(page.locator("#tab-blobs .coarse")).to_be_visible()  # 0.6 s is under 2 s
+            # The example keeps to one band round 500 Hz; the steps below start
+            # from the same blob with no bands.
+            assert example["bands"] == [{"points": [[0, 500]], "width": 2, "level": 0}], example["bands"]
+            open_link({**page_document_in(page), "blobs": {**example, "bands": []}})
+            expect(status).to_contain_text("Made", timeout=60_000)
             plane = page.locator("canvas.plane").bounding_box()
             left, right = plane["x"] + 52, plane["x"] + plane["width"] - 10
             top, bottom = plane["y"] + 8, plane["y"] + plane["height"] - 36
