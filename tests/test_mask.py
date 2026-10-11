@@ -8,7 +8,7 @@ from sonore_sketch import edit, mask, page
 
 FS = 16000
 STATE = {
-    "mask": 1, "sonore": "0.5.0", "duration": 1.0, "fs": FS, "source": "syllables",
+    "mask": 1, "sonore": "0.6.0", "duration": 1.0, "fs": FS, "source": "syllables",
     "rows": mask.ROWS, "columns": mask.COLUMNS, "floor_db": mask.FLOOR_DB, "window": mask.WINDOW_S,
     "levels": mask.BLANK_LEVELS,
 }
@@ -67,7 +67,7 @@ def test_the_speech_source_is_the_speech_tabs_sound():
 
 def test_a_page_document_gives_the_mask_state_its_source():
     section = {k: v for k, v in STATE.items() if k not in ("mask", "sonore", "duration", "fs")}
-    document = {"app": "sonore-sketch", "version": 2, "sonore": "0.5.0", "duration": 1.0, "fs": FS, "tab": "mask",
+    document = {"app": "sonore-sketch", "version": 2, "sonore": "0.6.0", "duration": 1.0, "fs": FS, "tab": "mask",
                 "tracks": {"mode": "klatt", "params": {"F0": 120}}, "mask": {**section, "source": "file"}, "recording": noise_file(1.0)}
     state = page.tab_state(document)
     assert state["mask"] == 1 and state["recording"]["name"] == "noise.wav"

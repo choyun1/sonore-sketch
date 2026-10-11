@@ -8,7 +8,7 @@
 // No DOM here, so this file runs under `node --test`.
 
 export const FORMAT = 1;
-export const SONORE_VERSION = "0.5.0";
+export const SONORE_VERSION = "0.6.0";
 export const MAX_DURATION = 10; // seconds (docs/design/app.md, D10)
 export const MIN_DURATION = 0.05;
 

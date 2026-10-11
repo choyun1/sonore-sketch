@@ -12,7 +12,7 @@ authors = [{ name = "Adrian Y. Cho" }, { name = "Daniel R Guest" }]
 requires-python = ">=3.10"
 # The page installs exactly this sonore under Pyodide (app/worker.js,
 # SONORE_VERSION); keep the two in step (docs/design/app.md, D5).
-dependencies = ["sonore>=0.5,<0.6"]
+dependencies = ["sonore>=0.6,<0.7"]
 
 [project.optional-dependencies]
 test = ["pytest"]

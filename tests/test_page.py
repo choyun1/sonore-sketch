@@ -9,7 +9,7 @@ from sonore_sketch import page, tracks
 from test_tracks import DOCUMENT
 
 PAGE = {
-    "app": "sonore-sketch", "version": 2, "sonore": "0.5.0",
+    "app": "sonore-sketch", "version": 2, "sonore": "0.6.0",
     "duration": DOCUMENT["duration"], "fs": DOCUMENT["fs"], "tab": "tracks",
     "tracks": {"mode": "klatt", "params": DOCUMENT["params"]},
 }

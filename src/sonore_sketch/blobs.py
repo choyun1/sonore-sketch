@@ -3,7 +3,7 @@
 A drawing is a list of Gaussian blobs on a modulation spectrum, rate [Hz,
 signed] by density [cycles/octave] (docs/design/tabs/blobs.md)::
 
-    {"blobs": 1, "sonore": "0.5.0", "duration": 3.0, "fs": 16000,
+    {"blobs": 1, "sonore": "0.6.0", "duration": 3.0, "fs": 16000,
      "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
      "carrier": "tones", "f0": 100, "iterations": 0, "rms_depth": 0.2, "seed": 1,
      "items": [{"rate": 4, "density": 0, "rate_width": 0.5,
@@ -225,7 +225,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
 
 
 def _toward_drawn(sound: so.Sound, drawn: so.ModulationSpectrum) -> so.Sound:
-    """One of ``to_sound``'s own iterations (sonore 0.5, ``iterations``):
+    """One of ``to_sound``'s own iterations (sonore, ``iterations``):
     keep the sound's fine structure and modulation phase, impose the drawn
     magnitudes. Taken here one at a time so the page can show its progress;
     the result is the same as ``to_sound(iterations=n)``."""
@@ -242,7 +242,7 @@ def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) ->
     ``measured`` reads them, then given the gain back. The bands' own shape
     and motion stay out of what the blobs are imposed on, so the two
     constraints pull on different things (tools/measure_loop.py, ``within``).
-    It reads the drawn magnitudes and mean from sonore 0.5's private fields
+    It reads the drawn magnitudes and mean from sonore's private fields (0.5 and 0.6)
     and its filterbank, which ``to_sound`` uses for its own iterations."""
     bank = drawn._analysis.filterbank
     subbands = bank.analyze(sound)

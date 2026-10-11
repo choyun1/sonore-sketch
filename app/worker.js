@@ -11,7 +11,7 @@
 //               or {id, type: "dropped"} when a newer request arrived first.
 
 const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (tracks.md, M6)
-const SONORE_VERSION = "0.5.0"; // keep in step with pyproject.toml (app.md, D5)
+const SONORE_VERSION = "0.6.0"; // keep in step with pyproject.toml (app.md, D5)
 const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
 
 let steps = null;
