@@ -127,36 +127,56 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     )
 
 
-# The starting painting spells "sonore" in letters of 5 x 5 cells, each cell
-# EXAMPLE_CELL rows tall and columns wide, top row first. Painted on the
-# harmonic carrier at EXAMPLE_F0, every cell is at least a row of 100 Hz's
-# harmonics tall, so the letters show in the spectrogram as they are drawn.
-EXAMPLE_F0 = 100
-EXAMPLE_CELL = (8, 7)  # rows, columns
-EXAMPLE_LOW = 22  # the letters' bottom row: about 360 Hz on the default range
-EXAMPLE_LETTERS = {
-    "s": (".####", "#....", ".###.", "....#", "####."),
-    "o": (".###.", "#...#", "#...#", "#...#", ".###."),
-    "n": ("####.", "#...#", "#...#", "#...#", "#...#"),
-    "r": ("#.##.", "##..#", "#....", "#....", "#...."),
-    "e": (".###.", "#...#", "#####", "#....", ".####"),
+# The starting painting writes "sonore" by hand: each letter a few strokes,
+# slanted like handwriting, so that a stroke is a glide or a held tone and
+# little sounds at once. Strokes are polylines in a letter's box, x (time) and
+# y (frequency) from 0 to 1; a letter's x height spans EXAMPLE_ROWS, about
+# 180 Hz to 1.4 kHz on the default range. The harmonic carrier at EXAMPLE_F0
+# keeps a harmonic within a few rows of every stroke there.
+EXAMPLE_F0 = 50
+EXAMPLE_ROWS = (10, 46)  # the letters' bottom and top rows
+EXAMPLE_SLANT = 0.3  # of a letter's width, leaned over its height
+
+
+def _arc(cx, cy, rx, ry, start, stop, n=24):
+    angles = np.linspace(math.radians(start), math.radians(stop), n)
+    return [(cx + rx * math.cos(a), cy + ry * math.sin(a)) for a in angles]
+
+
+EXAMPLE_STROKES = {
+    "s": [[(0.9, 0.85), (0.65, 1.0), (0.3, 0.97), (0.1, 0.78), (0.25, 0.57), (0.7, 0.45), (0.9, 0.25), (0.75, 0.04), (0.4, 0.0), (0.08, 0.15)]],
+    "o": [_arc(0.5, 0.5, 0.42, 0.5, 90, 450, 40)],
+    "n": [[(0.1, 0.0), (0.1, 1.0)], [(0.1, 0.7), (0.3, 0.95), (0.6, 1.0), (0.85, 0.82), (0.9, 0.5), (0.9, 0.0)]],
+    "r": [[(0.1, 0.0), (0.1, 1.0)], [(0.1, 0.7), (0.35, 0.95), (0.65, 1.0), (0.9, 0.88)]],
+    "e": [[(0.1, 0.5), (0.9, 0.5), (0.85, 0.8), (0.6, 1.0), (0.3, 0.96), (0.1, 0.72), (0.1, 0.3), (0.3, 0.04), (0.6, 0.0), (0.9, 0.15)]],
 }
 
 
 def example_levels(f_lo: float = 100, f_hi: float = 6400, rows_per_octave: int = 12, columns: int = 256) -> np.ndarray:
-    """The painting the tab starts from (painted.md, P7): "sonore" written
-    across the plane at 0 dB, in dB, shape (rows, columns)."""
+    """The painting the tab starts from (painted.md, P7): "sonore" written by
+    hand across the plane at 0 dB, strokes with soft edges, in dB, shape
+    (rows, columns)."""
     n_rows = max(2, round(math.log2(f_hi / f_lo) * rows_per_octave))
-    level = np.full((n_rows, columns), -np.inf)
-    cell_rows, cell_columns = EXAMPLE_CELL
+    low, high = EXAMPLE_ROWS
     word = "sonore"
-    width = (6 * len(word) - 1) * cell_columns  # 5 cells a letter and one between
-    left = (columns - width) // 2
+    pitch = (columns - 16) / len(word)  # columns per letter, with a margin of 8 each side
+    width = 0.72 * pitch  # the rest is the space between letters
+    rows = np.arange(n_rows)[:, None]
+    cols = np.arange(columns)[None, :]
+    level = np.full((n_rows, columns), -np.inf)
     for i, letter in enumerate(word):
-        for line, cells in enumerate(EXAMPLE_LETTERS[letter]):
-            row = EXAMPLE_LOW + (4 - line) * cell_rows  # rows count up from f_lo
-            for k, cell in enumerate(cells):
-                column = left + (6 * i + k) * cell_columns
-                if cell == "#" and row + cell_rows <= n_rows and column + cell_columns <= columns:
-                    level[row : row + cell_rows, column : column + cell_columns] = 0.0
-    return level
+        left = 8 + i * pitch + (pitch - width) / 2 - EXAMPLE_SLANT * width / 2
+        for stroke in EXAMPLE_STROKES[letter]:
+            # points along the stroke about a quarter cell apart, in grid units
+            points = []
+            for (x0, y0), (x1, y1) in zip(stroke, stroke[1:]):
+                n = max(2, int(4 * math.hypot((x1 - x0) * width, (y1 - y0) * (high - low))))
+                for u in np.linspace(0, 1, n, endpoint=False):
+                    x, y = x0 + u * (x1 - x0), y0 + u * (y1 - y0)
+                    points.append((left + (x + EXAMPLE_SLANT * y) * width, low + y * (high - low)))
+            points.append((left + (stroke[-1][0] + EXAMPLE_SLANT * stroke[-1][1]) * width, low + stroke[-1][1] * (high - low)))
+            for c, r in points:
+                # a soft round nib: -10 dB a column and a half or a row away
+                distance = ((cols - c) / 1.5) ** 2 + ((rows - r) / 1.0) ** 2
+                level = np.maximum(level, -10.0 * distance)
+    return np.where(level < -60, -np.inf, np.round(level))

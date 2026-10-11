@@ -257,7 +257,10 @@ the example is now a slow arpeggio of harmonic tones (A3, E4, A4, C#5, each
 with six fading partials) on the harmonic carrier at 110 Hz, so every painted
 partial is one of the carrier's. Later the same day Cho asked for something more
 arbitrary in time and frequency: the example now spells "sonore" in block
-letters (5 x 5 cells, 360 Hz to 3.6 kHz) on the harmonic carrier at 100 Hz. Draw speech's example became sonore saying
+letters (5 x 5 cells, 360 Hz to 3.6 kHz) on the harmonic carrier at 100 Hz. The blocks were loud
+and sounded all at once (Cho), so it is now written by hand an octave lower
+(about 180 Hz to 1.4 kHz): thin, soft, slanted strokes that sound as glides,
+on the harmonic carrier at 50 Hz so that a harmonic is near every stroke. Draw speech's example became sonore saying
 its name, with the tracks from sonore's formant-synthesis gallery page.
 
 ## Order of work
