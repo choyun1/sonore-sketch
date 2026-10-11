@@ -88,12 +88,14 @@ export function createTracksTab(root, { commit }) {
     if (localStorage.getItem("sonore-sketch.f0-scale") === "linear") f0Scale = "linear";
   } catch {}
   const scaleOf = (name) => (name === "F0" ? f0Scale : undefined);
-  // How high the formants panel (and the spectrogram under it) reaches: 5 kHz
-  // leaves the formants room; 8 kHz shows the hiss of /s/. Also only a view,
-  // remembered in this browser.
+  // How high the formants panel (and the spectrogram under it) reaches: 4 kHz
+  // gives F1-F3 the most room, 5 kHz takes in F4 and F5, and 8 kHz shows the
+  // hiss of /s/. Also only a view, remembered in this browser.
+  const FORMANT_TOPS = [4000, 5000, 8000];
   let formantTop = 5000;
   try {
-    if (localStorage.getItem("sonore-sketch.formant-top") === "8000") formantTop = 8000;
+    const stored = Number(localStorage.getItem("sonore-sketch.formant-top"));
+    if (FORMANT_TOPS.includes(stored)) formantTop = stored;
   } catch {}
   const panelOf = (name) => TRACKS[name].panel;
   // A value drawn at a pointer, kept inside what its panel shows.
@@ -111,6 +113,7 @@ export function createTracksTab(root, { commit }) {
         <label class="check" title="Show F1–F5 over the spectrogram; hidden, they still shape the sound"><input type="checkbox" class="show-formants" checked> Show formant tracks</label>
         <label class="check"><input type="checkbox" class="show-bandwidths"> Bandwidths</label>
         <fieldset class="formant-top-group" title="How high the formants and the spectrogram under them reach; /s/ hisses mostly above 4 kHz"><legend>Formants up to</legend>
+          <label class="choice"><input type="radio" name="tracks-formant-top" value="4000"> 4 kHz</label>
           <label class="choice"><input type="radio" name="tracks-formant-top" value="5000"> 5 kHz</label>
           <label class="choice"><input type="radio" name="tracks-formant-top" value="8000"> 8 kHz</label>
         </fieldset>

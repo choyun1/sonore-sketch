@@ -189,9 +189,11 @@ def main() -> None:
             # The formants panel can reach 8 kHz, for the hiss of /s/, and back.
             page.locator('input[name="tracks-formant-top"][value="8000"]').check()
             assert page.locator(".panel-formants .tick").last.text_content() == "8k"
+            page.locator('input[name="tracks-formant-top"][value="4000"]').check()
+            assert page.locator(".panel-formants .tick").last.text_content() == "4k"
             page.locator('input[name="tracks-formant-top"][value="5000"]').check()
             assert page.locator(".panel-formants .tick").last.text_content() == "5k"
-            print("formants up to: 8 kHz and back to 5 kHz")
+            print("formants up to: 8 kHz, 4 kHz and back to 5 kHz")
             expect(status).to_contain_text("Made", timeout=60_000)
 
             # Formant tracks can be hidden: no lines, presses on the panel do
