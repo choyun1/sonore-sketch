@@ -293,4 +293,5 @@ canvas.measured {
 .log pre .error { color: var(--error); }
 #log-toggle.has-errors { border-color: var(--error); color: var(--error); }
 .panel svg.over-point { cursor: grab; }
+.panel.formants-hidden svg { cursor: default; }
 .panel svg.over-point:active { cursor: grabbing; }

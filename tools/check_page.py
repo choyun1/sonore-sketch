@@ -164,6 +164,18 @@ def main() -> None:
             print("F0 axis: switched to linear and back to log")
             expect(status).to_contain_text("Made", timeout=60_000)
 
+            # Formant tracks can be hidden: no lines, presses on the panel do
+            # nothing, and selecting a formant brings them back.
+            page.uncheck(".show-formants")
+            assert page.locator(".panel-formants .track").count() == 0, "formants still drawn"
+            before = document_in(page)["params"]
+            box = page.locator(".panel-formants svg").bounding_box()
+            page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            assert document_in(page)["params"] == before, "a press on hidden formants changed the drawing"
+            page.keyboard.press("2")
+            assert page.locator(".show-formants").is_checked() and page.locator(".panel-formants .track").count() == 5
+            print("formant tracks: hidden and shown again")
+
             # Bandwidths: the strip shows the selected formant's, here B1.
             page.check(".show-bandwidths")
             page.keyboard.press("1")

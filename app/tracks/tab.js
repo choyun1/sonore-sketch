@@ -79,6 +79,9 @@ export function createTracksTab(root, { commit }) {
     if (localStorage.getItem("sonore-sketch.f0-scale") === "linear") f0Scale = "linear";
   } catch {}
   const scaleOf = (name) => (name === "F0" ? f0Scale : undefined);
+  // Whether F1-F5 are drawn over the spectrogram. Also only a view: hidden
+  // formants still shape the sound, since Klatt's voice is made of them.
+  let showFormants = true;
 
   root.innerHTML = `
     <div class="tracks-body">
@@ -86,6 +89,7 @@ export function createTracksTab(root, { commit }) {
       <aside class="side">
         <fieldset class="tool-group"><legend>Tool</legend></fieldset>
         <fieldset class="track-group"><legend>Track</legend></fieldset>
+        <label class="check" title="Show F1–F5 over the spectrogram; hidden, they still shape the sound"><input type="checkbox" class="show-formants" checked> Formant tracks</label>
         <label class="check"><input type="checkbox" class="show-bandwidths"> Bandwidths</label>
         <fieldset class="f0-scale-group" title="How the F0 strip spaces its frequencies"><legend>F0 axis</legend>
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="log"> Log (octaves)</label>
@@ -98,6 +102,7 @@ export function createTracksTab(root, { commit }) {
   const toolGroup = root.querySelector(".tool-group");
   const trackGroup = root.querySelector(".track-group");
   const showBandwidths = root.querySelector(".show-bandwidths");
+  const showFormantsBox = root.querySelector(".show-formants");
   for (const input of root.querySelectorAll('input[name="tracks-f0-scale"]')) {
     input.checked = input.value === f0Scale;
     input.addEventListener("change", () => {
@@ -156,6 +161,18 @@ export function createTracksTab(root, { commit }) {
   function trackList(panel) {
     return panel.id === "bandwidths" ? [bandwidth] : panel.tracks;
   }
+  // The tracks drawn (and pressable) in a panel: none of F1-F5 while hidden.
+  function shownTracks(panel) {
+    return panel.id === "formants" && !showFormants ? [] : trackList(panel);
+  }
+
+  function setShowFormants(on) {
+    showFormants = on;
+    showFormantsBox.checked = on;
+    panels[0].node.classList.toggle("formants-hidden", !on);
+    render();
+  }
+  showFormantsBox.addEventListener("change", () => setShowFormants(showFormantsBox.checked));
 
   showBandwidths.addEventListener("change", () => {
     panels.find((p) => p.id === "bandwidths").node.hidden = !showBandwidths.checked;
@@ -167,7 +184,9 @@ export function createTracksTab(root, { commit }) {
     selected = name;
     if (/^F[1-5]$/.test(name)) bandwidth = `B${name[1]}`;
     if (/^B[1-5]$/.test(name)) bandwidth = name;
-    render();
+    // Choosing a formant to edit brings the formants back into view.
+    if (/^F[1-5]$/.test(name) && !showFormants) setShowFormants(true);
+    else render();
   }
 
   // Panel geometry, in the SVG's own pixels.
@@ -212,7 +231,7 @@ export function createTracksTab(root, { commit }) {
     const title = element("text", { x: g.x0 + 6, y: g.y0 + 3, class: "panel-title" }, svg);
     title.textContent = panel.id === "bandwidths" ? `${bandwidth} (Hz)` : panel.label;
 
-    const names = trackList(panel);
+    const names = shownTracks(panel);
     // The selected track last, so it is drawn on top.
     for (const name of [...names.filter((n) => n !== selected), ...names.filter((n) => n === selected)]) {
       const pts = points(doc, name);
@@ -280,7 +299,7 @@ export function createTracksTab(root, { commit }) {
     };
     // The selected track's breakpoint whose circle is under (px, py), or -1.
     const circleAt = (px, py) => {
-      if (!trackList(panel).includes(selected)) return -1;
+      if (!shownTracks(panel).includes(selected)) return -1;
       const g = geometry(panel);
       let best = -1;
       let nearest = HIT_PX;
@@ -295,8 +314,8 @@ export function createTracksTab(root, { commit }) {
     };
 
     svg.addEventListener("pointerdown", (event) => {
-      if (!doc || event.button > 0) return;
-      const names = trackList(panel);
+      const names = shownTracks(panel);
+      if (!doc || event.button > 0 || !names.length) return;
       const g = geometry(panel);
       const [px, py] = local(event);
       const t = g.t(px);
@@ -390,7 +409,7 @@ export function createTracksTab(root, { commit }) {
     svg.addEventListener("pointercancel", finish);
 
     svg.addEventListener("dblclick", (event) => {
-      if (!doc || tool !== "point" || !trackList(panel).includes(selected)) return;
+      if (!doc || tool !== "point" || !shownTracks(panel).includes(selected)) return;
       const g = geometry(panel);
       const [px] = local(event);
       const pts = points(doc, selected);
