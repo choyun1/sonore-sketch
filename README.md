@@ -1,6 +1,9 @@
 <h1><a href="https://choyun1.github.io/sonore/gallery/"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-dark.svg">
-  <img alt="sonore-sketch" src="docs/logo/sonore-sketch-banner-light.svg" height="56">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-lines-dark.svg">
+  <img alt="sonore" src="docs/logo/sonore-sketch-lines-light.svg" height="56">
+</picture></a><a href="https://choyun1.github.io/sonore-sketch/"><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-name-dark.svg">
+  <img alt="sonore-sketch" src="docs/logo/sonore-sketch-name-light.svg" height="56">
 </picture></a></h1>
 
 [![test](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml)
