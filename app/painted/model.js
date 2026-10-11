@@ -14,14 +14,14 @@ export const FORMAT = 1;
 
 export const DEFAULTS = {
   f_lo: 100, f_hi: 6400, rows_per_octave: 12, columns: 256, floor_db: -60,
-  carrier: "tones", f0: 100, seed: 1,
+  carrier: "harmonic", f0: 110, seed: 1,
 };
 export const CARRIERS = ["tones", "harmonic", "noise"];
 
-// sonore_sketch.painted.encode_levels(example_levels()): a rising glide and a
-// high band (P7). tests/test_painted.py checks the two agree.
+// sonore_sketch.painted.encode_levels(example_levels()): a slow arpeggio of
+// harmonic tones, A3 E4 A4 C#5, on the harmonic carrier at 110 Hz (P7). tests/test_painted.py checks the two agree.
 export const EXAMPLE_LEVELS =
-  "eNrt0udygmAUhOEgAnZQsRsRey/Y9bv/6wroqJgQ5F8m5+x7B7vzCIEQQgghhBBCCCGEEOLXaLbenRnvL1UbVmcwWWwOPPcnUhk9b1bqn3aPJQUpJsdVLZnOGgWWFD68vBMU7UGh7VJYMaGgxOWYJF1PYEnByGVSCVW5n/CkkPNRONHdb7caFbOgZ9NJLZyCQ5PCcbucDrvtZq1cfFCI+SioNwpl0hQue2c+7nsUSowpnJ4U8mEUavQpdFqN6jsKLdIUVt8oxAMoFO8UtlQpLF4oqAEUdB+FC1kKvV8oxDhRGIDCajbqtT+jUBiSpXBwFpOIFPrjhbPnQkEOpNB0KUwZUDACKCgvFObkKZgBFGQ/hS5ZCiIihQptCrsbhXoYBeNOYbk9EqZgvaFguhRsBhQqPylIfChsolGoXymsaVI4+yjoLgUNFCJQEHQp2BEoWIJukSgI4p1361AKgkVXCl2rWS0VjdwLBcGnQAqCW8fN0k9BsMylMB/1PQqCcR4FgRD6t2X+OOzHfuzHfuzHfoQQQkz7Aj32Yvs=";
+  "eNrtm2lbIjsQhR/HOygjgiKyK8gmO8gOM///d92sVal00xEZNifnsw/dSarecyrgnz9eXl5eXl5eXl5e/6B+r9aoDeg36lsuu999b7y9lgrZp0epNOoJlQE9o7KoHCiPKqCKoBKqjHoBvaIqqCroDVVD1UENVBPVArW7/eF4Mluu5Xm+FHOZdCoRj11fXV39QF2D/kP9RMVAN6hbVBz0C3WHSoDuUUlUCvSAekQ5Timz9ZQKpZfKW7353ukNRh/TebNW5VvwmEqEvWbC8Zopx2ueYTEZa19tZA9slvPJqN/l6qH6qAFoiBqhxqAP1AQ1Bc1Qc9QCtEStUGFg+vZk8jo/j1z/k+U3EB5Z5h55+e7I6CcMcKHp51aZG0TyTnjkxVvkM3fAaq2hgsBn1t+oVcThsy3Y8q4X5JPS/bu71sB6MR0Pex2mLugizfLQsNhclluzQ23LDGjUll1WdkHZiAI8lfLP6aiSzjhKOuco6aKDlC8OUnJC6s6X1c9mn3z26eH+160NKxtTdtfbDc/7/O725w8yR1w7IBlzQDLugOTu4Elnsvli+VURcNRpNdQWkL+3EWUfpX2K6vzYp9xFozzhQHnKgfK9i0msHUaApUE3G1A2m2ws2UBiGJp9DHvb0ThwoHHsQOPUgcaFA42CSSfEDwMNM1KeJY4z6gYOnyOEjr/LY65fkeZGMGJLlLp2RKmYI0rFHVEqkRQEgF045vp1in447o0HLQNkH/OAOZ/8ebxnhYmeQrwELYR55J7+aBuSndrtvG5fZOk7rHeltlJHyQ5mNng4bqzYx1pSXYFhyRBS4+Gwyv0LFvkXXGav/TcPn8GQHb6ikvFg86n4yOd06hwWsGcBtUOj/3o5MyyGGAsYCmsV27P2sEriTXZg9hdbx5Kc69rNehXqyigpo5iwjgwGGfTpSooWsudR5ls5qXxf56BOqw7512hp7GajkY0WxmXhitjswyh6EztvSArnRwp8jPpyBCiELalI/bAc6Y/MSPKKkWfMx8ZWAiocGSRSDOIGIa7AElEWmUzZ9aPXG+kquEpzidFJBBZG2sHsBdIIpAvY4s36Xy/4zMK7AD4XPhM+r9lU3xGS4yNHR84tuJ4iroffEZywDKyvf5T/8whEGx1eAJ5MGwIeFNy3GuElHEFbV1E8hon+6JTIkglotmL8H2j+w16FlYBaCuU+xE3ImZgPIBjoRCAeI9LmCVkgAEA8QLRAvyNXpRel1wRLknvkMkjWJqTY4X1eg91LzKwe7F5iYiTpk5RPIr4Zz0g2g2CGrS/EV94Sc5naYr21Zp3zN2dtyzzSKDYbcPzs+B05Fi2p2CAjH0il7sUUa5srEdtsffurDl/yT/+52cPqJHjlspiQjXZJzUhS0VuJX3AQ/9VB/LqD+CE10+31SfzZ8WpbJXcjtBtxXXxBuJga+T98jsDcT0L/+SZ+0yOrZo3UgsEYNr5jkkTjkd+183k75yiDA6Kjt+MXP/o3QnJGhrqGms6Fe2TZZAdgU1LknljbkSmhvW+HXcBLIlhMiEtya5P512LkI2UkBcLRK0GF3x0BoDAZ5ZDK3fMWIYvWHGGsZK9pk3RWf0Cjx2hMwocCkqDRbqWvPLInx8RCtEVWoi2kZaIhbAfN0KRfWgNUs1NjUxPzGPxbzXVGdK6wWauS9qgFQyRLUaWi7XV2XdtFbVe0ATarHnpWPQytemDmtznAHukUxfzfwUj+Y7vk3pcNX95BEX8mX2mDzzMyvATUG3BInJAJky+Gn0/8gFi2yWX2+N6/I5CAYBnZzchKOZgOoogRnqu2jJ3jwNgJ+ys2eLU5PCO3I7Iu71H2jFFR83nLMZ+zmf9Qe+CeH+aT8aDLMvCXwnPYIU/CD3lpthHOKCcfJJYzft/63vgOqWB3jeRlm5x/ThWklusT/ouJgsR3CodeXl5eXl5eXl4Xpf8BEOKkPg==";
 
 // The tab's section of a new page document (document.js).
 export function defaultSection() {
