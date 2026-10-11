@@ -51,12 +51,17 @@ kbd { font-size: 11px; color: var(--muted); }
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 20px;
-  padding: 8px 16px;
+  padding: 8px 48px 8px 16px; /* room on the right for the GitHub link */
   border-bottom: 1px solid var(--line);
+  position: relative;
 }
-.bar h1 { font-size: 16px; margin: 0; font-weight: 600; }
-.bar .about { color: var(--muted); font-size: 13px; text-decoration: none; margin-left: 4px; }
-.bar .about:hover { color: inherit; text-decoration: underline; }
+.bar h1 { display: flex; align-items: center; gap: 8px; font-size: 16px; margin: 0; font-weight: 600; }
+/* sonore's mark (copied from sonore's docs/logo/sonore-mark.svg; it follows light/dark itself) */
+.bar h1 .logo-link { display: flex; }
+.bar h1 .logo { width: 24px; height: 24px; }
+/* GitHub's mark (Primer Octicons, MIT), top right, level with the tabs row whether or not the controls wrap */
+.bar .about { position: absolute; top: 8px; right: 16px; height: 29px; display: flex; align-items: center; color: var(--muted); }
+.bar .about:hover { color: var(--ink); }
 /* Loading the synthesizer: a strip under the header, so it is seen without scrolling */
 .loading {
   padding: 6px 16px 0; border-bottom: 1px solid var(--line);
