@@ -3,7 +3,7 @@
 Take a sound, paint over parts of its spectrogram to turn them down or
 remove them, and hear what is left (docs/design/tabs/mask.md)::
 
-    {"mask": 1, "sonore": "0.5.0", "duration": 1.8, "fs": 16000,
+    {"mask": 1, "sonore": "0.6.0", "duration": 1.8, "fs": 16000,
      "source": "syllables", "rows": 256, "columns": 256, "floor_db": -60,
      "window": 0.032, "levels": "<base64 of deflated bytes>",
      "speech": {"mode": "klatt", "params": {...}},          # with source "speech"

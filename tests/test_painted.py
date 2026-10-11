@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def state(levels_db=None, **changes):
     levels_db = painted.example_levels() if levels_db is None else levels_db
     return {
-        "painted": 1, "sonore": "0.5.0", "duration": 0.6, "fs": 16000,
+        "painted": 1, "sonore": "0.6.0", "duration": 0.6, "fs": 16000,
         "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256, "floor_db": -60,
         "carrier": "tones", "f0": 100, "seed": 1, "levels": painted.encode_levels(levels_db),
     } | changes
@@ -81,7 +81,7 @@ def test_bad_states_are_refused(changes, message):
 def test_a_saved_page_on_the_painted_tab_sounds_as_the_tab_does():
     section = {k: v for k, v in state().items() if k not in ("painted", "sonore", "duration", "fs")}
     document = {
-        "app": "sonore-sketch", "version": 2, "sonore": "0.5.0", "duration": 0.6, "fs": 16000,
+        "app": "sonore-sketch", "version": 2, "sonore": "0.6.0", "duration": 0.6, "fs": 16000,
         "tab": "painted", "tracks": {"mode": "klatt", "params": {}}, "painted": section,
     }
     assert np.array_equal(page.synthesize(document).data, painted.synthesize(state()).data)

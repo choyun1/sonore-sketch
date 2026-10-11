@@ -3,7 +3,7 @@
 A painting is a grid of levels over time and log-frequency
 (docs/design/tabs/painted.md)::
 
-    {"painted": 1, "sonore": "0.5.0", "duration": 0.6, "fs": 16000,
+    {"painted": 1, "sonore": "0.6.0", "duration": 0.6, "fs": 16000,
      "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256,
      "floor_db": -60, "carrier": "tones", "f0": 100, "seed": 1,
      "levels": "<base64 of zlib-deflated bytes>"}

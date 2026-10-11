@@ -7,7 +7,7 @@ import sonore as so
 from sonore_sketch import edit, page
 
 STATE = {
-    "edit": 1, "sonore": "0.5.0", "duration": 1.0, "fs": 16000, "source": "syllables", "carrier": "source",
+    "edit": 1, "sonore": "0.6.0", "duration": 1.0, "fs": 16000, "source": "syllables", "carrier": "source",
     "iterations": 1, "seed": 1, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
     "columns": edit.COLUMNS, "rows": edit.ROWS, "floor_db": edit.FLOOR_DB, "levels": edit.EXAMPLE_LEVELS,
 }
@@ -92,7 +92,7 @@ def test_a_link_without_the_recording_says_to_open_it_again():
 def test_a_page_document_gives_the_edit_state_its_source():
     tracks = {"mode": "klatt", "params": {"F0": 120}}
     section = {k: v for k, v in STATE.items() if k not in ("edit", "sonore", "duration", "fs")}
-    document = {"app": "sonore-sketch", "version": 2, "sonore": "0.5.0", "duration": 1.0, "fs": 16000, "tab": "edit",
+    document = {"app": "sonore-sketch", "version": 2, "sonore": "0.6.0", "duration": 1.0, "fs": 16000, "tab": "edit",
                 "tracks": tracks, "edit": {**section, "source": "speech"}, "recording": {"name": "x", "fs": 16000, "pcm16": ""}}
     state = page.tab_state(document)
     assert state["speech"] == tracks and "recording" not in state

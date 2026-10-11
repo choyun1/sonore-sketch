@@ -4,7 +4,7 @@
 [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml)
 [![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE.txt)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
-[![sonore 0.5](https://img.shields.io/badge/sonore-0.5-blue.svg)](https://pypi.org/project/sonore/)
+[![sonore 0.6](https://img.shields.io/badge/sonore-0.6-blue.svg)](https://pypi.org/project/sonore/)
 
 Draw on a picture of sound and hear the result.
 
@@ -111,7 +111,7 @@ much. A recording is kept in saved files but never in links.
 
 ## How the sound is made
 
-Every sound is made by sonore 0.5, in `src/sonore_sketch/` (one module per
+Every sound is made by sonore 0.6, in `src/sonore_sketch/` (one module per
 tab). The design documents in `docs/design/` hold the measurements behind
 each choice; this section is the method in one place.
 
@@ -270,7 +270,7 @@ sound = page.synthesize(json.load(open("sketch.json")))
 The page is static: `index.html` and the ES modules in `app/`, with no
 build step and no JavaScript dependencies. The Python half, which the page
 runs under Pyodide, is in `src/sonore_sketch/` (one module per tab, and
-`page.py`, which the page calls). It needs sonore 0.5.
+`page.py`, which the page calls). It needs sonore 0.6.
 
 ```
 pip install -e ".[test]" playwright
