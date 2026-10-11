@@ -58,8 +58,8 @@ kbd { font-size: 11px; color: var(--muted); }
 /* sonore's mark (copied from sonore's docs/logo/sonore-mark.svg; it follows light/dark itself) */
 .bar h1 .logo-link { display: flex; }
 .bar h1 .logo { width: 24px; height: 24px; }
-.bar .about { color: var(--muted); font-size: 13px; text-decoration: none; margin-left: 4px; }
-.bar .about:hover { color: inherit; text-decoration: underline; }
+.bar .about { display: flex; color: var(--muted); margin-left: 4px; } /* GitHub's mark (Primer Octicons, MIT) */
+.bar .about:hover { color: var(--ink); }
 /* Loading the synthesizer: a strip under the header, so it is seen without scrolling */
 .loading {
   padding: 6px 16px 0; border-bottom: 1px solid var(--line);
