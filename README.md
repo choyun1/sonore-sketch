@@ -1,4 +1,4 @@
-# <a href="https://github.com/choyun1/sonore"><img src="app/logo.svg" alt="sonore" height="36" align="absmiddle"></a> sonore-sketch
+# <a href="https://choyun1.github.io/sonore/gallery/"><img src="app/logo.svg" alt="sonore" height="36" align="absmiddle"></a> sonore-sketch
 
 [![test](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml)
 [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml)
