@@ -1,4 +1,7 @@
-# <a href="https://choyun1.github.io/sonore/gallery/"><img src="app/logo.svg" alt="sonore" height="36" align="absmiddle"></a> sonore-sketch
+<h1><picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-dark.svg">
+  <img alt="sonore-sketch" src="docs/logo/sonore-sketch-banner-light.svg" height="56">
+</picture></h1>
 
 [![test](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml)
 [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml)
@@ -311,8 +314,8 @@ Guest, whose history this repository keeps; the Draw speech tab is after
 Assmann et al.'s (1994) Track-Draw. Every sound is made by
 [sonore](https://github.com/choyun1/sonore), by Adrian Y. Cho, running in
 the browser under Pyodide (The Pyodide development team, 2021). The logo
-is sonore's own mark (MIT), drawn from the spectrogram of sonore saying its
-name.
+is sonore's own (MIT), drawn from the spectrogram of sonore saying its name;
+the banner above is sonore's with the longer name (`tools/make_banner.py`).
 
 This project is AI-assisted: much of the code and documentation was drafted
 by Claude (Claude Code) for Cho to review. MIT licence (`LICENSE.txt`).
