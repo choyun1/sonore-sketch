@@ -12,7 +12,9 @@ export const SONORE_VERSION = "0.6.0";
 export const MAX_DURATION = 10; // seconds (docs/design/app.md, D10)
 export const MIN_DURATION = 0.05;
 
-// The drawable tracks (tracks.md, D1: the paper's voiced set). `tolerance`
+// The drawable tracks (tracks.md, D1: the paper's voiced set). The formants
+// go up to 8 kHz, the top of 16 kHz sound; their panel shows up to 5 kHz or
+// 8 kHz (a viewing choice in the tab), and drawing stays inside what it shows. `tolerance`
 // is the freehand simplification tolerance in the track's own unit (D10: a
 // default to be tuned by trying it).
 const FORMANT_COLORS = ["#d1495b", "#2e86ab", "#3c9d5d", "#9a6fb0", "#c07a1e"];
@@ -24,7 +26,7 @@ export const TRACKS = {
   ...Object.fromEntries(
     [1, 2, 3, 4, 5].map((k, i) => [
       `F${k}`,
-      { panel: "formants", min: 0, max: 5000, unit: "Hz", tolerance: 15, color: FORMANT_COLORS[i], bright: FORMANT_BRIGHT[i] },
+      { panel: "formants", min: 0, max: 8000, unit: "Hz", tolerance: 15, color: FORMANT_COLORS[i], bright: FORMANT_BRIGHT[i] },
     ]),
   ),
   // F0 is drawn in octaves (`scale: "log"`) from 20 to 800 Hz. Below 20 Hz the
@@ -46,7 +48,7 @@ export const TRACKS = {
   // The nasal zero, drawn with the formants: raised above FNP (250 Hz) it
   // takes energy out there, as the nasal tract does in /n/ and /m/; at 250
   // Hz it cancels the nasal pole and does nothing.
-  FNZ: { panel: "formants", min: 0, max: 5000, unit: "Hz", tolerance: 15, color: "#888", bright: "#ff7ab8" },
+  FNZ: { panel: "formants", min: 0, max: 8000, unit: "Hz", tolerance: 15, color: "#888", bright: "#ff7ab8" },
   ...Object.fromEntries(
     [1, 2, 3, 4, 5].map((k, i) => [
       `B${k}`,

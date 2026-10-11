@@ -36,7 +36,7 @@ const DECIDE_PX = 4; // with Line or Freehand, how far a press on a circle moves
 const SELECT_PX = 7; // a press this close to another track's line selects it
 
 const PANELS = [
-  { id: "formants", label: "Formants", tracks: ["F1", "F2", "F3", "F4", "F5", "FNZ"], ticks: [0, 1000, 2000, 3000, 4000, 5000], format: (v) => `${v / 1000}k` },
+  { id: "formants", label: "Formants", tracks: ["F1", "F2", "F3", "F4", "F5", "FNZ"], ticks: [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000], format: (v) => `${v / 1000}k` },
   { id: "F0", label: "F0 (Hz)", tracks: ["F0"], ticks: [25, 50, 100, 200, 400, 800], linearTicks: [0, 200, 400, 600, 800] },
   { id: "AV", label: "AV (dB)", tracks: ["AV"], ticks: [0, 20, 40, 60, 80] },
   { id: "noise", label: "Noise (dB)", tracks: ["AF", "AH"], ticks: [0, 20, 40, 60, 80] },
@@ -88,6 +88,16 @@ export function createTracksTab(root, { commit }) {
     if (localStorage.getItem("sonore-sketch.f0-scale") === "linear") f0Scale = "linear";
   } catch {}
   const scaleOf = (name) => (name === "F0" ? f0Scale : undefined);
+  // How high the formants panel (and the spectrogram under it) reaches: 5 kHz
+  // leaves the formants room; 8 kHz shows the hiss of /s/. Also only a view,
+  // remembered in this browser.
+  let formantTop = 5000;
+  try {
+    if (localStorage.getItem("sonore-sketch.formant-top") === "8000") formantTop = 8000;
+  } catch {}
+  const panelOf = (name) => TRACKS[name].panel;
+  // A value drawn at a pointer, kept inside what its panel shows.
+  const valueFor = (name, v) => clampValue(name, panelOf(name) === "formants" ? Math.min(v, formantTop) : v);
   // Whether F1-F5 are drawn over the spectrogram. Also only a view: hidden
   // formants still shape the sound, since Klatt's voice is made of them.
   let showFormants = true;
@@ -100,6 +110,10 @@ export function createTracksTab(root, { commit }) {
         <fieldset class="track-group"><legend>Track</legend></fieldset>
         <label class="check" title="Show F1–F5 over the spectrogram; hidden, they still shape the sound"><input type="checkbox" class="show-formants" checked> Show formant tracks</label>
         <label class="check"><input type="checkbox" class="show-bandwidths"> Bandwidths</label>
+        <fieldset class="formant-top-group" title="How high the formants and the spectrogram under them reach; /s/ hisses mostly above 4 kHz"><legend>Formants up to</legend>
+          <label class="choice"><input type="radio" name="tracks-formant-top" value="5000"> 5 kHz</label>
+          <label class="choice"><input type="radio" name="tracks-formant-top" value="8000"> 8 kHz</label>
+        </fieldset>
         <fieldset class="f0-scale-group" title="How the F0 strip spaces its frequencies"><legend>F0 axis</legend>
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="log"> Log (octaves)</label>
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="linear"> Linear</label>
@@ -120,6 +134,18 @@ export function createTracksTab(root, { commit }) {
         localStorage.setItem("sonore-sketch.f0-scale", f0Scale);
       } catch {}
       render();
+    });
+  }
+
+  for (const input of root.querySelectorAll('input[name="tracks-formant-top"]')) {
+    input.checked = Number(input.value) === formantTop;
+    input.addEventListener("change", () => {
+      formantTop = Number(input.value);
+      try {
+        localStorage.setItem("sonore-sketch.formant-top", input.value);
+      } catch {}
+      render();
+      renderBackground();
     });
   }
 
@@ -211,7 +237,8 @@ export function createTracksTab(root, { commit }) {
     const height = panel.svg.clientHeight || 100;
     const name = trackList(panel)[0];
     const scale = scaleOf(name);
-    const { min, max } = trackSpec(name, scale);
+    const { min } = trackSpec(name, scale);
+    const max = panel.id === "formants" ? formantTop : trackSpec(name, scale).max;
     // Positions go by the panel's scale: octaves on a log one.
     const [lo, hi] = [toScale(name, min, scale), toScale(name, max, scale)];
     const x0 = MARGIN.left;
@@ -236,6 +263,7 @@ export function createTracksTab(root, { commit }) {
     const grid = element("g", { class: "grid" }, svg);
     const ticks = panel.linearTicks && trackSpec(trackList(panel)[0], scaleOf(trackList(panel)[0])).scale === "linear" ? panel.linearTicks : panel.ticks;
     for (const tick of ticks) {
+      if (tick > g.max) continue;
       element("line", { x1: g.x0, x2: g.x1, y1: g.y(tick), y2: g.y(tick) }, grid);
       const label = element("text", { x: g.x0 - 6, y: g.y(tick), class: "tick" }, grid);
       label.textContent = panel.format ? panel.format(tick) : tick;
@@ -349,7 +377,7 @@ export function createTracksTab(root, { commit }) {
       event.preventDefault();
       svg.setPointerCapture(event.pointerId);
       const name = selected;
-      const v = clampValue(name, g.v(py));
+      const v = valueFor(name, g.v(py));
       const pts = points(doc, name);
       const start = doc;
       // Point grabs the breakpoint under the press, or nearest in time, or
@@ -381,7 +409,7 @@ export function createTracksTab(root, { commit }) {
       for (const move of moves.length ? moves : [event]) {
         const [px, py] = local(move);
         const t = g.t(px);
-        const v = clampValue(gesture.name, g.v(py));
+        const v = valueFor(gesture.name, g.v(py));
         if (gesture.kind === "undecided") {
           const dx = Math.abs(px - gesture.at[0]);
           const dy = Math.abs(py - gesture.at[1]);
