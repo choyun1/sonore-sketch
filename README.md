@@ -1,10 +1,4 @@
-<h1><a href="https://choyun1.github.io/sonore/gallery/"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-lines-dark.svg">
-  <img alt="sonore" src="docs/logo/sonore-sketch-lines-light.svg" height="56">
-</picture></a><a href="https://choyun1.github.io/sonore-sketch/"><picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-name-dark.svg">
-  <img alt="sonore-sketch" src="docs/logo/sonore-sketch-name-light.svg" height="56">
-</picture></a></h1>
+<h1><a href="https://choyun1.github.io/sonore/gallery/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-mark-dark.svg"><img alt="sonore" src="docs/logo/sonore-sketch-banner-mark-light.svg" height="56"></picture></a><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-name-dark.svg"><img alt="sonore-sketch" src="docs/logo/sonore-sketch-banner-name-light.svg" height="56"></picture></h1>
 
 [![test](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml)
 [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml)
@@ -58,15 +52,20 @@ made each time you finish a change.
   clipboard, for a bug report.
 
 **Draw speech.** Select a track with its button, by clicking its line, or with
-the keys 1–5 for F1–F5 and 0 (or `` ` ``) for F0. The tools have keys too:
+the keys 1–5 for F1–F5, 0 (or `` ` ``) for F0, and V, S, A and Z for AV, AF, AH and FNZ. The tools have keys too:
 P, L and F. **Point** adds a breakpoint or drags one;
 double-click removes it. **Line** replaces a span with a straight line.
 **Freehand** draws a stroke, kept as the fewest breakpoints within a small
 tolerance (Douglas & Peucker, 1973). With any tool, dragging a breakpoint's circle up or down moves
 it; with Line or Freehand, dragging from a circle along time draws from it
 instead. **Bandwidths** shows a strip for the selected formant's bandwidth, and the **F0 axis** can be
-spaced in octaves (Log, from 20 to 800 Hz) or in Hz (Linear). Unticking **Show formant tracks** hides
+spaced in octaves (Log, from 20 to 800 Hz) or in Hz (Linear). **Formants up to** shows the formants and the spectrogram under them up to 4 kHz
+(the most room for F1–F3), 5 kHz (the default, with F4 and F5) or 8 kHz, where most of the hiss of /s/ is. Unticking **Show formant tracks** hides
 F1–F5 to show the spectrogram under them; they still shape the sound, and selecting one shows them again.
+Draw speech starts with sonore saying its name. Its consonants come from three more tracks: **AF**
+(frication, the hiss of /s/, through the high formants) and **AH** (aspiration, breath) in the Noise
+strip, and **FNZ**, the nasal zero, drawn with the formants (raised above 250 Hz for /n/ or /m/).
+Drawing AF in a drawing with the high formants' levels all off turns them on, at the /s/'s settings.
 
 **Paint spectrogram.** Drag to paint at the brush's level (0 dB is the loudest);
 right-drag or **Erase** paints silence (B and E switch between them), and
@@ -319,8 +318,8 @@ Assmann et al.'s (1994) Track-Draw. Every sound is made by
 [sonore](https://github.com/choyun1/sonore), by Adrian Y. Cho, running in
 the browser under Pyodide (The Pyodide development team, 2021). The logo
 is sonore's own (MIT), drawn from the spectrogram of sonore saying its name;
-the banner above is sonore's with the longer name (`tools/make_banner.py`) and
-opens sonore's listening gallery.
+the banner above is sonore's with the longer name (`tools/make_banner.py`), and
+its logo opens sonore's listening gallery.
 
 This project is AI-assisted: much of the code and documentation was drafted
 by Claude (Claude Code) for Cho to review. MIT licence (`LICENSE.txt`).

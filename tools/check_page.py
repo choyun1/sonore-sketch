@@ -186,6 +186,14 @@ def main() -> None:
             page.locator('input[name="tracks-f0-scale"][value="log"]').check()
             assert page.locator(".panel-F0 .tick").first.text_content() == "25"
             print("F0 axis: switched to linear and back to log")
+            # The formants panel can reach 8 kHz, for the hiss of /s/, and back.
+            page.locator('input[name="tracks-formant-top"][value="8000"]').check()
+            assert page.locator(".panel-formants .tick").last.text_content() == "8k"
+            page.locator('input[name="tracks-formant-top"][value="4000"]').check()
+            assert page.locator(".panel-formants .tick").last.text_content() == "4k"
+            page.locator('input[name="tracks-formant-top"][value="5000"]').check()
+            assert page.locator(".panel-formants .tick").last.text_content() == "5k"
+            print("formants up to: 8 kHz, 4 kHz and back to 5 kHz")
             expect(status).to_contain_text("Made", timeout=60_000)
 
             # Formant tracks can be hidden: no lines, presses on the panel do
@@ -197,8 +205,28 @@ def main() -> None:
             page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
             assert document_in(page)["params"] == before, "a press on hidden formants changed the drawing"
             page.keyboard.press("2")
-            assert page.locator(".show-formants").is_checked() and page.locator(".panel-formants .track").count() == 5
+            assert page.locator(".show-formants").is_checked() and page.locator(".panel-formants .track").count() == 6
             print("formant tracks: hidden and shown again")
+
+            # Noise: a line drawn on AF in the Noise strip is frication, and the
+            # glide (no parallel formants on) gets the /s/'s settings with it.
+            page.keyboard.press("s")  # S selects AF
+            assert "active" in page.locator(".track-group button", has_text="AF").get_attribute("class")
+            page.keyboard.press("l")
+            page.locator(".panel-noise svg").scroll_into_view_if_needed()
+            noise = page.locator(".panel-noise svg").bounding_box()
+            nx = lambda t: noise["x"] + 52 + t / doc["duration"] * (noise["width"] - 62)  # noqa: E731
+            ny = lambda db: noise["y"] + noise["height"] - 8 - db / 80 * (noise["height"] - 16)  # noqa: E731
+            page.mouse.move(nx(0.05), ny(50))
+            page.mouse.down()
+            page.mouse.move(nx(0.2), ny(50), steps=5)
+            page.mouse.up()
+            params = document_in(page)["params"]
+            assert abs(params["AF"][1][1] - 50) < 3 and params["A5"] == 50, params
+            page.keyboard.press("Control+z")
+            assert "AF" not in document_in(page)["params"], "undo did not take the frication away"
+            page.keyboard.press("p")
+            print("noise: AF drawn at 50 dB, with the /s/'s parallel formants, and undone")
 
             # Bandwidths: the strip shows the selected formant's, here B1.
             page.check(".show-bandwidths")
@@ -335,6 +363,11 @@ def main() -> None:
             start = example["items"]
             assert len(start) == 1 and start[0]["rate"] > 0 and start[0]["density"] > 0, start  # one blob, upper right
             expect(page.locator("#tab-blobs .coarse")).to_be_visible()  # 0.6 s is under 2 s
+            # The example keeps to one band round 500 Hz; the steps below start
+            # from the same blob with no bands.
+            assert example["bands"] == [{"points": [[0, 500]], "width": 2, "level": 0}], example["bands"]
+            open_link({**page_document_in(page), "blobs": {**example, "bands": []}})
+            expect(status).to_contain_text("Made", timeout=60_000)
             plane = page.locator("canvas.plane").bounding_box()
             left, right = plane["x"] + 52, plane["x"] + plane["width"] - 10
             top, bottom = plane["y"] + 8, plane["y"] + plane["height"] - 36

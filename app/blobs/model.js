@@ -37,8 +37,12 @@ export const WIDTH_MIN = 0.05;
 export const WIDTH_MAX = 3;
 export const COARSE_BELOW_S = 2; // B8: a note on this tab below this duration
 
+// The example's one band: two octaves round 500 Hz (about 250-1000 Hz), so
+// the first sound is low and soft rather than spread up to 6.4 kHz.
+export const EXAMPLE_BAND = { points: [[0, 500]], width: 2, level: 0 };
+
 export function defaultSection() {
-  return { ...DEFAULTS, items: EXAMPLE_ITEMS.map((item) => ({ ...item })), bands: [] };
+  return { ...DEFAULTS, items: EXAMPLE_ITEMS.map((item) => ({ ...item })), bands: [structuredClone(EXAMPLE_BAND)] };
 }
 
 // --- the grid the drawing is heard on --------------------------------------------
