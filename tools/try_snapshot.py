@@ -126,34 +126,51 @@ async ([indexURL, wheel, files, run, step]) => {
 """
 
 
+def run_step(step: str, profile: str, port: int, chromium: str | None) -> None:
+    from playwright.sync_api import sync_playwright
+
+    index_url = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE}/full/"
+    with sync_playwright() as playwright:
+        context = playwright.chromium.launch_persistent_context(profile, headless=True, executable_path=chromium)
+        try:
+            page = context.new_page()
+            console: list[str] = []
+            page.on("console", lambda m: m.type == "error" and console.append(m.text[:300]))
+            page.on("crash", lambda _: print(f"{step:16s} the page crashed", flush=True))
+            page.goto(f"http://127.0.0.1:{port}/?engine=local")  # an origin to work in, with no Pyodide of its own
+            result = page.evaluate(STEP, [index_url, WHEEL, FILES, RUN, step])
+            if "error" in result and console:
+                result["console"] = console[:3]
+            print(f"{step:16s} {json.dumps(result)}", flush=True)
+        finally:
+            context.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--chromium", help="path to a Chromium to use instead of Playwright's own")
     parser.add_argument("--repeats", type=int, default=2, help="how many times to repeat each restoring step")
+    parser.add_argument("--step", help=argparse.SUPPRESS)  # one step, in a process of its own
+    parser.add_argument("--profile", help=argparse.SUPPRESS)
+    parser.add_argument("--port", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args()
-
-    from playwright.sync_api import sync_playwright
+    if args.step:
+        return run_step(args.step, args.profile, args.port, args.chromium)
 
     port = free_port()
-    server = subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve.py"), "--port", str(port)], stdout=subprocess.DEVNULL)
+    server = subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve.py"), "--port", str(port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1)
-    index_url = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE}/full/"
     steps = ["baseline", "baseline", "make-full"] + ["load-full"] * args.repeats + ["load-full-reload", "make-boot"] + ["load-boot"] * args.repeats
     try:
-        with tempfile.TemporaryDirectory() as profile, sync_playwright() as playwright:
+        with tempfile.TemporaryDirectory() as profile:
             for step in steps:
-                context = playwright.chromium.launch_persistent_context(profile, headless=True, executable_path=args.chromium)
+                command = [sys.executable, __file__, "--step", step, "--profile", profile, "--port", str(port)]
+                if args.chromium:
+                    command += ["--chromium", args.chromium]
                 try:
-                    page = context.new_page()
-                    console: list[str] = []
-                    page.on("console", lambda m: m.type == "error" and console.append(m.text[:300]))
-                    page.goto(f"http://127.0.0.1:{port}/?engine=local")
-                    result = page.evaluate(STEP, [index_url, WHEEL, FILES, RUN, step])
-                    if "error" in result and console:
-                        result["console"] = console[:3]
-                    print(f"{step:10s} {json.dumps(result)}", flush=True)
-                finally:
-                    context.close()
+                    subprocess.run(command, timeout=120)
+                except subprocess.TimeoutExpired:
+                    print(f"{step:16s} no answer after 120 s (the restored Python hung)", flush=True)
     finally:
         server.terminate()
 
