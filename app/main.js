@@ -8,7 +8,7 @@ import { LatestOnly, createEngine } from "./engine.js";
 import { History } from "./history.js";
 import { Log } from "./log.js";
 import { drawWaveform } from "./plot.js";
-import { encodeState, stateFromHash } from "./share.js";
+import { encodeState, stateFromHash, tabFromHash } from "./share.js";
 import { clearTab, defaultPage, forLink, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
 import { createBlobsTab } from "./blobs/tab.js";
 import { createEditTab } from "./edit/tab.js";
@@ -105,6 +105,7 @@ let initial = defaultPage();
 try {
   const linked = stateFromHash(location.hash);
   if (linked) initial = openDocument(linked);
+  else initial = { ...initial, tab: tabFromHash(location.hash) ?? initial.tab };
 } catch (error) {
   log.error(`ignored the drawing in the link: ${error.message}`);
 }
@@ -384,7 +385,7 @@ ui.file.addEventListener("change", async () => {
 window.addEventListener("hashchange", () => {
   try {
     const linkedDoc = stateFromHash(location.hash);
-    if (!linkedDoc) return;
+    if (!linkedDoc) return switchTab(tabFromHash(location.hash));
     const doc = openDocument(linkedDoc);
     opened = doc;
     change(doc);
