@@ -12,8 +12,11 @@
 
 const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (tracks.md, M6)
 const SONORE_VERSION = "0.6.0"; // keep in step with pyproject.toml (app.md, D5)
-// PyPI's address for the wheel by name, which redirects to the file itself.
-const SONORE_WHEEL = `https://files.pythonhosted.org/packages/py3/s/sonore/sonore-${SONORE_VERSION}-py3-none-any.whl`;
+// The wheel's file on PyPI (from https://pypi.org/project/sonore/<version>/#files),
+// which is fetched directly: PyPI's by-name address redirects without the
+// header that lets a page fetch it. Change it with SONORE_VERSION (tests/test_page.py checks).
+const SONORE_WHEEL =
+  "https://files.pythonhosted.org/packages/10/c5/6f56efcfc8e6b2b110c0d28e21c69e8722f820689f4e640c94faa9d339ed/sonore-0.6.0-py3-none-any.whl";
 const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
 
 let steps = null;
@@ -83,7 +86,7 @@ async function load() {
   // micropip would also install sonore's matplotlib and soundfile (and their
   // pillow, fonttools, cffi, ...), which sonore imports only for plotting and
   // files: unpacking those and compiling their WebAssembly happens on every
-  // visit, cached or not. The wheel's address redirects to PyPI's copy.
+  // visit, cached or not.
   const problems = [];
   await pyodide.loadPackage(["numpy", "scipy", SONORE_WHEEL], { errorCallback: (text) => problems.push(text) });
   if (problems.length) throw new Error(`could not load the packages: ${problems.join("; ")}`);
