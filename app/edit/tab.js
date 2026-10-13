@@ -8,7 +8,7 @@
 // darkens what it cuts and is outlined where the cut is deep, so the source
 // stays readable (E7). A stroke collects each cell's largest brush weight
 // and moves every cell toward the brush's cut by its weight when it ends, as
-// the Paint spectrogram tab's brush does.
+// the Draw spectrogram tab's brush does.
 //
 // Below, in the Result box: the result's spectrogram on a log-frequency
 // axis, and its waveform.

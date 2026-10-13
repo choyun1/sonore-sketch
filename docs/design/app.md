@@ -245,8 +245,18 @@ not enough.
 at all and the import is `scipy.signal`, so (b) has little to gain. The
 worker now loads only NumPy, SciPy and sonore's wheel (about 0.5 s less on
 every visit). What is left, about 5 s on a fast machine, is paid on every
-visit; only a Pyodide memory snapshot saved in the browser could skip it,
-which is experimental in Pyodide and not attempted.
+visit; only a Pyodide memory snapshot saved in the browser could skip it.
+*Tried (2026-10-13, `tools/try_snapshot.py` on a GitHub Actions runner,
+Pyodide 314.0.7):* a snapshot taken after loading NumPy, SciPy and sonore is
+refused by Pyodide itself ("Unexpected hiwire entry at index 6"), with or
+without a serializer, so the 1.3 s of packages and 3.7 s of imports cannot
+be skipped this way. A snapshot taken right after Pyodide starts works: 31.5
+MB in Cache Storage, read in 0.1 s, Pyodide ready in 0.33 s instead of
+1.5 s, then packages and imports as before; about 1.2 s saved of 7 s to the
+first sound (timed on the page's thread, so slower than the worker). Not
+adopted: about a sixth of the wait, for a private Pyodide option
+(`_makeSnapshot`, `_loadSnapshot`) that can change with any upgrade and 31
+MB stored per visitor. Re-run the script after a Pyodide upgrade.
 
 **D7. Which tabs, in which order.**
 *Recommended:* in order of rising abstraction, as Cho asked (2026-10-04):

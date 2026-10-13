@@ -7,7 +7,8 @@ envelope is the painting. The brush, grid and canvas it is built on are the
 Edit tabs will reuse; this document designs both, and leaves what is
 particular to Mask and Edit to their own documents.
 
-On 2026-10-06 Cho renamed the tab "Paint spectrogram" on the page; this document
+On 2026-10-06 Cho renamed the tab "Paint spectrogram" on the page, and on
+2026-10-13 "Draw spectrogram", so that every tab that adds is "Draw"; this document
 keeps its earlier names.
 
 Status: decided (2026-10-05). Cho accepted every recommendation except
