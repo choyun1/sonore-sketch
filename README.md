@@ -10,7 +10,7 @@ Draw on a picture of sound and hear the result.
 
 **Try it: https://choyun1.github.io/sonore-sketch/**
 
-[![The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes](docs/screenshot.png)](https://choyun1.github.io/sonore-sketch/)
+[![The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes, confined to one band round 500 Hz](docs/screenshot.png)](https://choyun1.github.io/sonore-sketch/)
 
 Each tab is one of [sonore](https://pypi.org/project/sonore/)'s routes back
 to sound, given a point-and-click surface. sonore does the synthesis, in
@@ -72,16 +72,18 @@ Draw speech starts with sonore saying its name. Its consonants come from three m
 strip, and **FNZ**, the nasal zero, drawn with the formants (raised above 250 Hz for /n/ or /m/).
 Drawing AF in a drawing with the high formants' levels all off turns them on, at the /s/'s settings.
 
-**Paint spectrogram.** Drag to paint at the brush's level (0 dB is the loudest);
-right-drag or **Erase** paints silence (B and E switch between them), and
-**Clear** erases everything. Size and Softness shape the brush. **Range**
+**Paint spectrogram.** It starts with "sonore" written by hand on the
+harmonic carrier at 50 Hz. Drag to paint at the brush's level (0 dB is the
+loudest); right-drag or **Erase** paints silence (B and E switch between
+them). Size and Softness shape the brush. **Range**
 sets the frequencies painted, 100–6400 Hz to start with; changing it keeps
 what is painted inside the new range. The **carrier** is what the painting
 shapes: log-spaced tones, harmonics of an F0, or noise. The harmonic
 carrier sounds only at multiples of F0, which show as faint dashed lines;
 paint between them is silent.
 
-**Draw modulation.** The **Design** panels are what you draw: click the plane to
+**Draw modulation.** It starts with one blob and one band, two octaves
+wide round 500 Hz. The **Design** panels are what you draw: click the plane to
 add a blob, drag it to move it, and drag its squares to change its width
 and height (up to 8 blobs). **Add band** confines the sound to a band of
 frequencies that you reshape on the spectrogram with Point, Line or
