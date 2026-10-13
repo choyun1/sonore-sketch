@@ -274,6 +274,11 @@ student or a colleague and opens as drawn. Recordings cannot go in a link.
 Tracks or Blobs state is a few hundred bytes [estimate: about 13 tracks of
 about 5 breakpoints, or a few blobs]. Recordings stay local files.
 
+A link can also name only a tab, `#tab=draw-speech` (or `draw-spectrogram`,
+`erase-spectrogram`, `draw-modulation`, `erase-modulation`), which opens
+the page's example on that tab; the README's screenshots link this way
+(2026-10-13).
+
 **D9. Generality.**
 Build the three primitives and the tab contract, and nothing more general
 ("add generality when an experiment needs it"). A new tab is a new state, a

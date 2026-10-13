@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { History } from "../../app/history.js";
-import { decodeState, encodeState, stateFromHash } from "../../app/share.js";
+import { decodeState, encodeState, stateFromHash, tabFromHash } from "../../app/share.js";
 import {
   FRICATION_SETTINGS,
   check,
@@ -104,6 +104,14 @@ test("a drawing goes into a link and comes back unchanged", () => {
   // The default drawing ("sonore", with its consonants) is about a kilobyte:
   // more than app.md D8's few hundred bytes, still a short link.
   assert.ok(encoded.length < 1500, `link state is ${encoded.length} characters`);
+});
+
+test("a link can name a tab by the name the page shows, or by its id", () => {
+  assert.equal(tabFromHash("#tab=draw-spectrogram"), "painted");
+  assert.equal(tabFromHash("#tab=erase-modulation"), "edit");
+  assert.equal(tabFromHash("#tab=blobs"), "blobs");
+  assert.equal(tabFromHash("#tab=nonsense"), null);
+  assert.equal(tabFromHash("#state=abc"), null);
 });
 
 test("history undoes and redoes, and a new edit drops the redo branch", () => {
