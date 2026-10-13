@@ -93,6 +93,15 @@ docstring).
 Pyodide 314.0.7, details in `tabs/tracks.md`, M6): 1 s of Klatt speech in
 0.13–0.22 s and 3 s in 0.36–0.48 s, but 16 s to load on a first visit and
 9 s on a reload, of which about 4 s is `import sonore` each time.
+[measure] 2026-10-13, `tools/measure_load.py` on a GitHub Actions runner
+(fast network, same profile reopened between visits): about 5.7 s on every
+visit before this change and 5.2 s after it (loading only NumPy, SciPy and
+sonore's wheel, not micropip and sonore's matplotlib and soundfile); first
+and later visits differ by under a second there, so the wait is starting
+Python, not downloading. Split: Pyodide 1.1 s, packages 1.1 s (unpacking and
+compiling their WebAssembly, which the HTTP cache does not keep), `import
+sonore` 3.0 s, nearly all of it SciPy's `scipy.signal` (0.74 of 0.86 s
+natively), which sonore needs.
 
 **M2. The other tabs' calls are as fast or faster, natively, up to 10 s.**
 [measure] `tools/measure_tab_synthesis.py` and
@@ -232,6 +241,12 @@ function needs them; a sonore PR, after profiling);
 *Recommended:* (a) now and (b) after a profile shows where the 4 s goes
 (inferred, not profiled: probably scipy and matplotlib). (c) only if (b) is
 not enough.
+*Since then (2026-10-13):* the profile (M1) shows matplotlib is not imported
+at all and the import is `scipy.signal`, so (b) has little to gain. The
+worker now loads only NumPy, SciPy and sonore's wheel (about 0.5 s less on
+every visit). What is left, about 5 s on a fast machine, is paid on every
+visit; only a Pyodide memory snapshot saved in the browser could skip it,
+which is experimental in Pyodide and not attempted.
 
 **D7. Which tabs, in which order.**
 *Recommended:* in order of rising abstraction, as Cho asked (2026-10-04):

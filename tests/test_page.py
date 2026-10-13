@@ -44,6 +44,21 @@ def test_the_browser_worker_loads_every_module_of_the_package():
     assert sorted(re.findall(r'"([^"]+)"', listed)) == sorted(p.name for p in (root / "src" / "sonore_sketch").glob("*.py"))
 
 
+def test_the_worker_loads_every_dependency_sonore_needs_to_run():
+    # The worker loads NumPy, SciPy and sonore's wheel itself, not sonore's
+    # dependency list: matplotlib and soundfile are left out because sonore
+    # imports them only to plot and to read files. A new dependency of sonore
+    # must be added to the worker's loadPackage call, and here.
+    from importlib.metadata import requires
+
+    names = {re.match(r"[A-Za-z0-9_.-]+", r).group(0).lower() for r in requires("sonore") if "extra ==" not in r}
+    assert names == {"numpy", "scipy", "matplotlib", "soundfile"}
+    worker = (Path(__file__).resolve().parents[1] / "app" / "worker.js").read_text()
+    assert 'loadPackage(["numpy", "scipy", SONORE_WHEEL]' in worker
+    version = re.search(r'SONORE_VERSION = "([^"]+)"', worker).group(1)
+    assert re.search(r'SONORE_WHEEL =\s*"https://files\.pythonhosted\.org/packages/[0-9a-f/]+/sonore-([^-]+)-py3-none-any\.whl"', worker).group(1) == version
+
+
 def test_the_page_colours_levels_with_matplotlibs_magma_as_sonore_does():
     matplotlib = pytest.importorskip("matplotlib")
     root = Path(__file__).resolve().parents[1]

@@ -29,8 +29,10 @@ There is nothing to install.
 
 ## Using it
 
-The first visit loads Python, NumPy, SciPy and sonore into the browser,
-which takes 10–20 s; you can draw while it loads. After that, a sound is
+Every visit starts Python, NumPy, SciPy and sonore in the browser, which
+takes several seconds even when the browser has them cached (about 3 s of it
+is `import sonore`); the first visit also downloads them. You can draw while
+it loads. After that, a sound is
 made each time you finish a change.
 
 **On every tab**
@@ -296,10 +298,15 @@ own Python instead of the browser: no download, and it works offline.
 test commands on every pull request (`.github/workflows/test.yml`), and
 `main` is published to GitHub Pages (`.github/workflows/pages.yml`).
 
-Two things to keep in step:
+Three things to keep in step:
 
 - The sonore version is pinned twice, in `pyproject.toml` and as
   `SONORE_VERSION` in `app/worker.js`.
+- The worker loads NumPy, SciPy and sonore's wheel itself rather than
+  sonore's dependency list (it leaves out matplotlib and soundfile), so a
+  new sonore version needs `SONORE_WHEEL` in `app/worker.js` updated too,
+  and any new dependency of sonore added to its `loadPackage` call
+  (`tests/test_page.py` checks both).
 - `PYTHON_FILES` in `app/worker.js` lists every module in
   `src/sonore_sketch/`. A new module must be added there, or the page fails
   in the browser while the local engine still works.
