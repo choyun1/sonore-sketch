@@ -10,6 +10,7 @@ In one Chromium profile, each step in a fresh browser:
 1. ``baseline``: load as the page does, and run one synthesis.
 2. ``make-full``: load, import sonore_sketch, snapshot, keep it in Cache Storage.
 3. ``load-full``: restore that snapshot and run one synthesis.
+   ``load-full-reload`` also loads the packages again after restoring.
 4. ``make-boot`` / ``load-boot``: the same with a snapshot taken right after
    Pyodide starts, before any package; the packages are loaded after restoring.
 
@@ -71,8 +72,12 @@ async ([indexURL, wheel, files, run, step]) => {
     py.runPython("import sys; sys.path.insert(0, '/home/pyodide')");
   };
   const imports = (py) => py.runPython("import sonore, sonore_sketch.page");
+  // JS objects Python still holds (from loading packages) cannot go in a
+  // snapshot; this keeps only their type, so restoring gets nothing for them.
+  const serializer = (obj) => ({ dropped: typeof obj });
+  const deserializer = () => undefined;
   const store = async (py) => {
-    const snapshot = py.makeMemorySnapshot();
+    const snapshot = py.makeMemorySnapshot({ serializer });
     out.megabytes = +(snapshot.length / 1e6).toFixed(1);
     await (await caches.open("snapshot")).put(`/${step.split("-")[1]}`, new Response(snapshot));
   };
@@ -97,7 +102,13 @@ async ([indexURL, wheel, files, run, step]) => {
       out.samples = await attempt("synthesis", () => py.runPython(run));
     } else if (step === "load-full") {
       const bytes = await attempt("read", restore);
-      const py = await attempt("pyodide", () => loadPyodide({ indexURL, _loadSnapshot: bytes }));
+      const py = await attempt("pyodide", () => loadPyodide({ indexURL, _loadSnapshot: bytes, _snapshotDeserializer: deserializer }));
+      out.samples = await attempt("synthesis", () => py.runPython(run));
+    } else if (step === "load-full-reload") {
+      // The same, then load the packages again so their compiled code is back.
+      const bytes = await attempt("read", restore);
+      const py = await attempt("pyodide", () => loadPyodide({ indexURL, _loadSnapshot: bytes, _snapshotDeserializer: deserializer }));
+      await attempt("packages", () => py.loadPackage(["numpy", "scipy", wheel]));
       out.samples = await attempt("synthesis", () => py.runPython(run));
     } else if (step === "make-boot") {
       const py = await attempt("pyodide", () => loadPyodide({ indexURL, _makeSnapshot: true }));
@@ -127,7 +138,7 @@ def main() -> None:
     server = subprocess.Popen([sys.executable, str(ROOT / "tools" / "serve.py"), "--port", str(port)], stdout=subprocess.DEVNULL)
     time.sleep(1)
     index_url = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE}/full/"
-    steps = ["baseline", "baseline", "make-full"] + ["load-full"] * args.repeats + ["make-boot"] + ["load-boot"] * args.repeats
+    steps = ["baseline", "baseline", "make-full"] + ["load-full"] * args.repeats + ["load-full-reload", "make-boot"] + ["load-boot"] * args.repeats
     try:
         with tempfile.TemporaryDirectory() as profile, sync_playwright() as playwright:
             for step in steps:
