@@ -16,13 +16,17 @@ function bytesFromBase64(text) {
   return bytes;
 }
 
+const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
 class PyodideEngine {
   supersedes = true; // the worker drops an older request itself
 
   constructor({ onProgress, onReady, onFailed }) {
     const url = new URL("./worker.js", import.meta.url);
+    // ?pyodide=<URL> loads Pyodide from elsewhere, for testing; only on this
+    // machine, so that a shared link cannot make the page run someone's script
     const pyodide = new URLSearchParams(location.search).get("pyodide");
-    if (pyodide) url.searchParams.set("pyodide", pyodide);
+    if (pyodide && LOCAL_HOSTS.includes(location.hostname)) url.searchParams.set("pyodide", pyodide);
     this.worker = new Worker(url, { type: "module" });
     this.waiting = new Map();
     this.nextId = 0;
@@ -36,6 +40,7 @@ class PyodideEngine {
         return;
       }
       const waiting = this.waiting.get(data.id);
+      if (!waiting) return; // a request already settled, as when a failure cleared them all
       if (data.type === "step") return waiting.onStep?.(data.fraction);
       const { resolve, reject } = waiting;
       this.waiting.delete(data.id);

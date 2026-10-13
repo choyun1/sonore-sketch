@@ -14,7 +14,7 @@ import { createBlobsTab } from "./blobs/tab.js";
 import { createEditTab } from "./edit/tab.js";
 import { createMaskTab } from "./mask/tab.js";
 import { createPaintedTab } from "./painted/tab.js";
-import { clampDuration } from "./tracks/model.js";
+import { SONORE_VERSION, clampDuration } from "./tracks/model.js";
 import { createTracksTab } from "./tracks/tab.js";
 
 const AUTOPLAY_MAX_S = 3; // longer sounds play on Play only (app.md, D10)
@@ -148,7 +148,7 @@ function showTab() {
   $("tab-caption").textContent = tabButtons.find((b) => b.dataset.tab === tab.id)?.dataset.caption ?? "";
 }
 
-function switchTab(id) {
+function switchTab(id, { synthesizes = true } = {}) {
   if (!tabs[id] || tabs[id] === tab) return;
   player.stop();
   tab.setPlayhead(null);
@@ -157,12 +157,13 @@ function switchTab(id) {
   show();
   showResult();
   log.info(`switched to the ${id} tab`);
-  if (ready) synthesize({ play: false });
+  if (ready && synthesizes) synthesize({ play: false });
 }
 for (const button of tabButtons) button.addEventListener("click", () => switchTab(button.dataset.tab));
 
 // The document as saved and linked: with the tab shown (a link without the recording).
-const saved = () => ({ ...history.present, tab: tab.id });
+// stamped with the sonore that makes its sound now, not the one of the file it was opened from
+const saved = () => ({ ...history.present, sonore: SONORE_VERSION, tab: tab.id });
 const linked = () => forLink(saved());
 
 function show() {
@@ -177,6 +178,15 @@ function show() {
 // An edit has ended: keep it, and hear it if it is short enough.
 function change(doc) {
   history.push(doc);
+  show();
+  afterChange();
+}
+
+// A drawing from a file or a link: it opens on the tab it was saved on, and is synthesized once, there.
+function openOnItsTab(doc) {
+  opened = doc;
+  history.push(doc);
+  switchTab(doc.tab, { synthesizes: false });
   show();
   afterChange();
 }
@@ -368,9 +378,7 @@ ui.file.addEventListener("change", async () => {
   if (!file) return;
   try {
     const doc = openDocument(JSON.parse(await file.text()));
-    opened = doc;
-    change(doc);
-    switchTab(doc.tab); // as a link does, the drawing opens on the tab it was saved on
+    openOnItsTab(doc); // as a link does
     status(`Opened ${file.name}.`);
     log.info(`opened ${file.name}`);
   } catch (error) {
@@ -385,10 +393,7 @@ window.addEventListener("hashchange", () => {
   try {
     const linkedDoc = stateFromHash(location.hash);
     if (!linkedDoc) return;
-    const doc = openDocument(linkedDoc);
-    opened = doc;
-    change(doc);
-    switchTab(doc.tab);
+    openOnItsTab(openDocument(linkedDoc));
     status("Opened the drawing in the link.");
   } catch (error) {
     status(`Could not open the drawing in the link: ${error.message}`, true);
@@ -397,7 +402,8 @@ window.addEventListener("hashchange", () => {
 });
 ui.link.addEventListener("click", async () => {
   try {
-    await navigator.clipboard.writeText(location.href);
+    // the page and the drawing only: a query (?engine=, ?pyodide=) is for working on the page, not for sharing
+    await navigator.clipboard.writeText(`${location.origin}${location.pathname}${location.hash}`);
     status("Link copied: it opens this drawing.");
   } catch {
     status("The address bar holds the link to this drawing.");
@@ -444,6 +450,7 @@ document.addEventListener("keydown", (event) => {
   }
   if (mod || event.altKey) return;
   if (event.key === " ") {
+    if (event.target.closest?.("button, a[href], summary")) return; // Space presses a focused button, as everywhere else
     event.preventDefault();
     return event.repeat ? undefined : togglePlay();
   }

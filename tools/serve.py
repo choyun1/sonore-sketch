@@ -53,12 +53,12 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(404, {"error": f"no such endpoint {self.path}"})
         from sonore_sketch.page import handle
 
-        request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         try:
-            result = handle(request)
-        except (ValueError, KeyError, TypeError) as error:
+            result = handle(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
+        except Exception as error:  # every failure goes back to the page as JSON, as the worker's do
+            status = 400 if isinstance(error, (ValueError, KeyError, TypeError)) else 500
             detail = "".join(traceback.format_exception(error)).strip()
-            return self.send_json(400, {"error": f"{type(error).__name__}: {error}", "detail": detail})
+            return self.send_json(status, {"error": f"{type(error).__name__}: {error}", "detail": detail})
         result["samples"] = base64.b64encode(result["samples"]).decode()
         for key in ("spectrogram", "modulation", "source_modulation", "source_stft", "result_stft"):
             if key in result:

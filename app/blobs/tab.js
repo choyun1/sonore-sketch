@@ -198,7 +198,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     ui.bandEdit.hidden = !chosen;
     ui.addBand.disabled = bandList.length >= MAX_BANDS;
     ui.bandCount.textContent = !bandList.length
-      ? "No bands: the sound fills 100–6400 Hz. Add one to confine it."
+      ? `No bands: the sound fills ${state.f_lo}–${state.f_hi} Hz. Add one to confine it.`
       : `${bandList.length} of ${MAX_BANDS} bands.${chosen ? "" : " Click a band on the spectrogram to edit it."}`;
     if (chosen) {
       ui.bandWidth.value = +chosen.width.toFixed(2);
@@ -989,7 +989,8 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   // The result's waveform, under the measured spectrum, on the bands
   // panel's time axis (the page's own waveform strip is hidden on this tab).
   function renderWave() {
-    const duration = sound ? sound.samples.length / sound.fs : state?.duration ?? 1;
+    // the drawing's duration, as the bands panel above it: an older, longer result shows at its own times
+    const duration = state?.duration ?? (sound ? sound.samples.length / sound.fs : 1);
     drawWaveform(ui.wave, sound?.samples, sound?.fs, duration);
   }
 

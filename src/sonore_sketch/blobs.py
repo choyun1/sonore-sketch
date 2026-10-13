@@ -41,6 +41,7 @@ FORMAT = 1
 MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 CARRIERS = ("tones", "harmonic", "noise")  # blobs.md, B3, and Cho's harmonic complex
 MAX_BLOBS = 8  # B2
+BLOB_LEVELS = (-40.0, 0.0)  # dB, as the page's Level field allows
 MAX_ITERATIONS = 10  # B4
 ITEM_KEYS = ("rate", "density", "rate_width", "density_width", "level")
 MAX_BANDS = 5  # bands.md
@@ -88,6 +89,8 @@ def check(state: Mapping[str, Any]) -> None:
             raise ValueError(f"blob {i + 1} must give a number for each of {', '.join(ITEM_KEYS)}")
         if item["rate"] == 0 or item["rate_width"] <= 0 or item["density_width"] <= 0:
             raise ValueError(f"blob {i + 1} needs a nonzero rate and positive widths")
+        if not BLOB_LEVELS[0] <= item["level"] <= BLOB_LEVELS[1]:
+            raise ValueError(f"blob {i + 1}'s level must be from {BLOB_LEVELS[0]:g} to {BLOB_LEVELS[1]:g} dB, not {item['level']!r}")
     bands = state.get("bands", [])
     if not isinstance(bands, list) or len(bands) > MAX_BANDS:
         raise ValueError(f"'bands' must be a list of at most {MAX_BANDS} bands")

@@ -17,6 +17,10 @@ export const DEFAULTS = {
   carrier: "harmonic", f0: 50, seed: 1,
 };
 export const CARRIERS = ["tones", "harmonic", "noise"];
+// The most cells a painting may hold (sonore_sketch.painted.MAX_CELLS): the
+// page's own grid is 72 x 256, and a file or link asking for more is refused
+// before anything that size is made.
+export const MAX_CELLS = 1 << 20;
 
 // sonore_sketch.painted.encode_levels(example_levels()): "sonore" written by
 // hand, 180 Hz to 1.4 kHz, on the harmonic carrier at 50 Hz (P7). tests/test_painted.py checks the two agree.
@@ -44,9 +48,30 @@ function toBase64(bytes) {
   return btoa(binary);
 }
 
-async function through(stream, bytes) {
-  const out = new Response(new Blob([bytes]).stream().pipeThrough(stream));
-  return new Uint8Array(await out.arrayBuffer());
+// `bytes` through a compression stream; with `limit`, it stops and throws as
+// soon as the output would be longer, so a small text cannot inflate to fill
+// the memory.
+async function through(stream, bytes, limit = Infinity) {
+  const reader = new Blob([bytes]).stream().pipeThrough(stream).getReader();
+  const chunks = [];
+  let length = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    length += value.length;
+    if (length > limit) {
+      await reader.cancel();
+      throw new RangeError(`more than ${limit} bytes`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
 }
 
 export async function encodeLevels(bytes) {
@@ -57,8 +82,9 @@ export async function encodeLevels(bytes) {
 export async function decodeLevels(text, size) {
   let bytes;
   try {
-    bytes = await through(new DecompressionStream("deflate"), Uint8Array.from(atob(text), (c) => c.charCodeAt(0)));
-  } catch {
+    bytes = await through(new DecompressionStream("deflate"), Uint8Array.from(atob(text), (c) => c.charCodeAt(0)), size);
+  } catch (error) {
+    if (error instanceof RangeError) throw new Error(`the painting holds more than ${size} cells`);
     throw new Error("the painting's levels are not base64 of deflated bytes");
   }
   if (bytes.length !== size) throw new Error(`the painting holds ${bytes.length} cells, not ${size}`);
@@ -172,8 +198,12 @@ export function check(state) {
   if (!(Number.isInteger(rows_per_octave) && rows_per_octave >= 2 && Number.isInteger(columns) && columns >= 2)) {
     throw new Error("rows_per_octave and columns must be whole numbers of at least 2");
   }
+  if (rows(state) * columns > MAX_CELLS) throw new Error(`the painting may hold at most ${MAX_CELLS} cells`);
   if (!(floor_db < 0 && floor_db >= -255)) throw new Error("floor_db must be between -255 and 0 dB");
   if (!CARRIERS.includes(carrier)) throw new Error(`carrier must be one of ${CARRIERS.join(", ")}`);
+  if (carrier === "harmonic" && !(Number.isFinite(state.f0) && state.f0 > 0 && state.f0 <= f_hi)) {
+    throw new Error("f0 must be a positive frequency up to f_hi for the harmonic carrier");
+  }
   if (typeof levels !== "string") throw new Error("levels must be text");
   return state;
 }

@@ -1,7 +1,7 @@
 // The synthesis worker: Pyodide, sonore and sonore_sketch, off the page's
 // thread so drawing never waits (docs/design/app.md, Architecture). A module
 // worker, which loads Pyodide's ES module (pyodide.mjs) from its CDN, or from
-// the folder named by ?pyodide=<URL> on the page.
+// the folder named by ?pyodide=<URL> on the page (served locally only; engine.js).
 //
 // Messages in:  {id, request: {tab, state}}
 // Messages out: {type: "progress", text} while loading,

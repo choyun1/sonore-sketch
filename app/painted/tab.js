@@ -80,9 +80,11 @@ export function createPaintedTab(root, { commit, log }) {
 
   // Commit `next` bytes (and any other changes) as a new state.
   async function commitBytes(next, changes = {}) {
+    const before = state;
     const levels = await encodeLevels(next);
     remember(levels, next);
-    commit({ ...state, ...changes, levels });
+    // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
+    if (state === before) commit({ ...state, ...changes, levels });
   }
 
   let loaded = Promise.resolve(); // the painting shown being read
@@ -340,6 +342,7 @@ export function createPaintedTab(root, { commit, log }) {
         loaded = Promise.resolve();
         render();
       } else {
+        bytes = null; // until it is read, so no stroke or range change lands on the painting before
         loaded = load(next);
       }
     },
