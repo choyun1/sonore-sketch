@@ -34,10 +34,15 @@ def visit(playwright, profile: str, url: str, chromium: str | None) -> tuple[flo
         page = context.new_page()
         start = time.perf_counter()
         page.goto(url)
-        page.wait_for_function("!document.getElementById('play').disabled", timeout=300_000)
+        page.wait_for_function(
+            "!document.getElementById('play').disabled || document.getElementById('loading').classList.contains('failed')",
+            timeout=300_000,
+        )
         seconds = time.perf_counter() - start
         page.click("#log-toggle")
         lines = page.locator("#log-lines").inner_text()
+        if page.locator("#play").is_disabled():
+            raise SystemExit(f"the page could not load:\n{lines}")
         timing = next((line.strip() for line in lines.splitlines() if "loaded in" in line), "")
         return seconds, timing
     finally:
