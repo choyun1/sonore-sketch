@@ -58,8 +58,8 @@ const TRACK_KEYS = {
 };
 // The other tracks have letters under the left hand, matched by the letter
 // typed, like the tools': V for voicing, S for the hiss of /s/ (frication),
-// A for aspiration and Z for the nasal zero.
-const TRACK_LETTERS = { v: "AV", s: "AF", a: "AH", z: "FNZ" };
+// H for the breath of /h/ (aspiration) and Z for the nasal zero.
+const TRACK_LETTERS = { v: "AV", s: "AF", h: "AH", z: "FNZ" };
 // The key shown on each track's button, and the fuller list in its tooltip.
 const TRACK_KEY_LABELS = {
   F1: "1", F2: "2", F3: "3", F4: "4", F5: "5", F0: "0",
@@ -121,7 +121,7 @@ export function createTracksTab(root, { commit }) {
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="log"> Log (octaves)</label>
           <label class="choice"><input type="radio" name="tracks-f0-scale" value="linear"> Linear</label>
         </fieldset>
-        <p class="hint">Space plays. 1–5 select F1–F5, 0 or \` selects F0. V, S, A and Z select AV, AF, AH and FNZ. Ctrl+Z undoes. AF and AH are the noises for consonants; FNZ, raised, makes /n/ or /m/.</p>
+        <p class="hint">Space plays. 1–5 select F1–F5, 0 or \` selects F0. V, S, H and Z select AV, AF, AH and FNZ. Ctrl+Z undoes. AF and AH are the noises for consonants; FNZ, raised, makes /n/ or /m/.</p>
       </aside>
     </div>`;
   const panelsNode = root.querySelector(".panels");

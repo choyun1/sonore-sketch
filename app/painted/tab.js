@@ -45,7 +45,6 @@ export function createPaintedTab(root, { commit, log }) {
           <label class="field" title="The brush's diameter on screen">Size <input type="range" class="size" min="4" max="80" value="18"></label>
           <label class="field" title="How much of the brush's radius fades out at its edge">Softness <input type="range" class="softness" min="0" max="1" step="0.05" value="0.6"></label>
           <label class="field" title="The level the brush paints, in dB below the loudest (0 dB)">Level <input type="number" class="level" min="-59" max="0" step="1" value="0"> dB</label>
-          <button type="button" class="clear" title="Erase the whole painting (Undo brings it back)">Clear</button>
         </fieldset>
         <fieldset><legend>Sound</legend>
           <label class="field" title="What the painting shapes: log-spaced tones, harmonics of F0, or noise">Carrier
@@ -60,7 +59,7 @@ export function createPaintedTab(root, { commit, log }) {
   const $ = (selector) => root.querySelector(selector);
   const canvas = $("canvas.paint");
   const ui = {
-    size: $(".size"), softness: $(".softness"), level: $(".level"), clear: $(".clear"),
+    size: $(".size"), softness: $(".softness"), level: $(".level"),
     carrier: $(".carrier"), f0: $(".f0"), f0Field: $(".f0-field"), fLo: $(".f-lo"), fHi: $(".f-hi"),
   };
   for (const input of root.querySelectorAll('input[name="paint-mode"]')) {
@@ -86,6 +85,7 @@ export function createPaintedTab(root, { commit, log }) {
     commit({ ...state, ...changes, levels });
   }
 
+  let loaded = Promise.resolve(); // the painting shown being read
   async function load(next) {
     const size = rows(next) * next.columns;
     let decoded = cache.get(next.levels);
@@ -133,9 +133,6 @@ export function createPaintedTab(root, { commit, log }) {
   }
   ui.fLo.addEventListener("change", changeRange);
   ui.fHi.addEventListener("change", changeRange);
-  ui.clear.addEventListener("click", () => {
-    if (bytes && !isSilent(bytes, state)) commitBytes(blank(state));
-  });
 
   // --- drawing ---------------------------------------------------------------------
 
@@ -340,9 +337,10 @@ export function createPaintedTab(root, { commit, log }) {
       const decoded = cache.get(next.levels);
       if (decoded) {
         bytes = decoded;
+        loaded = Promise.resolve();
         render();
       } else {
-        load(next);
+        loaded = load(next);
       }
     },
     setResult() {},
@@ -350,8 +348,10 @@ export function createPaintedTab(root, { commit, log }) {
       playhead = t;
       render();
     },
-    // Why there is nothing to synthesize yet, if so.
-    blocked() {
+    // Why there is nothing to synthesize yet, if so, once the painting shown
+    // is read (a Clear or an Undo can bring one not read yet).
+    async blocked() {
+      await loaded;
       if (bytes && isSilent(bytes, state)) return "Nothing painted yet: paint something to hear it.";
       return null;
     },

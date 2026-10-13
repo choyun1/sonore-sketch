@@ -63,6 +63,11 @@ export const DEFAULTS = {
   B1: 60, B2: 90, B3: 150, B4: 200, B5: 250,
 };
 
+// What Clear leaves on the Draw speech tab, which cannot be blank: every
+// track flat at its default, a steady schwa on 100 Hz (F1-F5 at 500, 1500,
+// 2500, 3500 and 4500 Hz, a uniform tube's resonances), voiced, no noise.
+export const NEUTRAL = { ...DEFAULTS };
+
 // A first drawing to hear at once: sonore saying its name, /sɔnɔʁ/, with the
 // tracks of "sonore says its name" in sonore's gallery
 // (docs/gallery/voice/formants.py), read off a recording of the word. Only

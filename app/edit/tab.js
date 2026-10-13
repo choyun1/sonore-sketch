@@ -30,7 +30,6 @@ import {
   SIDE,
   blank,
   encodePcm16,
-  isBlank,
   keepBelow,
   pcm16Length,
   removeSweeps,
@@ -92,7 +91,6 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
           <label class="field" title="The brush's diameter on screen">Size <input type="range" class="size" min="4" max="80" value="24"></label>
           <label class="field" title="How much of the brush's radius fades out at its edge (a soft edge clips the sound less)">Softness <input type="range" class="softness" min="0" max="1" step="0.05" value="0.6"></label>
           <label class="field" title="How deep Erase goes: ${FLOOR_DB} dB removes what it covers">Depth <input type="number" class="cut" min="${FLOOR_DB}" max="-1" step="1" value="${FLOOR_DB}"> dB</label>
-          <button type="button" class="clear" title="Restore everything, so Play gives the source back (Undo brings the erasing back)">Clear</button>
         </fieldset>
         <fieldset><legend>Presets</legend>
           <div class="preset-row">
@@ -115,7 +113,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   const canvas = $("canvas.mask-plane");
   const ui = {
     source: $(".source"), openAudio: $(".open-audio"), audioFile: $(".audio-file"), recordingNote: $(".recording-note"),
-    size: $(".size"), softness: $(".softness"), cut: $(".cut"), clear: $(".clear"),
+    size: $(".size"), softness: $(".softness"), cut: $(".cut"),
     keepBelow: $(".keep-below"), keepRate: $(".keep-rate"), noDown: $(".no-down"), noUp: $(".no-up"),
     carrier: $(".carrier"), iterations: $(".iterations"), coarse: $(".coarse"), stft: $("canvas.result-stft"), wave: $("canvas.wave"),
     measured: $("canvas.measured-plane"), clipNote: $(".clip-note"),
@@ -188,7 +186,6 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     if (n >= 0 && n <= MAX_ITERATIONS && n !== state.iterations) commit({ ...state, iterations: n });
     else ui.iterations.value = state.iterations;
   });
-  ui.clear.addEventListener("click", () => bytes && !isBlank(bytes) && commitBytes(blank()));
   // A preset replaces the mask; Undo brings the old one back (E6).
   ui.keepBelow.addEventListener("click", () => {
     const rate = Math.min(RATE_MAX, Math.max(RATE_MIN, Number(ui.keepRate.value) || 4));

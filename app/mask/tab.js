@@ -17,7 +17,7 @@ import { drawWaveform, fitCanvas, niceStep } from "../plot.js";
 import { applyCut, dab, dabsAlong, decodeLevels, encodeLevels, typedNumber } from "../painted/model.js";
 import { MAX_RECORDING_S, encodePcm16, pcm16Length } from "../edit/model.js";
 import { decodeAudio } from "../edit/tab.js";
-import { COLUMNS, FLOOR_DB, ROWS, blank, isBlank, retime } from "./model.js";
+import { COLUMNS, FLOOR_DB, ROWS, blank, retime } from "./model.js";
 
 const MARGIN = { left: 52, right: 10, top: 8, bottom: 22 };
 const CACHE = 200; // decoded masks kept, so undo and redo are instant
@@ -69,7 +69,6 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
           <label class="field" title="The brush's diameter on screen">Size <input type="range" class="size" min="4" max="80" value="18"></label>
           <label class="field" title="How much of the brush's radius fades out at its edge">Softness <input type="range" class="softness" min="0" max="1" step="0.05" value="0.4"></label>
           <label class="field" title="How deep Erase goes: ${FLOOR_DB} dB removes what it covers">Depth <input type="number" class="cut" min="${FLOOR_DB}" max="-1" step="1" value="${FLOOR_DB}"> dB</label>
-          <button type="button" class="clear" title="Restore everything, so Play gives the source back (Undo brings the erasing back)">Clear</button>
         </fieldset>
         <p class="hint">Paint on the spectrogram to erase that part of the sound; right-drag restores it. Harmonics are the evenly spaced lines, so one is a straight stroke. Space plays.</p>
       </aside>
@@ -78,7 +77,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   const canvas = $("canvas.filter-plane");
   const ui = {
     source: $(".source"), openAudio: $(".open-audio"), audioFile: $(".audio-file"), recordingNote: $(".recording-note"),
-    size: $(".size"), softness: $(".softness"), cut: $(".cut"), clear: $(".clear"),
+    size: $(".size"), softness: $(".softness"), cut: $(".cut"),
     result: $("canvas.filter-result"), wave: $("canvas.wave"),
   };
   for (const input of root.querySelectorAll('input[name="mask-mode"]')) input.addEventListener("change", () => (mode = input.value));
@@ -140,7 +139,6 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
     }
     commit({ ...state, source: ui.source.value });
   });
-  ui.clear.addEventListener("click", () => bytes && !isBlank(bytes) && commitBytes(blank()));
 
   ui.openAudio.addEventListener("click", () => ui.audioFile.click());
   ui.audioFile.addEventListener("change", async () => {

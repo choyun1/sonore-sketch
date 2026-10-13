@@ -39,8 +39,11 @@ made each time you finish a change.
   change as soon as it is drawn (for sounds up to 3 s).
 - The **duration** (up to 10 s) stretches everything drawn.
 - **Undo** and **Redo** (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y) cover every change.
-  **Reset** starts the tab you are on again from its default drawing, at
-  the default duration; Undo brings yours back.
+  **Clear** blanks the tab you are on (Draw speech, which cannot be
+  silent, goes to a steady neutral vowel, a schwa), keeping the duration.
+  **Reset** puts the tab back as it was when the page opened, or when you
+  last opened a file or link, at that duration. Undo brings yours back
+  after either.
 - **Save** writes the drawing as JSON, **Open** reads it back, **Link**
   copies an address that opens it, and **WAV** saves the sound. A saved
   file or a link opens on the tab it was made on.
@@ -52,7 +55,7 @@ made each time you finish a change.
   clipboard, for a bug report.
 
 **Draw speech.** Select a track with its button, by clicking its line, or with
-the keys 1–5 for F1–F5, 0 (or `` ` ``) for F0, and V, S, A and Z for AV, AF, AH and FNZ. The tools have keys too:
+the keys 1–5 for F1–F5, 0 (or `` ` ``) for F0, and V, S, H and Z for AV, AF, AH and FNZ. The tools have keys too:
 P, L and F. **Point** adds a breakpoint or drags one;
 double-click removes it. **Line** replaces a span with a straight line.
 **Freehand** draws a stroke, kept as the fewest breakpoints within a small
