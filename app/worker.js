@@ -84,7 +84,9 @@ async function load() {
   // pillow, fonttools, cffi, ...), which sonore imports only for plotting and
   // files: unpacking those and compiling their WebAssembly happens on every
   // visit, cached or not. The wheel's address redirects to PyPI's copy.
-  await pyodide.loadPackage(["numpy", "scipy", SONORE_WHEEL]);
+  const problems = [];
+  await pyodide.loadPackage(["numpy", "scipy", SONORE_WHEEL], { errorCallback: (text) => problems.push(text) });
+  if (problems.length) throw new Error(`could not load the packages: ${problems.join("; ")}`);
   phase("packages");
   const folder = "/home/pyodide/sonore_sketch";
   pyodide.FS.mkdirTree(folder);

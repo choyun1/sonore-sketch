@@ -54,7 +54,7 @@ def test_the_worker_loads_every_dependency_sonore_needs_to_run():
     names = {re.match(r"[A-Za-z0-9_.-]+", r).group(0).lower() for r in requires("sonore") if "extra ==" not in r}
     assert names == {"numpy", "scipy", "matplotlib", "soundfile"}
     worker = (Path(__file__).resolve().parents[1] / "app" / "worker.js").read_text()
-    assert 'loadPackage(["numpy", "scipy", SONORE_WHEEL])' in worker
+    assert 'loadPackage(["numpy", "scipy", SONORE_WHEEL]' in worker
 
 
 def test_the_page_colours_levels_with_matplotlibs_magma_as_sonore_does():
