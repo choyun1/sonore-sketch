@@ -2,7 +2,7 @@
 // (docs/design/tabs/edit.md; sonore_sketch.edit is the Python half).
 //
 // The mask is a grid of cuts in dB, one byte a cell, stored as the
-// Paint spectrogram tab stores its painting (base64 of deflated bytes, rows from
+// Draw spectrogram tab stores its painting (base64 of deflated bytes, rows from
 // density 0 up): 0 keeps a cell, -floor_db (60) removes it. Its columns are
 // 16 per octave of rate from 1 to 64 Hz on each side of the plane, the
 // negative side first, with one centre column between them for |rate| < 1 Hz.

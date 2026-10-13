@@ -13,7 +13,7 @@ painted on rate x density, and hear the sound rebuilt from what is left
 
 The source (E1) is a Klatt syllable train made here at the page's duration,
 the Draw speech tab's sound, or a recording opened in the page. The mask (E4) is
-a grid of cuts in dB, one byte a cell like the Paint spectrogram tab's painting:
+a grid of cuts in dB, one byte a cell like the Draw spectrogram tab's painting:
 0 keeps a cell, ``-floor_db`` and more removes it. Its columns are 16 per
 octave of rate from 1 to 64 Hz on each side of the plane plus one centre
 column for |rate| < 1 Hz (the static spectral shape); its rows are density
