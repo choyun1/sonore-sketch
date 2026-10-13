@@ -140,7 +140,7 @@ while on the Draw speech sound they stretch with it.
 page's duration, the Draw speech tab's sound, or a recording (**Open audio
 file…**, which sets the duration to the recording's, up to 10 s). Each
 sound made shows the source's modulation spectrum on the plane, with a
-centre strip for rates under 1 Hz. Paint on it to erase that modulation
+center strip for rates under 1 Hz. Paint on it to erase that modulation
 (right-drag or **Restore** brings it back; E and R switch between them);
 **Erase**'s **Depth** goes down to -60 dB, which removes it. The presets replace the mask: keep the rates
 below some Hz, or remove the downward or upward sweeps. The **carrier** is
@@ -214,11 +214,11 @@ silent. There is no iteration.
 
 ### Erase spectrogram
 
-The source is analysed with a 32 ms Hann window every 8 ms
+The source is analyzed with a 32 ms Hann window every 8 ms
 (`so.GaborFrame`). The mask is read at each coefficient, bilinearly in
 amplitude, and multiplies it; `to_sound()` then gives the sound whose own
 STFT is closest to the masked one (least squares; Griffin & Lim, 1984).
-Neighbouring coefficients overlap, so not every picture is a sound's
+Neighboring coefficients overlap, so not every picture is a sound's
 spectrogram, and the result panel shows what came back. With a 5 ms window
 an erased band would come back at only −32 dB, which is why the window is
 long (`docs/design/tabs/mask.md`, F-M2). There is no iteration.
@@ -238,20 +238,20 @@ long (`docs/design/tabs/mask.md`, F-M2). There is no iteration.
    zero, so a draw that would need it is refused, with the largest depth
    that fits; within 10% of the depth asked, the sound is made at that
    depth instead.
-4. **Fine structure**: a steady tone at each band's centre (tones), each
+4. **Fine structure**: a steady tone at each band's center (tones), each
    band of a noise (noise), or each band of a harmonic complex on F0
    (harmonic). The envelopes multiply it and the bands are summed.
 5. **Bands**, if any are drawn, are applied last as a time-varying filter:
    a 20 ms STFT whose gain is the band's level within half its width of
-   its centre, a raised-cosine skirt of 1/6 octave on each side, and
+   its center, a raised-cosine skirt of 1/6 octave on each side, and
    −60 dB outside every band.
 
 ### Erase modulation
 
-1. The source is analysed as above, which keeps both the magnitudes and
+1. The source is analyzed as above, which keeps both the magnitudes and
    the source's own modulation phase.
 2. The mask is a gain on the magnitudes: 0 dB keeps a cell, −60 dB removes
-   it. It is read at each cell of the analysis (the centre column covers
+   it. It is read at each cell of the analysis (the center column covers
    rates under 1 Hz) and averaged with its mirror image
    (`ModulationSpectrum.with_gain`).
 3. Envelopes are rebuilt from the edited magnitudes and the **source's own
@@ -265,12 +265,12 @@ long (`docs/design/tabs/mask.md`, F-M2). There is no iteration.
 
 Putting envelopes on a fine structure is not the end of the story: a fine
 structure that fluctuates within a band (noise, or a recording's own) adds
-modulation of its own, so the sound, analysed again, has a modulation
+modulation of its own, so the sound, analyzed again, has a modulation
 spectrum that differs from the target. **Iterations** search for a sound
 that comes closer, as Griffin and Lim (1984) do for a spectrogram. Each
 round:
 
-1. analyses the current sound through the same filterbank;
+1. analyzes the current sound through the same filterbank;
 2. keeps its fine structure and its modulation phase;
 3. imposes the target's magnitudes again (the drawing, or the edited
    source) to make new envelopes, clipped at zero;
@@ -302,7 +302,7 @@ share each band beat at F0 and pull the search away (K-M5b).
 
 ### What the Result panels measure
 
-The Result panels analyse the sound that came out the same way as the
+The Result panels analyze the sound that came out the same way as the
 plane: the same filterbank, envelopes at 1 kHz and the 2-D transform.
 With bands, each band's envelope is first divided by the bands' gain and
 weighted by it, so what is shown is the modulation inside the bands, the
