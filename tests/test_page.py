@@ -83,3 +83,13 @@ def test_handle_steps_reports_progress_and_returns_handles_result():
     assert fractions == sorted(fractions) and 0 < fractions[0] and fractions[-1] < 1
     expected = page.handle({"tab": "blobs", "state": state})
     assert result["samples"] == expected["samples"] and "modulation" in result
+
+
+def test_only_links_to_other_sites_open_a_new_tab():
+    """The same rule as sonore's pages: links to sonore and within sonore-sketch (both on
+    choyun1.github.io) stay in this tab; links to other sites, such as GitHub, open a new one."""
+    root = Path(__file__).resolve().parents[1]
+    for tag in re.findall(r"<a [^>]*>", (root / "index.html").read_text()):
+        href = re.search(r'href="([^"]*)"', tag)
+        outside = bool(href) and re.match(r"https?://(?!choyun1\.github\.io/)", href.group(1))
+        assert ('target="_blank"' in tag) == bool(outside), tag
