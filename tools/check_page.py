@@ -210,6 +210,8 @@ def main() -> None:
 
             # Noise: a line drawn on AF in the Noise strip is frication, and the
             # glide (no parallel formants on) gets the /s/'s settings with it.
+            page.keyboard.press("h")  # H selects AH
+            assert "active" in page.locator(".track-group button", has_text="AH").get_attribute("class")
             page.keyboard.press("s")  # S selects AF
             assert "active" in page.locator(".track-group button", has_text="AF").get_attribute("class")
             page.keyboard.press("l")
@@ -290,7 +292,8 @@ def main() -> None:
             print("repeated breakpoint times in a link: tidied and synthesized")
 
             # A drawing sonore refuses (F1 above Nyquist at fs = 1000 Hz) puts
-            # the error and its traceback in the log, and Reset recovers.
+            # the error and its traceback in the log, and Clear recovers (at the
+            # default sampling rate, on a steady schwa).
             before_failure = len(errors)
             open_link({**doc, "fs": 1000})
             expect(status).to_contain_text("Synthesis failed", timeout=180_000)
@@ -299,21 +302,28 @@ def main() -> None:
             expect(page.locator("#log-lines .error")).to_contain_text("synthesis failed")
             assert "Traceback" in page.locator("#log-lines .error").inner_text(), "no traceback in the log"
             print("error: shown in the log with its traceback")
-            page.click("#reset")
+            page.click("#clear")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert document_in(page) == default, "Reset did not restore the default drawing"
+            cleared = document_in(page)
+            assert cleared["fs"] == 16000 and cleared["params"]["F1"] == 500 and cleared["params"]["AH"] == 0, cleared
             page.keyboard.press("Control+z")
-            assert document_in(page)["fs"] == 1000, "Undo did not bring the drawing back after Reset"
-            print("reset: back to the default drawing, and undo brings the old one back")
+            assert document_in(page)["fs"] == 1000, "Undo did not bring the drawing back after Clear"
+            print("clear: a steady schwa at 16 kHz, and undo brings the old one back")
+            # Reset goes back to what the page opened with: here, that link.
+            page.keyboard.press("Control+Shift+z")
+            page.click("#reset")
+            assert document_in(page)["fs"] == 1000, "Reset did not go back to the drawing the page opened with"
+            print("reset: back to the drawing in the link the page opened with")
             # The local server answers the refused drawing (twice: opened, then
             # undone back to) with HTTP 400, which the browser reports in its
             # console; those are expected.
             page.wait_for_timeout(500)
             errors[before_failure:] = [e for e in errors[before_failure:] if "400 (Bad Request)" not in e]
+            open_link(default)
+            expect(status).to_contain_text("Made", timeout=180_000)
 
             # The Painted tab: the example plays; a stroke changes the painting
             # and is heard; Clear leaves nothing to hear; Undo brings it back.
-            page.keyboard.press("Control+Shift+z")  # back to the reset drawing (fs 16 kHz)
             page.click(".tabs [data-tab=painted]")
             expect(page.locator("#tab-painted")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
@@ -338,12 +348,16 @@ def main() -> None:
             row, column = round(math.log2(5000 / 100) * 12 - 0.5), round(0.2 * 256 - 0.5)
             assert grid[row, column] == -6, grid[row - 2 : row + 3, column]
             print(f"painted: a stroke at 5 kHz painted at {grid[row, column]:g} dB and was heard")
-            page.click("#tab-painted .clear")
+            page.click("#clear")
             expect(status).to_contain_text("Nothing painted yet", timeout=10_000)
             page.mouse.move(px(0.5), canvas["y"] - 30)  # off the canvas, so keys go to the page
             page.keyboard.press("Control+z")
             expect(status).to_contain_text("Made", timeout=60_000)
             assert page_document_in(page)["painted"]["levels"] == painted["levels"], "undo did not restore the painting"
+            page.click("#reset")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            assert page_document_in(page)["painted"]["levels"] == example, "Reset did not bring the example painting back"
+            print("painted: Clear, Undo and Reset work")
             page.select_option("#tab-painted .carrier", "noise")
             expect(status).to_contain_text("Made", timeout=60_000)
             assert page_document_in(page)["painted"]["carrier"] == "noise"
@@ -366,7 +380,8 @@ def main() -> None:
             # The example keeps to one band round 500 Hz; the steps below start
             # from the same blob with no bands.
             assert example["bands"] == [{"points": [[0, 500]], "width": 2, "level": 0}], example["bands"]
-            open_link({**page_document_in(page), "blobs": {**example, "bands": []}})
+            linked_blobs = {**example, "bands": []}  # what Reset goes back to from here
+            open_link({**page_document_in(page), "blobs": linked_blobs})
             expect(status).to_contain_text("Made", timeout=60_000)
             plane = page.locator("canvas.plane").bounding_box()
             left, right = plane["x"] + 52, plane["x"] + plane["width"] - 10
@@ -434,7 +449,7 @@ def main() -> None:
             page.mouse.move(centre, plane["y"] - 30)  # off the plane, so keys go to the page
             page.keyboard.press("Delete")
             assert len(blobs_now()) == 1
-            page.click("#tab-blobs .clear")
+            page.click("#clear")
             expect(status).to_contain_text("No blobs yet", timeout=10_000)
             page.keyboard.press("Control+z")
             page.keyboard.press("Control+z")
@@ -537,7 +552,7 @@ def main() -> None:
             print(f"modulation: added a band, bent it up to {end[1]} Hz, added and removed a breakpoint, removed the band")
             page.click("#reset")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["blobs"] == example, "Reset did not restore the example blobs"
+            assert page_document_in(page)["blobs"] == linked_blobs, "Reset did not restore the blobs the link opened with"
             print("modulation: New draw, Delete, Clear, Undo and Reset work")
 
             # The Erase modulation tab (edit.md): it starts on the syllable
@@ -597,7 +612,7 @@ def main() -> None:
             page.keyboard.press("Control+z")
             assert page_document_in(page)["edit"]["levels"] == erased, "Undo did not bring the mask back"
             before = page.evaluate("location.hash")
-            page.click("#tab-edit .clear")
+            page.click("#clear")
             page.wait_for_function("h => location.hash !== h", arg=before)
             expect(status).to_contain_text("Made", timeout=120_000)
             assert not edit_tab.cuts(page_document_in(page)["edit"]).any()
@@ -689,7 +704,7 @@ def main() -> None:
             page.keyboard.press("Control+z")
             assert (mask_tab.cuts(page_document_in(page)["mask"]) == cut).all(), "Undo did not bring the erasing back"
             before = page.evaluate("location.hash")
-            page.click("#tab-mask .clear")
+            page.click("#clear")
             page.wait_for_function("h => location.hash !== h", arg=before)
             assert not mask_tab.cuts(page_document_in(page)["mask"]).any()
             print("mask: Restore (R), Undo and Clear work")

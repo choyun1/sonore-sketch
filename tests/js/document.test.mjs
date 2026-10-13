@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { defaultPage, openDocument, stretchPage, tabState, upgrade, withTabState } from "../../app/document.js";
+import { clearTab, defaultPage, openDocument, resetTab, stretchPage, tabState, upgrade, withTabState } from "../../app/document.js";
+import * as painted from "../../app/painted/model.js";
+import * as edit from "../../app/edit/model.js";
+import * as mask from "../../app/mask/model.js";
+import { NEUTRAL } from "../../app/tracks/model.js";
 import { defaultDocument } from "../../app/tracks/model.js";
 
 test("the default page holds the Tracks tab's default drawing", () => {
@@ -38,4 +42,46 @@ test("stretching the page stretches what the Tracks tab drew", () => {
   const page = stretchPage(defaultPage(), 1.2);
   assert.equal(page.duration, 1.2);
   assert.deepEqual(page.tracks.params.F3[0], defaultPage().tracks.params.F3[0].map((t) => t * 2));
+});
+
+test("Clear blanks the tab shown, keeping its settings and the duration", async () => {
+  const page = { ...stretchPage(defaultPage(), 1.2), fs: 22050 };
+  const tracks = await clearTab(page, "tracks");
+  assert.deepEqual(tracks.tracks, { mode: "klatt", params: NEUTRAL });
+  assert.equal(tracks.duration, 1.2);
+  assert.equal(tracks.fs, 16000);
+  assert.deepEqual(tracks.painted, page.painted);
+  openDocument(tracks); // a schwa is a drawing the page opens
+
+  const paintedPage = await clearTab({ ...page, painted: { ...page.painted, carrier: "noise" } }, "painted");
+  assert.equal(paintedPage.painted.carrier, "noise");
+  const bytes = await painted.decodeLevels(paintedPage.painted.levels, painted.rows(paintedPage.painted) * paintedPage.painted.columns);
+  assert.ok(painted.isSilent(bytes, paintedPage.painted));
+  assert.deepEqual(paintedPage.tracks, page.tracks);
+
+  const blobs = await clearTab(page, "blobs");
+  assert.deepEqual([blobs.blobs.items, blobs.blobs.bands], [[], []]);
+  assert.equal(blobs.blobs.carrier, page.blobs.carrier);
+
+  const edited = await clearTab(page, "edit");
+  const cuts = await painted.decodeLevels(edited.edit.levels, edit.ROWS * edit.COLUMNS);
+  assert.ok(cuts.every((b) => b === 0));
+  assert.equal(edited.edit.source, page.edit.source);
+
+  const masked = await clearTab({ ...page, mask: { ...page.mask, span: 0.6 } }, "mask");
+  assert.deepEqual(masked.mask, mask.defaultSection());
+  openDocument(blobs);
+  openDocument(edited);
+  openDocument(masked);
+});
+
+test("Reset puts the tab shown back as the page opened, the others stay", () => {
+  const start = withTabState({ ...defaultPage(), duration: 0.8 }, "tracks", { mode: "klatt", params: { F1: 400 } });
+  const drawn = withTabState(stretchPage(start, 1.2), "tracks", { mode: "klatt", params: { F1: 700 } });
+  const changed = { ...drawn, blobs: { ...drawn.blobs, items: [] } };
+  const reset = resetTab(changed, "tracks", start);
+  assert.deepEqual(reset.tracks, start.tracks);
+  assert.equal(reset.duration, 0.8);
+  assert.deepEqual(reset.blobs.items, []);
+  assert.deepEqual(resetTab(changed, "tracks").tracks, defaultPage().tracks); // with no start, the defaults
 });

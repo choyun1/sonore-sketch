@@ -151,10 +151,28 @@ export function stretchPage(page, duration) {
   return { ...out, blobs: { ...page.blobs, bands: blobs.stretchBands(page.blobs.bands, page.duration, duration) } };
 }
 
-// Reset: the duration, sampling rate and `tab`'s drawing go back to their
-// defaults; the other tabs keep their drawings, stretched to the duration.
-export function resetTab(page, tab) {
+// Reset: `tab` goes back to what it held in `start`, the page as it opened
+// (from a link, a file or the defaults), with its duration and sampling
+// rate; the other tabs keep their drawings, stretched to that duration.
+export function resetTab(page, tab, start = defaultPage()) {
+  const stretched = stretchPage(page, start.duration);
+  return withTabState({ ...stretched, fs: start.fs, sonore: start.sonore }, tab, tabState(start, tab));
+}
+
+// Clear: `tab`'s drawing goes blank and its settings (carrier, range,
+// source) stay, as does the duration. Draw speech cannot be blank, so it
+// goes to a steady neutral vowel (tracks.NEUTRAL). The sampling rate goes
+// back to its default, which nothing on the page sets but a file or link.
+export async function clearTab(page, tab) {
   const fresh = defaultPage();
-  const stretched = stretchPage(page, fresh.duration);
-  return withTabState({ ...stretched, fs: fresh.fs, sonore: fresh.sonore }, tab, tabState(fresh, tab));
+  const cleared = { ...page, fs: fresh.fs, sonore: fresh.sonore };
+  if (tab === "tracks") return { ...cleared, tracks: { mode: "klatt", params: { ...tracks.NEUTRAL } } };
+  if (tab === "painted") return { ...cleared, painted: { ...page.painted, levels: await painted.encodeLevels(painted.blank(page.painted)) } };
+  if (tab === "blobs") return { ...cleared, blobs: { ...page.blobs, items: [], bands: [] } };
+  if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };
+  if (tab === "mask") {
+    const { span: _span, ...section } = page.mask;
+    return { ...cleared, mask: { ...section, levels: mask.BLANK_LEVELS } };
+  }
+  throw new Error(`unknown tab ${tab}`);
 }

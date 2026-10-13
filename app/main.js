@@ -9,7 +9,7 @@ import { History } from "./history.js";
 import { Log } from "./log.js";
 import { drawWaveform } from "./plot.js";
 import { encodeState, stateFromHash } from "./share.js";
-import { defaultPage, forLink, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
+import { clearTab, defaultPage, forLink, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
 import { createBlobsTab } from "./blobs/tab.js";
 import { createEditTab } from "./edit/tab.js";
 import { createMaskTab } from "./mask/tab.js";
@@ -21,7 +21,7 @@ const AUTOPLAY_MAX_S = 3; // longer sounds play on Play only (app.md, D10)
 
 const $ = (id) => document.getElementById(id);
 const ui = {
-  play: $("play"), duration: $("duration"), autoplay: $("autoplay"), reset: $("reset"), undo: $("undo"), redo: $("redo"),
+  play: $("play"), duration: $("duration"), autoplay: $("autoplay"), clear: $("clear"), reset: $("reset"), undo: $("undo"), redo: $("redo"),
   open: $("open"), save: $("save"), link: $("link"), wav: $("wav"), file: $("file"),
   status: $("status"), versions: $("versions"), waveform: $("waveform"),
   log: $("log"), logToggle: $("log-toggle"), logLines: $("log-lines"), logCopy: $("log-copy"), logClear: $("log-clear"),
@@ -109,6 +109,8 @@ try {
   log.error(`ignored the drawing in the link: ${error.message}`);
 }
 const history = new History(initial);
+// What Reset goes back to: the page as it opened, or as a file or link last opened it.
+let opened = initial;
 const hasRecording = () => Boolean(history.present.recording);
 const commitFrom = (id) => (state) => change(withTabState(history.present, id, state));
 const tabs = {
@@ -225,7 +227,8 @@ async function synthesize({ play }) {
     if (play) start(result.sound);
     return result.sound;
   }
-  const blocked = tab.blocked?.();
+  const blocked = await tab.blocked?.();
+  if (mine !== requests) return null; // a newer drawing came while this tab read its own
   if (blocked) {
     running = null;
     showProgress(null);
@@ -327,11 +330,18 @@ function redo() {
   }
 }
 ui.undo.addEventListener("click", undo);
-// Reset is an edit like any other, so Undo brings the drawing back.
+// Clear and Reset are edits like any other, so Undo brings the drawing back.
+ui.clear.addEventListener("click", async () => {
+  const id = tab.id;
+  const cleared = await clearTab(history.present, id);
+  change(cleared);
+  log.info(`cleared the ${id} tab`);
+  if (!ready) status("Cleared.");
+});
 ui.reset.addEventListener("click", () => {
-  change(resetTab(history.present, tab.id));
-  log.info(`reset the ${tab.id} tab to its default drawing`);
-  if (!ready) status("Reset to the default drawing.");
+  change(resetTab(history.present, tab.id, opened));
+  log.info(`reset the ${tab.id} tab to the drawing it opened with`);
+  if (!ready) status("Reset to the drawing the page opened with.");
 });
 ui.redo.addEventListener("click", redo);
 
@@ -358,6 +368,7 @@ ui.file.addEventListener("change", async () => {
   if (!file) return;
   try {
     const doc = openDocument(JSON.parse(await file.text()));
+    opened = doc;
     change(doc);
     switchTab(doc.tab); // as a link does, the drawing opens on the tab it was saved on
     status(`Opened ${file.name}.`);
@@ -375,6 +386,7 @@ window.addEventListener("hashchange", () => {
     const linkedDoc = stateFromHash(location.hash);
     if (!linkedDoc) return;
     const doc = openDocument(linkedDoc);
+    opened = doc;
     change(doc);
     switchTab(doc.tab);
     status("Opened the drawing in the link.");

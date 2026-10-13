@@ -122,7 +122,6 @@ export function createBlobsTab(root, { commit: commitDocument }) {
           <label class="field" title="Which random draw of the modulation's timing to hear">Seed <input type="number" class="seed" step="1"></label>
           <label class="field iterations-field" title="How many times to search for a sound whose own modulation comes closer to the blobs (slower). With bands, each time goes back and forth between the blobs and the bands. On the harmonic carrier, only with bands">Iterations <input type="number" class="iterations" min="0" max="10" step="1"></label>
           <button type="button" class="new-draw" title="Hear another draw with the same spectrum">New draw</button>
-          <button type="button" class="clear" title="Remove every blob (Undo brings them back)">Clear</button>
         </fieldset>
         <p class="hint coarse" hidden></p>
         <p class="hint">Click to add a blob, drag to move it, drag its squares to change its width and height. Space plays.</p>
@@ -134,7 +133,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     count: $(".blob-count"), edit: $(".blob-edit"), rate: $(".rate"), density: $(".density"),
     rateWidth: $(".rate-width"), densityWidth: $(".density-width"), level: $(".level"), remove: $(".delete"),
     carrier: $(".carrier"), f0: $(".f0"), f0Field: $(".f0-field"), stft: $("canvas.stft"), depth: $(".depth"), useDepth: $(".use-depth"), seed: $(".seed"), iterations: $(".iterations"), iterationsField: $(".iterations-field"),
-    newDraw: $(".new-draw"), clear: $(".clear"), coarse: $(".coarse"),
+    newDraw: $(".new-draw"), coarse: $(".coarse"),
     bandCount: $(".band-count"), bandEdit: $(".band-edit"), bandWidth: $(".band-width"), bandLevel: $(".band-level"),
     removeBand: $(".delete-band"), addBand: $(".add-band"), bandMotion: $(".band-motion"), wave: $("canvas.wave"),
   };
@@ -297,7 +296,6 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     else showSettings();
   });
   ui.newDraw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }));
-  ui.clear.addEventListener("click", () => state.items.length && commitItems([]));
 
   function removeSelected() {
     if (selected === null || !state.items[selected]) return false;
