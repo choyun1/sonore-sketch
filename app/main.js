@@ -48,7 +48,7 @@ window.addEventListener("unhandledrejection", (event) =>
   log.error(`page error: ${event.reason?.message ?? event.reason}`, event.reason?.stack ?? ""),
 );
 
-// Loading the synthesizer takes a while on a first visit: say so under the header, with a clock
+// Loading the synthesizer takes several seconds on every visit (docs/design/app.md, M1): say so under the header, with a clock
 const loadStart = performance.now();
 const loadClock = setInterval(() => {
   $("loading-time").textContent = `${((performance.now() - loadStart) / 1000).toFixed(0)} s`;
