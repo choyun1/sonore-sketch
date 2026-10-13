@@ -1,33 +1,63 @@
 <h1><a href="https://choyun1.github.io/sonore/gallery/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-mark-dark.svg"><img alt="sonore" src="docs/logo/sonore-sketch-banner-mark-light.svg" height="56"></picture></a><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-name-dark.svg"><img alt="sonore-sketch" src="docs/logo/sonore-sketch-banner-name-light.svg" height="56"></picture></h1>
 
-[![test](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml)
-[![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml)
-[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE.txt)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
-[![sonore 0.6](https://img.shields.io/badge/sonore-0.6-blue.svg)](https://pypi.org/project/sonore/)
+[![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.6](https://img.shields.io/badge/sonore-0.6-blue)](https://pypi.org/project/sonore/) [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
 
-Draw on a picture of sound and hear the result.
+**Draw on a picture of sound and hear the result.**
 
-**Try it: https://choyun1.github.io/sonore-sketch/**
+sonore-sketch gives each of [sonore](https://github.com/choyun1/sonore)'s
+routes back to sound a point-and-click surface: draw speech as formant and
+pitch tracks, paint a spectrogram, or draw a modulation spectrum, and hear
+what sonore makes of it; or open a recording and erase parts of its
+spectrogram or its modulation spectrum. sonore does the synthesis, in your
+browser (Python under Pyodide); this project is only the interface.
 
-[![The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes, confined to one band round 500 Hz](docs/screenshot.png)](https://choyun1.github.io/sonore-sketch/)
+**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: five tabs, each a different
+picture of sound to draw on, with nothing to install.
 
-Each tab is one of [sonore](https://pypi.org/project/sonore/)'s routes back
-to sound, given a point-and-click surface. sonore does the synthesis, in
-your browser (Python under Pyodide); this project is only the interface.
-There is nothing to install.
+**[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
+that makes every sound here, can do, each sound playable next to its plots.
+
+<table><tr>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw speech tab: formant tracks over the spectrogram of sonore saying its name, with the F0 and voicing tracks below" src="docs/screenshots/draw-speech.png"></a><br><sub><b>Draw speech</b>: formant, F0, voicing and noise tracks, spoken by Klatt's synthesizer</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Paint spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/paint-spectrogram.png"></a><br><sub><b>Paint spectrogram</b>: a sound whose spectrogram is the painting</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes, confined to one band round 500 Hz" src="docs/screenshots/draw-modulation.png"></a><br><sub><b>Draw modulation</b>: blobs on a modulation spectrum, confined to bands</sub></td>
+</tr></table>
+
+sonore-sketch is under active development, and so is sonore. A saved
+drawing names the version that made it, but a later version may make a
+different sound from it.
+
+<!-- Contents: one entry per ## section, in order (tests/test_readme.py checks it). -->
+<table><tr><td>
+
+<small><b>Contents</b><br>
+1&ensp;Using it<br>
+&emsp;1.1&ensp;[The tabs](#the-tabs)<br>
+&emsp;1.2&ensp;[Using the page](#using-the-page)<br>
+&emsp;1.3&ensp;[The same sound in Python](#the-same-sound-in-python)<br>
+2&ensp;Background<br>
+&emsp;2.1&ensp;[How the sound is made](#how-the-sound-is-made)<br>
+&emsp;2.2&ensp;[References](#references)<br>
+3&ensp;The project<br>
+&emsp;3.1&ensp;[Development](#development)<br>
+&emsp;3.2&ensp;[Design documents](#design-documents)<br>
+&emsp;3.3&ensp;[How sonore-sketch was developed](#how-sonore-sketch-was-developed)<br>
+&emsp;3.4&ensp;[Credits](#credits)<br>
+&emsp;3.5&ensp;[License and citation](#license-and-citation)</small>
+
+</td></tr></table>
 
 ## The tabs
 
 | Tab | You draw | You hear | State |
 |---|---|---|---|
-| **Draw speech** | formant (F1–F5), F0, voicing (AV) and bandwidth tracks over time | the speech Klatt's (1980) synthesizer makes from them, after Track-Draw (Assmann et al., 1994) | built |
+| **Draw speech** | tracks over time: formants (F1–F5) and their bandwidths, F0, voicing (AV), frication (AF), aspiration (AH) and the nasal zero (FNZ) | the speech Klatt's (1980) synthesizer makes from them, after Track-Draw (Assmann et al., 1994) | built |
 | **Paint spectrogram** | level painted on time × log-frequency | a sound whose spectrogram is the painting (sonore's `ripple_sound`) | built |
 | **Erase spectrogram** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
 | **Draw modulation** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **Erase modulation** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 
-## Using it
+## Using the page
 
 Every visit starts Python, NumPy, SciPy and sonore in the browser, which
 takes several seconds even when the browser has them cached (about 3 s of it
@@ -121,6 +151,17 @@ sound that came out: its own modulation spectrum, measured, with what was
 erased outlined over it, its spectrogram and its waveform. When an edit needs
 envelopes below zero, sonore clips them and a note under the plane says how
 much. A recording is kept in saved files but never in links.
+
+## The same sound in Python
+
+A saved drawing gives the same sound outside the browser:
+
+```python
+import json
+from sonore_sketch import page
+
+sound = page.synthesize(json.load(open("sketch.json")))
+```
 
 ## How the sound is made
 
@@ -267,77 +308,6 @@ With bands, each band's envelope is first divided by the bands' gain and
 weighted by it, so what is shown is the modulation inside the bands, the
 same quantity the blobs draw, and the two can be compared directly.
 
-## The same sound in Python
-
-A saved drawing gives the same sound outside the browser:
-
-```python
-import json
-from sonore_sketch import page
-
-sound = page.synthesize(json.load(open("sketch.json")))
-```
-
-## Developing
-
-The page is static: `index.html` and the ES modules in `app/`, with no
-build step and no JavaScript dependencies. The Python half, which the page
-runs under Pyodide, is in `src/sonore_sketch/` (one module per tab, and
-`page.py`, which the page calls). It needs sonore 0.6.
-
-```
-pip install -e ".[test]" playwright
-python tools/serve.py             # the page at http://localhost:8000/
-python -m pytest                  # the Python half, against sonore directly
-npm test                          # the page's model (Node 20+, no packages)
-python tools/check_page.py        # the page in headless Chromium
-```
-
-Open `http://localhost:8000/?engine=local` to run the synthesis in your
-own Python instead of the browser: no download, and it works offline.
-`tools/check_page.py` uses the local engine by default; add
-`--engine pyodide` to test the page as visitors get it. CI runs all three
-test commands on every pull request (`.github/workflows/test.yml`), and
-`main` is published to GitHub Pages (`.github/workflows/pages.yml`).
-
-Three things to keep in step:
-
-- The sonore version is pinned twice, in `pyproject.toml` and as
-  `SONORE_VERSION` in `app/worker.js`.
-- The worker loads NumPy, SciPy and sonore's wheel itself rather than
-  sonore's dependency list (it leaves out matplotlib and soundfile), so a
-  new sonore version needs `SONORE_WHEEL` in `app/worker.js` updated too,
-  and any new dependency of sonore added to its `loadPackage` call
-  (`tests/test_page.py` checks both).
-- `PYTHON_FILES` in `app/worker.js` lists every module in
-  `src/sonore_sketch/`. A new module must be added there, or the page fails
-  in the browser while the local engine still works.
-
-## Design documents
-
-Every tab is designed before it is built, in `docs/design/`: `app.md` for
-the page as a whole, and `tabs/` for each tab (`tracks.md` for Draw speech,
-`painted.md` for Paint spectrogram, `blobs.md` and `bands.md` for Draw modulation,
-`mask.md` for Erase spectrogram, `edit.md` for Erase modulation).
-Each records the measurements behind it, made by the scripts in `tools/`,
-and the decisions Cho made.
-
-## Credits
-
-sonore-sketch grew out of TrackDraw (2016), by Adrian Y. Cho and Daniel R
-Guest, whose history this repository keeps; the Draw speech tab is after
-Assmann et al.'s (1994) Track-Draw. Every sound is made by
-[sonore](https://github.com/choyun1/sonore), by Adrian Y. Cho, running in
-the browser under Pyodide (The Pyodide development team, 2021). The logo
-is sonore's own (MIT), drawn from the spectrogram of sonore saying its name;
-the banner above is sonore's with the longer name (`tools/make_banner.py`), and
-its logo opens sonore's listening gallery.
-
-This project is AI-assisted: much of the code and documentation was drafted
-by Claude (Claude Code) for Cho to review. MIT licence (`LICENSE.txt`).
-To cite sonore-sketch itself, use GitHub's "Cite this repository"
-(`CITATION.cff`).
-
 ## References
 
 Assmann, P. F., Ballard, W. J., Bornstein, L., & Paschall, D. D. (1994).
@@ -379,3 +349,89 @@ Singh, N. C., & Theunissen, F. E. (2003). Modulation spectra of natural
 sounds and ethological theories of auditory processing. *The Journal of the
 Acoustical Society of America*, *114*(6), 3394–3411.
 https://doi.org/10.1121/1.1624067
+## Development
+
+The page is static: `index.html` and the ES modules in `app/`, with no
+build step and no JavaScript dependencies. The Python half, which the page
+runs under Pyodide, is in `src/sonore_sketch/` (one module per tab, and
+`page.py`, which the page calls). It needs sonore 0.6.
+
+```
+pip install -e ".[test]" playwright
+python tools/serve.py             # the page at http://localhost:8000/
+python -m pytest                  # the Python half, against sonore directly
+npm test                          # the page's model (Node 20+, no packages)
+python tools/check_page.py        # the page in headless Chromium
+python tools/make_screenshots.py  # the README's screenshots, in docs/screenshots/
+```
+
+Open `http://localhost:8000/?engine=local` to run the synthesis in your
+own Python instead of the browser: no download, and it works offline.
+`tools/check_page.py` uses the local engine by default; add
+`--engine pyodide` to test the page as visitors get it. CI runs all three
+test commands on every pull request (`.github/workflows/test.yml`), and
+`main` is published to GitHub Pages (`.github/workflows/pages.yml`).
+
+The screenshots above are of each tab's example; retake them with
+`tools/make_screenshots.py` when the header, the toolbar or an example
+changes.
+
+Three things to keep in step:
+
+- The sonore version is pinned twice, in `pyproject.toml` and as
+  `SONORE_VERSION` in `app/worker.js`.
+- The worker loads NumPy, SciPy and sonore's wheel itself rather than
+  sonore's dependency list (it leaves out matplotlib and soundfile), so a
+  new sonore version needs `SONORE_WHEEL` in `app/worker.js` updated too,
+  and any new dependency of sonore added to its `loadPackage` call
+  (`tests/test_page.py` checks both).
+- `PYTHON_FILES` in `app/worker.js` lists every module in
+  `src/sonore_sketch/`. A new module must be added there, or the page fails
+  in the browser while the local engine still works.
+
+## Design documents
+
+Every tab is designed before it is built, in `docs/design/`: `app.md` for
+the page as a whole, and `tabs/` for each tab (`tracks.md` for Draw speech,
+`painted.md` for Paint spectrogram, `blobs.md` and `bands.md` for Draw modulation,
+`mask.md` for Erase spectrogram, `edit.md` for Erase modulation).
+Each records the measurements behind it, made by the scripts in `tools/`,
+and the decisions Cho made.
+
+## How sonore-sketch was developed
+
+sonore-sketch is developed the same way as sonore, together with Claude,
+Anthropic's AI assistant (Claude Code), during 2026.
+
+**What Claude did.** Wrote most of the code, tests and documentation,
+delivered as pull requests; drafted the design documents; and wrote and
+ran the measurement scripts in `tools/` behind them.
+
+**What Cho did.** Decided what the page is for, which tabs it has and how
+each one looks and behaves, chose among the options each design document
+put forward, and reviewed and merged each pull request.
+
+**How it is verified.** The Python half is tested against sonore directly,
+the page's model under Node, and the page itself in headless Chromium, on
+every pull request; every measurement a design rests on is made by a
+script in `tools/` and recorded in `docs/design/`; and every sound can be
+heard on the page.
+
+## Credits
+
+sonore-sketch grew out of TrackDraw (2016), by Adrian Y. Cho and Daniel R
+Guest, whose history this repository keeps; the Draw speech tab is after
+Assmann et al.'s (1994) Track-Draw. Every sound is made by
+[sonore](https://github.com/choyun1/sonore), by Adrian Y. Cho, running in
+the browser under Pyodide (The Pyodide development team, 2021). The logo
+is sonore's own (MIT), drawn from the spectrogram of sonore saying its name;
+the banner above is sonore's with the longer name (`tools/make_banner.py`), and
+its logo opens sonore's listening gallery.
+
+## License and citation
+
+MIT; see [LICENSE.txt](LICENSE.txt). To cite sonore-sketch, use
+[CITATION.cff](CITATION.cff); the *Cite this repository* button in the
+GitHub sidebar gives the same citation in APA and BibTeX. Please cite
+[sonore](https://github.com/choyun1/sonore#license-and-citation) too, which
+makes every sound.
