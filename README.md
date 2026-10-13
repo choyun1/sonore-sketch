@@ -6,7 +6,7 @@
 
 sonore-sketch gives each of [sonore](https://github.com/choyun1/sonore)'s
 routes back to sound a point-and-click surface: draw speech as formant and
-pitch tracks, paint a spectrogram, or draw a modulation spectrum, and hear
+pitch tracks, draw a spectrogram with a brush or a modulation spectrum with blobs, and hear
 what sonore makes of it; or open a recording and erase parts of its
 spectrogram or its modulation spectrum. sonore does the synthesis, in your
 browser (Python under Pyodide); this project is only the interface.
@@ -19,7 +19,7 @@ that makes every sound here, can do, each sound playable next to its plots.
 
 <table><tr>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw speech tab: formant tracks over the spectrogram of sonore saying its name, with the F0 and voicing tracks below" src="docs/screenshots/draw-speech.png"></a><br><sub><b>Draw speech</b>: formant, F0, voicing and noise tracks, spoken by Klatt's synthesizer</sub></td>
-<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Paint spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/paint-spectrogram.png"></a><br><sub><b>Paint spectrogram</b>: a sound whose spectrogram is the painting</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/draw-spectrogram.png"></a><br><sub><b>Draw spectrogram</b>: a sound whose spectrogram is the painting</sub></td>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes, confined to one band round 500 Hz" src="docs/screenshots/draw-modulation.png"></a><br><sub><b>Draw modulation</b>: blobs on a modulation spectrum, confined to bands</sub></td>
 </tr></table>
 
@@ -52,7 +52,7 @@ different sound from it.
 | Tab | You draw | You hear | State |
 |---|---|---|---|
 | **Draw speech** | tracks over time: formants (F1–F5) and their bandwidths, F0, voicing (AV), frication (AF), aspiration (AH) and the nasal zero (FNZ) | the speech Klatt's (1980) synthesizer makes from them, after Track-Draw (Assmann et al., 1994) | built |
-| **Paint spectrogram** | level painted on time × log-frequency | a sound whose spectrogram is the painting (sonore's `ripple_sound`) | built |
+| **Draw spectrogram** | level painted on time × log-frequency | a sound whose spectrogram is the painting (sonore's `ripple_sound`) | built |
 | **Erase spectrogram** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
 | **Draw modulation** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **Erase modulation** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
@@ -102,7 +102,7 @@ Draw speech starts with sonore saying its name. Its consonants come from three m
 strip, and **FNZ**, the nasal zero, drawn with the formants (raised above 250 Hz for /n/ or /m/).
 Drawing AF in a drawing with the high formants' levels all off turns them on, at the /s/'s settings.
 
-**Paint spectrogram.** It starts with "sonore" written by hand on the
+**Draw spectrogram.** It starts with "sonore" written by hand on the
 harmonic carrier at 50 Hz. Drag to paint at the brush's level (0 dB is the
 loudest); right-drag or **Erase** paints silence (B and E switch between
 them). Size and Softness shape the brush. **Range**
@@ -201,7 +201,7 @@ The tracks are parameters of Klatt's (1980) cascade/parallel formant
 synthesizer, given as breakpoints and interpolated in time
 (`so.klatt_synthesize`). There is no iteration.
 
-### Paint spectrogram
+### Draw spectrogram
 
 The painting is read as an amplitude envelope over time and octaves,
 bilinearly between cells, and `so.ripple_sound` puts it on a carrier, as
@@ -393,7 +393,7 @@ Three things to keep in step:
 
 Every tab is designed before it is built, in `docs/design/`: `app.md` for
 the page as a whole, and `tabs/` for each tab (`tracks.md` for Draw speech,
-`painted.md` for Paint spectrogram, `blobs.md` and `bands.md` for Draw modulation,
+`painted.md` for Draw spectrogram, `blobs.md` and `bands.md` for Draw modulation,
 `mask.md` for Erase spectrogram, `edit.md` for Erase modulation).
 Each records the measurements behind it, made by the scripts in `tools/`,
 and the decisions Cho made.
