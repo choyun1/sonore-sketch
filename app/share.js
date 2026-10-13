@@ -19,3 +19,22 @@ export function stateFromHash(hash) {
   const match = /(?:^#|&)state=([A-Za-z0-9_-]+)/.exec(hash);
   return match ? decodeState(match[1]) : null;
 }
+
+// A tab named in a link, #tab=<name>, opens the page's own example on that
+// tab: the README's screenshots link to their tabs this way. The names are
+// the tabs' as the page shows them; the tab ids work too.
+export const TAB_NAMES = {
+  "draw-speech": "tracks",
+  "draw-spectrogram": "painted",
+  "erase-spectrogram": "mask",
+  "draw-modulation": "blobs",
+  "erase-modulation": "edit",
+};
+
+// The tab id a location hash names, or null if it names none.
+export function tabFromHash(hash) {
+  const match = /(?:^#|&)tab=([a-z-]+)/.exec(hash);
+  if (!match) return null;
+  const name = match[1];
+  return TAB_NAMES[name] ?? (Object.values(TAB_NAMES).includes(name) ? name : null);
+}

@@ -2,6 +2,7 @@
   --bg: #fbfaf7;
   --panel: #ffffff;
   --ink: #1d232b;
+  --name: #16202a; /* the README banner's ink (tools/make_banner.py) */
   --muted: #6b7280;
   --line: #e3e1db;
   --grid: #eeece6;
@@ -15,6 +16,7 @@
     --bg: #15181c;
     --panel: #1c2026;
     --ink: #e7e5df;
+    --name: #e4e9ed;
     --muted: #9aa1ab;
     --line: #2d333b;
     --grid: #242a31;
@@ -22,6 +24,15 @@
     --error: #f97066;
     --wave: #5fb3d6;
   }
+}
+
+/* The page's name in the README banner's face, Spectral SemiBold (SIL Open Font
+   License, app/fonts/OFL.txt), cut down to the letters of "sonore-sketch" */
+@font-face {
+  font-family: "Spectral sonore-sketch";
+  src: url("fonts/spectral-semibold-subset.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
 }
 
 * { box-sizing: border-box; }
@@ -56,7 +67,11 @@ kbd { font-size: 11px; color: var(--muted); }
   position: relative;
 }
 /* The page's name, set well apart from the tabs beside it */
-.bar h1 { display: flex; align-items: center; gap: 14px; font-size: 32px; line-height: 1; margin: 0 12px 0 0; font-weight: 700; letter-spacing: -0.01em; }
+.bar h1 {
+  display: flex; align-items: center; gap: 14px; margin: 0 12px 0 0;
+  font: 600 38px/1 "Spectral sonore-sketch", Georgia, serif;
+  color: var(--name);
+}
 /* sonore's mark (copied from sonore's docs/logo/sonore-mark.svg; it follows light/dark itself) */
 .bar h1 .logo-link { display: flex; }
 .bar h1 .logo { width: 56px; height: 56px; }

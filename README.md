@@ -18,9 +18,9 @@ picture of sound to draw on, with nothing to install.
 that makes every sound here, can do, each sound playable next to its plots.
 
 <table><tr>
-<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw speech tab: formant tracks over the spectrogram of sonore saying its name, with the F0 and voicing tracks below" src="docs/screenshots/draw-speech.png"></a><br><sub><b>Draw speech</b>: formant, F0, voicing and noise tracks, spoken by Klatt's synthesizer</sub></td>
-<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/draw-spectrogram.png"></a><br><sub><b>Draw spectrogram</b>: a sound whose spectrogram is the painting</sub></td>
-<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/"><img alt="The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes, confined to one band round 500 Hz" src="docs/screenshots/draw-modulation.png"></a><br><sub><b>Draw modulation</b>: blobs on a modulation spectrum, confined to bands</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-speech"><img alt="The Draw speech tab: formant tracks over the spectrogram of sonore saying its name, with the F0 and voicing tracks below" src="docs/screenshots/draw-speech.png"></a><br><sub><b>Draw speech</b>: formant, F0, voicing and noise tracks, spoken by Klatt's synthesizer</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-spectrogram"><img alt="The Draw spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/draw-spectrogram.png"></a><br><sub><b>Draw spectrogram</b>: a sound whose spectrogram is the painting</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-modulation"><img alt="The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes, confined to one band round 500 Hz" src="docs/screenshots/draw-modulation.png"></a><br><sub><b>Draw modulation</b>: blobs on a modulation spectrum, confined to bands</sub></td>
 </tr></table>
 
 sonore-sketch is under active development, and so is sonore. A saved
@@ -51,11 +51,11 @@ different sound from it.
 
 | Tab | You draw | You hear | State |
 |---|---|---|---|
-| **Draw speech** | tracks over time: formants (F1–F5) and their bandwidths, F0, voicing (AV), frication (AF), aspiration (AH) and the nasal zero (FNZ) | the speech Klatt's (1980) synthesizer makes from them, after Track-Draw (Assmann et al., 1994) | built |
-| **Draw spectrogram** | level painted on time × log-frequency | a sound whose spectrogram is the painting (sonore's `ripple_sound`) | built |
-| **Erase spectrogram** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
-| **Draw modulation** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
-| **Erase modulation** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
+| **[Draw speech](https://choyun1.github.io/sonore-sketch/#tab=draw-speech)** | tracks over time: formants (F1–F5) and their bandwidths, F0, voicing (AV), frication (AF), aspiration (AH) and the nasal zero (FNZ) | the speech Klatt's (1980) synthesizer makes from them, after Track-Draw (Assmann et al., 1994) | built |
+| **[Draw spectrogram](https://choyun1.github.io/sonore-sketch/#tab=draw-spectrogram)** | level painted on time × log-frequency | a sound whose spectrogram is the painting (sonore's `ripple_sound`) | built |
+| **[Erase spectrogram](https://choyun1.github.io/sonore-sketch/#tab=erase-spectrogram)** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
+| **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
+| **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 
 ## Using the page
 
@@ -426,7 +426,9 @@ Assmann et al.'s (1994) Track-Draw. Every sound is made by
 the browser under Pyodide (The Pyodide development team, 2021). The logo
 is sonore's own (MIT), drawn from the spectrogram of sonore saying its name;
 the banner above is sonore's with the longer name (`tools/make_banner.py`), and
-its logo opens sonore's listening gallery.
+its logo opens sonore's listening gallery. The name, in the banner and at
+the top of the page, is set in Spectral SemiBold (The Spectral Project Authors; SIL Open
+Font License, `app/fonts/OFL.txt`).
 
 ## License and citation
 
