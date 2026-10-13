@@ -72,9 +72,9 @@ const engine = new LatestOnly(
       status(text);
       log.info(text);
     },
-    onReady: (versions) => {
+    onReady: (versions, timing) => {
       ready = true;
-      log.info(`ready: ${versions}`);
+      log.info(`ready: ${versions}`, timing);
       ui.versions.textContent = versions;
       ui.play.disabled = false;
       ui.play.textContent = "▶ Play";

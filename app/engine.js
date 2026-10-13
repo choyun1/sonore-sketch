@@ -28,7 +28,7 @@ class PyodideEngine {
     this.nextId = 0;
     this.worker.onmessage = ({ data }) => {
       if (data.type === "progress") return onProgress(data.text);
-      if (data.type === "ready") return onReady(data.versions);
+      if (data.type === "ready") return onReady(data.versions, `loaded in ${data.seconds} s: ${data.phases}`);
       if (data.type === "failed") {
         onFailed(data.message);
         for (const { reject } of this.waiting.values()) reject(new Error(data.message));

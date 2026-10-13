@@ -12,6 +12,8 @@
 
 const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (tracks.md, M6)
 const SONORE_VERSION = "0.6.0"; // keep in step with pyproject.toml (app.md, D5)
+// PyPI's address for the wheel by name, which redirects to the file itself.
+const SONORE_WHEEL = `https://files.pythonhosted.org/packages/py3/s/sonore/sonore-${SONORE_VERSION}-py3-none-any.whl`;
 const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
 
 let steps = null;
@@ -48,9 +50,24 @@ async function reachable(url) {
 }
 
 async function load() {
-  let start = performance.now();
-  const seconds = () => ((performance.now() - start) / 1000).toFixed(1);
+  const start = performance.now();
+  let mark = start;
+  const seconds = (from = start) => ((performance.now() - from) / 1000).toFixed(1);
+  const phases = []; // how long each part took, for the Log
+  const phase = (name) => {
+    phases.push(`${name} ${seconds(mark)} s`);
+    mark = performance.now();
+  };
   progress("Loading Python (Pyodide)…");
+  // sonore_sketch's own files, fetched while Pyodide loads.
+  const sources = Promise.all(
+    PYTHON_FILES.map(async (name) => {
+      const response = await fetch(new URL(`../src/sonore_sketch/${name}`, self.location));
+      if (!response.ok) throw new Error(`could not fetch sonore_sketch/${name}: HTTP ${response.status}`);
+      return [name, await response.text()];
+    }),
+  );
+  sources.catch(() => {}); // awaited below; this only stops an early failure being reported as unhandled
   const indexURL =
     new URL(self.location).searchParams.get("pyodide") ?? `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
   let loadPyodide;
@@ -60,16 +77,18 @@ async function load() {
     throw new Error(`could not load ${indexURL}pyodide.mjs (${await reachable(`${indexURL}pyodide.mjs`)}): ${error.message}`);
   }
   const pyodide = await loadPyodide({ indexURL });
-  progress(`Installing sonore ${SONORE_VERSION} and NumPy/SciPy… (${seconds()} s)`);
-  await pyodide.loadPackage("micropip");
-  await pyodide.pyimport("micropip").install(`sonore==${SONORE_VERSION}`);
+  phase("Pyodide");
+  progress(`Loading NumPy, SciPy and sonore ${SONORE_VERSION}… (${seconds()} s)`);
+  // Only what the page imports, in one call so the downloads run side by side.
+  // micropip would also install sonore's matplotlib and soundfile (and their
+  // pillow, fonttools, cffi, ...), which sonore imports only for plotting and
+  // files: unpacking those and compiling their WebAssembly happens on every
+  // visit, cached or not. The wheel's address redirects to PyPI's copy.
+  await pyodide.loadPackage(["numpy", "scipy", SONORE_WHEEL]);
+  phase("packages");
   const folder = "/home/pyodide/sonore_sketch";
   pyodide.FS.mkdirTree(folder);
-  for (const name of PYTHON_FILES) {
-    const response = await fetch(new URL(`../src/sonore_sketch/${name}`, self.location));
-    if (!response.ok) throw new Error(`could not fetch sonore_sketch/${name}: HTTP ${response.status}`);
-    pyodide.FS.writeFile(`${folder}/${name}`, await response.text());
-  }
+  for (const [name, text] of await sources) pyodide.FS.writeFile(`${folder}/${name}`, text);
   progress(`Importing sonore… (${seconds()} s)`);
   steps = pyodide.runPython(`
 import json, sys
@@ -78,7 +97,13 @@ from sonore_sketch.page import handle_steps
 lambda text: handle_steps(json.loads(text))
 `);
   const versions = pyodide.runPython("import sonore, sys; f'sonore {sonore.__version__}, Python {sys.version.split()[0]}'");
-  postMessage({ type: "ready", versions: `${versions}, Pyodide ${pyodide.version}`, seconds: Number(seconds()) });
+  phase("import");
+  postMessage({
+    type: "ready",
+    versions: `${versions}, Pyodide ${pyodide.version}`,
+    seconds: Number(seconds()),
+    phases: phases.join(", "),
+  });
 }
 
 // A modulation spectrum picture (blobs.measured_picture, edit.plane_picture), or null.
