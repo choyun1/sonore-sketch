@@ -57,7 +57,7 @@ different sound from it.
 | **[Erase spectrogram](https://choyun1.github.io/sonore-sketch/#tab=erase-spectrogram)** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
 | **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
-| **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
+| **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
 | **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and how sparse each band's envelope is (sonore's texture statistics; McDermott & Simoncelli, 2011) | built |
 
 ## Using the page
@@ -324,7 +324,11 @@ share each band beat at F0 and pull the search away (K-M5b).
    you draw is how fast the sound moves; it is stretched to the page's
    duration. Its points are put every 10 ms and smoothed with a 30 ms
    Gaussian, which takes out the speed changes the pointer adds at every
-   screen frame (`docs/design/tabs/paths.md`, W-M2).
+   screen frame (`docs/design/tabs/paths.md`, W-M2). The speed track
+   under the top view starts as that drawn speed; drawing on it sets the
+   speed along the path instead, from its start to its end (W7), scaled so
+   the trip takes the duration and never slower than 1/20 of its fastest
+   (W8).
 2. Each point keeps its direction and distance around the listener (at
    least 25 cm from the head's center), and the elevation track lifts it
    on the sphere of that distance, from −40° to 90°, the range MIT
@@ -460,9 +464,10 @@ Six things to keep in step:
   `python tools/make_examples.py`. Run it again when a tab's starting
   drawing, its synthesis or the sonore version changes
   (`tests/test_examples.py` fails until then).
-- `PYTHON_FILES` in `app/worker.js` lists every module in
-  `src/sonore_sketch/`. A new module must be added there, or the page fails
-  in the browser while the local engine still works.
+- `src/sonore_sketch/files.json` lists every module in
+  `src/sonore_sketch/`, for the browser worker. A new module must be added
+  there, or the page fails in the browser while the local engine still works
+  (`tests/test_page.py` checks).
 - The Draw path tab's HRIRs, `src/sonore_sketch/data/mit_kemar.npz`, are
   made by `tools/make_hrirs.py` from MIT's SOFA file; the worker fetches
   that file the first time the tab makes a sound.

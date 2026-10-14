@@ -4,12 +4,15 @@
 // A stroke is the pointer's positions on the top view as drawn, [[t, x, y],
 // ...]: t in seconds from the stroke's start, x to the listener's right and
 // y ahead, in meters. It keeps its own timing, stretched to the page's
-// duration (W6). The elevation is a track over the page's time, a number of
+// duration (W6), unless a speed track is drawn: `speed` is null (the
+// drawing's timing) or [fractions, speeds], relative speeds at fractions of
+// the path's length from its start (W7), 1 being the average, which the
+// duration sets. The elevation is a track over the page's time, a number of
 // degrees or [times, degrees], from -40 to 90 (the measured range).
 //
 // No DOM here, so this file runs under `node --test`.
 
-import { tidyPoints, valueAt } from "../tracks/model.js";
+import { simplify, tidyPoints, valueAt } from "../tracks/model.js";
 
 export const FORMAT = 1;
 export const SOURCES = [
@@ -24,6 +27,11 @@ export const MEASURED_DISTANCE = 1.4; // m, where MIT KEMAR was measured
 export const MIN_DISTANCE = 0.25; // m from the head's center (sonore_sketch.paths.MIN_DISTANCE)
 export const ELEVATION_RANGE = [-40, 90]; // degrees, the measured range
 export const MAX_POINTS = 20000; // sonore_sketch.paths.MAX_POINTS
+export const SLOWEST = 1 / 20; // of the speed track's fastest (W8; sonore_sketch.paths.SLOWEST)
+export const SPEED_RANGE = [1 / 8, 8]; // the track's range, times the average speed
+const STEP = 0.01; // s (sonore_sketch.paths.STEP)
+const SMOOTHING = 0.03; // s (sonore_sketch.paths.SMOOTHING)
+const SPEED_TOLERANCE = 0.08; // octaves, how far a simplified speed curve may stray
 
 // The starting path: a source passing in front from left to right, 1.2 m
 // ahead at its nearest, at an even pace over 2 s of drawing.
@@ -39,7 +47,7 @@ function startingStroke() {
 }
 
 export function defaultSection() {
-  return { source: "noise", room: "dry", stroke: startingStroke(), elevation: 0 };
+  return { source: "noise", room: "dry", stroke: startingStroke(), elevation: 0, speed: null };
 }
 
 // A point on the top view as kept in a stroke: time to the millisecond,
@@ -66,20 +74,147 @@ export function elevationAt(section, duration, t) {
   return valueAt(elevationPoints(section, duration), t);
 }
 
-// Where the drawn stroke is at page time `t`, for the dot that follows the
-// sound (the sound follows the smoothed stroke, which is close to it).
-export function positionAt(stroke, duration, t) {
-  if (!stroke.length) return null;
+// --- the path in time ------------------------------------------------------------
+
+// The stroke put every 10 ms and smoothed with a 30 ms Gaussian, as
+// sonore_sketch.paths.smoothed does (scipy's gaussian_filter1d, mode
+// "nearest"): its times from 0 and its [x, y] points.
+export function smoothed(stroke) {
+  if (!stroke.length) return { times: [], points: [] };
   const first = stroke[0][0];
   const span = stroke[stroke.length - 1][0] - first;
-  if (span <= 0) return stroke[stroke.length - 1].slice(1);
-  const strokeTime = first + (Math.min(Math.max(t, 0), duration) / duration) * span;
+  if (span <= 0) return { times: [0], points: [stroke[stroke.length - 1].slice(1)] };
+  // where the pointer reported two positions at one time, the later one stands
+  const kept = stroke.filter((point, i) => i === stroke.length - 1 || stroke[i + 1][0] > point[0]);
+  const grid = [];
+  for (let i = 0; i * STEP < span + STEP / 2; i++) grid.push(i * STEP);
+  let j = 1;
+  const resampled = grid.map((t) => {
+    const strokeTime = first + t;
+    while (j < kept.length - 1 && kept[j][0] < strokeTime) j++;
+    const [t0, x0, y0] = kept[j - 1];
+    const [t1, x1, y1] = kept[j];
+    const fraction = strokeTime <= t0 ? 0 : strokeTime >= t1 ? 1 : (strokeTime - t0) / (t1 - t0);
+    return [x0 + (x1 - x0) * fraction, y0 + (y1 - y0) * fraction];
+  });
+  const sigma = SMOOTHING / STEP;
+  const radius = Math.floor(4 * sigma + 0.5);
+  const weights = Array.from({ length: 2 * radius + 1 }, (_, k) => Math.exp(-0.5 * ((k - radius) / sigma) ** 2));
+  const total = weights.reduce((a, b) => a + b, 0);
+  const points = resampled.map((_, i) => {
+    let x = 0;
+    let y = 0;
+    weights.forEach((weight, k) => {
+      const [px, py] = resampled[Math.min(resampled.length - 1, Math.max(0, i + k - radius))];
+      x += weight * px;
+      y += weight * py;
+    });
+    return [x / total, y / total];
+  });
+  return { times: grid, points };
+}
+
+// Each point's distance along the path from its start, in meters.
+function distances(points) {
+  const along = [0];
+  for (let i = 1; i < points.length; i++) along.push(along[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+  return along;
+}
+
+export function pathLength(section) {
+  const along = distances(smoothed(section.stroke).points);
+  return along[along.length - 1] ?? 0;
+}
+
+// The speed track's breakpoints, [[fraction, speed], ...]: the stored track,
+// or the speed the stroke was drawn at, against the fraction of the path
+// covered, relative to its average.
+export function speedPoints(section) {
+  if (section.speed) return section.speed[0].map((fraction, i) => [fraction, section.speed[1][i]]);
+  const { times, points } = smoothed(section.stroke);
+  const along = distances(points);
+  const length = along[along.length - 1] ?? 0;
+  if (!(length > 0)) return [[0, 1], [1, 1]];
+  const average = length / times[times.length - 1];
+  const drawn = [];
+  for (let i = 1; i < points.length; i++) {
+    const speed = (along[i] - along[i - 1]) / STEP / average;
+    if (speed > 0) drawn.push([(along[i] + along[i - 1]) / 2 / length, Math.log2(clampSpeed(speed))]);
+  }
+  if (!drawn.length) return [[0, 1], [1, 1]];
+  const ends = [[0, drawn[0][1]], ...drawn, [1, drawn[drawn.length - 1][1]]];
+  return simplifyLog(ends).map(([fraction, octaves]) => [fraction, 2 ** octaves]);
+}
+
+const clampSpeed = (speed) => Math.min(SPEED_RANGE[1], Math.max(SPEED_RANGE[0], speed));
+
+function simplifyLog(points) {
+  return simplify(points, SPEED_TOLERANCE).map(([fraction, octaves]) => [Number(fraction.toFixed(4)), Number(octaves.toFixed(3))]);
+}
+
+// Relative speed at `fraction` of the path, interpolated on a log scale and
+// kept at least SLOWEST of the fastest, as sonore_sketch.paths does.
+function speedAt(breakpoints, fraction) {
+  const octaves = valueAt(breakpoints.map(([f, speed]) => [f, Math.log2(speed)]), fraction);
+  const fastest = Math.max(...breakpoints.map(([, speed]) => speed));
+  return Math.max(2 ** octaves, SLOWEST * fastest);
+}
+
+// The section with the speed track set to `breakpoints` [[fraction, speed],
+// ...], kept within the track's range and rescaled so that 1 is the
+// average: the duration fixes the average speed, so only the shape counts.
+export function withSpeed(section, breakpoints) {
+  const clamped = breakpoints.map(([fraction, speed]) => [Math.min(1, Math.max(0, fraction)), clampSpeed(speed)]);
+  const tidy = tidyPoints(clamped);
+  const samples = 400;
+  let slowness = 0; // the mean of 1 / speed over the path, which sets the trip's time
+  for (let i = 0; i < samples; i++) slowness += 1 / speedAt(tidy, (i + 0.5) / samples) / samples;
+  const scaled = tidy.map(([fraction, speed]) => [fraction, Number((speed * slowness).toPrecision(4))]);
+  return { ...section, speed: [scaled.map(([fraction]) => fraction), scaled.map(([, speed]) => speed)] };
+}
+
+// The path in page time: [times, points] on the smoothed stroke, as
+// sonore_sketch.paths.trajectory makes them before the elevation.
+export function timeline(section, duration) {
+  const { times, points } = smoothed(section.stroke);
+  if (!points.length) return { times: [], points: [] };
+  const along = distances(points);
+  const length = along[along.length - 1];
+  if (section.speed && length > 0) {
+    const breakpoints = speedPoints(section);
+    const out = [0];
+    for (let i = 1; i < points.length; i++) {
+      const middle = (along[i] + along[i - 1]) / 2 / length;
+      out.push(out[i - 1] + (along[i] - along[i - 1]) / speedAt(breakpoints, middle));
+    }
+    return { times: out.map((t) => (t / out[out.length - 1]) * duration), points, along: along.map((d) => d / length) };
+  }
+  const span = times[times.length - 1];
+  if (!(span > 0)) return { times: [0, duration], points: [points[0], points[0]], along: [0, 1] };
+  return { times: times.map((t) => (t / span) * duration), points, along: length > 0 ? along.map((d) => d / length) : along.map(() => 0) };
+}
+
+// Where the path is at page time `t`, and how far along it, as a fraction.
+export function positionAt(path, t) {
+  const { times, points, along } = path;
+  if (!points.length) return null;
   let i = 1;
-  while (i < stroke.length - 1 && stroke[i][0] < strokeTime) i++;
-  const [t0, x0, y0] = stroke[i - 1];
-  const [t1, x1, y1] = stroke[i];
-  const fraction = t1 > t0 ? Math.min(1, Math.max(0, (strokeTime - t0) / (t1 - t0))) : 1;
-  return [x0 + (x1 - x0) * fraction, y0 + (y1 - y0) * fraction];
+  while (i < times.length - 1 && times[i] < t) i++;
+  const span = times[i] - times[i - 1];
+  const fraction = span > 0 ? Math.min(1, Math.max(0, (t - times[i - 1]) / span)) : 1;
+  const mix = (a, b) => a + (b - a) * fraction;
+  return { point: [mix(points[i - 1][0], points[i][0]), mix(points[i - 1][1], points[i][1])], along: mix(along[i - 1], along[i]) };
+}
+
+// The point `fraction` of the way along the path.
+export function pointAlong(path, fraction) {
+  const { points, along } = path;
+  if (!points.length) return null;
+  let i = 1;
+  while (i < along.length - 1 && along[i] < fraction) i++;
+  const span = along[i] - along[i - 1];
+  const part = span > 0 ? Math.min(1, Math.max(0, (fraction - along[i - 1]) / span)) : 1;
+  return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * part, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * part];
 }
 
 // The section after the page's duration changes: the elevation track's
@@ -102,6 +237,14 @@ export function check(state) {
   for (const [i, point] of stroke.entries()) {
     if (!(Array.isArray(point) && point.length === 3 && point.every(Number.isFinite))) throw new Error("each point of the path's stroke must be [t, x, y]");
     if (i && point[0] < stroke[i - 1][0]) throw new Error("the path's stroke times must not go back");
+  }
+  const { speed = null } = state;
+  if (speed !== null) {
+    const valid =
+      Array.isArray(speed) && speed.length === 2 && Array.isArray(speed[0]) && Array.isArray(speed[1]) &&
+      speed[0].length === speed[1].length && speed[0].length > 0 && speed.flat().every(Number.isFinite) &&
+      speed[0].every((fraction) => fraction >= 0 && fraction <= 1) && speed[1].every((value) => value > 0);
+    if (!valid) throw new Error("the path's speed must be null or [fractions, speeds]");
   }
   const { elevation } = state;
   if (typeof elevation === "number" && Number.isFinite(elevation)) return state;

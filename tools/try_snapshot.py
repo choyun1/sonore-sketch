@@ -38,7 +38,7 @@ from check_page import free_port  # noqa: E402
 WORKER = (ROOT / "app" / "worker.js").read_text()
 PYODIDE = re.search(r'PYODIDE_VERSION = "([^"]+)"', WORKER).group(1)
 WHEEL = re.search(r'SONORE_WHEEL =\s*"([^"]+)"', WORKER).group(1)
-FILES = re.findall(r'"([^"]+\.py)"', re.search(r"PYTHON_FILES = \[([^\]]*)\]", WORKER).group(1))
+FILES = json.loads((ROOT / "src" / "sonore_sketch" / "files.json").read_text())
 
 # One synthesis that goes through sonore, NumPy and SciPy's compiled code.
 RUN = """

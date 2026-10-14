@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
 import numpy as np
 import pytest
 import sonore as so
@@ -67,6 +72,35 @@ def test_smoothing_takes_out_the_pointers_steps_but_keeps_the_path():
     assert np.max(np.abs(points[:, 1] - 1.5)) < 1e-9
 
 
+def test_an_even_speed_track_moves_at_one_speed_whatever_the_drawing():
+    # drawn slowly for the first meter and fast for the next three
+    stroke = [[0.0, -2.0, 1.0], [0.8, -1.0, 1.0], [1.0, 2.0, 1.0]]
+    times, points = paths.trajectory(state(stroke, duration=2.0, speed=[[0, 1], [1, 1]]))
+    speed = np.hypot(*np.diff(points, axis=0).T) / np.diff(times)
+    length = np.hypot(*np.diff(points, axis=0).T).sum()
+    assert times[0] == 0 and times[-1] == pytest.approx(2.0)
+    assert np.allclose(speed, length / 2.0)
+
+
+def test_a_slower_part_of_the_speed_track_takes_longer():
+    # the first half of the path at a quarter of the second half's speed
+    times, points = paths.trajectory(state(straight(-2, 1, 2, 1), speed=[[0, 0.5, 0.5, 1], [1, 1, 4, 4]]))
+    halfway = times[np.searchsorted(points[:, 0], 0.0)]
+    assert halfway == pytest.approx(0.8, abs=0.01)  # 4 parts of time for the first half, 1 for the second
+
+
+def test_the_speed_track_has_a_floor():
+    # a speed of almost nothing takes at most 20 times as long as the fastest
+    slow = paths.trajectory(state(straight(-2, 1, 2, 1), speed=[[0, 0.5, 0.5, 1], [1e-6, 1e-6, 1, 1]]))
+    floor = paths.trajectory(state(straight(-2, 1, 2, 1), speed=[[0, 0.5, 0.5, 1], [0.05, 0.05, 1, 1]]))
+    assert np.allclose(slow[0], floor[0])
+
+
+def test_no_speed_track_keeps_the_drawings_timing():
+    stroke = [[0.0, -2.0, 1.0], [0.8, -1.0, 1.0], [1.0, 2.0, 1.0]]
+    assert all(np.array_equal(a, b) for a, b in zip(paths.trajectory(state(stroke)), paths.trajectory(state(stroke, speed=None))))
+
+
 def test_the_elevation_track_lifts_the_path_on_its_sphere():
     times, points = paths.trajectory(state([[0, 0.0, 2.0]], elevation=[[0, 1], [0, 90]]))
     distance = np.linalg.norm(points, axis=1)
@@ -96,8 +130,30 @@ def test_handle_returns_both_ears():
     ({"source": "drums"}, "'source'"),
     ({"room": "hall"}, "'room'"),
     ({"elevation": [[0], [1, 2]]}, "'elevation'"),
+    ({"speed": [[0, 1], [1, 0]]}, "'speed'"),
+    ({"speed": [[0, 2], [1, 1]]}, "'speed'"),
+    ({"speed": 1}, "'speed'"),
     ({"duration": 20}, "'duration'"),
 ])
 def test_bad_states_are_refused(changes, message):
     with pytest.raises(ValueError, match=message):
         paths.synthesize({**state(straight(-1, 1, 1, 1)), **changes})
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs node to run the page's model")
+def test_the_page_puts_the_path_in_time_as_python_does():
+    # the dot and the marker follow app/paths/model.js's timeline, which must
+    # match the path the sound takes
+    section = {"source": "noise", "room": "dry", "elevation": 0, "stroke": [[0.0, -2.0, 1.0], [0.8, -1.0, 1.5], [1.0, 2.0, 1.0]]}
+    script = (
+        'import { timeline, withSpeed } from "./app/paths/model.js";'
+        f"const section = withSpeed({json.dumps(section)}, {json.dumps([[0, 1], [0.3, 4], [1, 0.5]])});"
+        "console.log(JSON.stringify({ section, path: timeline(section, 2) }));"
+    )
+    root = Path(__file__).resolve().parent.parent
+    out = json.loads(subprocess.run(["node", "--input-type=module", "-e", script], cwd=root, check=True, capture_output=True, text=True).stdout)
+    times, points = paths.trajectory(state(out["section"]["stroke"], duration=2.0, speed=out["section"]["speed"]))
+    page_times, page_points = np.asarray(out["path"]["times"]), np.asarray(out["path"]["points"])
+    keep = np.append(True, np.diff(page_times) > 0)
+    assert np.allclose(times, page_times[keep], atol=1e-9)
+    assert np.allclose(points[:, :2], page_points[keep], atol=1e-9)

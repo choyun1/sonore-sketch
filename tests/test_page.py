@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 
@@ -37,11 +38,10 @@ def test_other_documents_are_refused(document, message):
 
 
 def test_the_browser_worker_loads_every_module_of_the_package():
-    # app/worker.js copies the package into Pyodide file by file; a module
-    # missing from its list works locally but fails in the browser.
-    root = Path(__file__).resolve().parents[1]
-    listed = re.search(r"PYTHON_FILES = \[([^\]]*)\]", (root / "app" / "worker.js").read_text()).group(1)
-    assert sorted(re.findall(r'"([^"]+)"', listed)) == sorted(p.name for p in (root / "src" / "sonore_sketch").glob("*.py"))
+    # app/worker.js copies the package into Pyodide file by file, as listed in
+    # files.json; a module missing from it works locally but fails in the browser.
+    package = Path(__file__).resolve().parents[1] / "src" / "sonore_sketch"
+    assert json.loads((package / "files.json").read_text()) == sorted(p.name for p in package.glob("*.py"))
 
 
 def test_the_worker_loads_every_dependency_sonore_needs_to_run():

@@ -19,7 +19,11 @@ const SONORE_VERSION = "0.7.0"; // keep in step with pyproject.toml (app.md, D5)
 // header that lets a page fetch it. Change it with SONORE_VERSION (tests/test_page.py checks).
 const SONORE_WHEEL =
   "https://files.pythonhosted.org/packages/ff/ce/3035d3609ca822be92e2ed8d4871cc83edb8569aba4424d1b374aa93d2ab/sonore-0.7.0-py3-none-any.whl";
-const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "events.py", "mask.py", "page.py", "painted.py", "paths.py", "shared.py", "sources.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
+// The package's modules are listed in src/sonore_sketch/files.json (tests/test_page.py
+// checks it), fetched with the modules rather than written here: just after a
+// deploy the browser can still run its kept copy of this file, and an old list
+// here would leave a new module out of the new package.
+const PYTHON_FILES = "files.json";
 
 let steps = null;
 let python = null; // the Pyodide instance, once loaded
@@ -74,12 +78,13 @@ async function load() {
   // server whether each file changed (a 304 when not) rather than using a copy
   // the browser kept: GitHub Pages lets browsers keep files for 10 minutes, so
   // just after a deploy the page's new JavaScript could run old Python.
-  const sources = Promise.all(
-    PYTHON_FILES.map(async (name) => {
-      const response = await fetch(new URL(`../src/sonore_sketch/${name}`, self.location), { cache: "no-cache" });
-      if (!response.ok) throw new Error(`could not fetch sonore_sketch/${name}: HTTP ${response.status}`);
-      return [name, await response.text()];
-    }),
+  const fetchSource = async (name) => {
+    const response = await fetch(new URL(`../src/sonore_sketch/${name}`, self.location), { cache: "no-cache" });
+    if (!response.ok) throw new Error(`could not fetch sonore_sketch/${name}: HTTP ${response.status}`);
+    return response.text();
+  };
+  const sources = fetchSource(PYTHON_FILES).then((text) =>
+    Promise.all(JSON.parse(text).map(async (name) => [name, await fetchSource(name)])),
   );
   sources.catch(() => {}); // awaited below; this only stops an early failure being reported as unhandled
   const indexURL =
