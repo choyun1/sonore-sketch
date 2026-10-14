@@ -36,7 +36,6 @@ import time
 
 import numpy as np
 import sonore as so
-from sonore.views.envelopes import Envelopes
 
 from sonore_sketch import blobs as tab
 
@@ -61,31 +60,13 @@ def state(bands, carrier="tones", iterations=0):
 
 
 def step_whole(sound, drawn):
-    """One of ``to_sound``'s iterations, written out."""
-    bank = drawn._analysis.filterbank
-    subbands = bank.analyze(sound)
-    envelopes = drawn._rebuild(drawn._modulation_phase(subbands), quiet=True)
-    out = (envelopes * subbands.tfs()).to_sound()
-    return so.Sound(out.data[: sound.n_samples], sound.fs)
+    """One of ``to_sound``'s iterations (sonore's public ``iterate``)."""
+    return drawn.iterate(sound)
 
 
 def step_within(sound, drawn, bands):
-    """The same step on the envelopes relative to the bands' gain."""
-    analysis = drawn._analysis
-    bank = analysis.filterbank
-    subbands = bank.analyze(sound)
-    env = subbands.envelopes(fs=analysis.fs).data.mean(axis=2)[:, 1:-1]  # (time, band)
-    t = np.arange(env.shape[0]) / analysis.fs
-    gain = tab.band_gain(bands, bank.cfs[1:-1], t)
-    weight = gain / gain.max()
-    relative = env / np.maximum(gain, 10 ** (tab.BAND_FLOOR_DB / 20))
-    relative = relative / (np.sum(weight * relative) / np.sum(weight))  # mean 1 within the bands
-    phase = np.angle(np.fft.fft2((weight * (relative - 1)).T))
-    rebuilt = drawn._mean + np.real(np.fft.ifft2(drawn._magnitude * np.exp(1j * phase)))
-    values = np.zeros((env.shape[0], bank.n_filters))
-    values[:, 1:-1] = gain * np.maximum(rebuilt.T, 0)
-    out = (Envelopes(values, analysis.fs, bank) * subbands.tfs()).to_sound()
-    return so.Sound(out.data[: sound.n_samples], sound.fs)
+    """The same step on the envelopes relative to the bands' gain (the tab's own)."""
+    return tab._toward_blobs(sound, drawn, bands)
 
 
 def run(method, s, n):
@@ -110,7 +91,7 @@ def contrast(sound, s):
 
 
 def rejection(sound, center, width):
-    stft = so.STFT(sound, 0.032)
+    stft = so.STFT(sound, win_dur=0.032)
     power = np.mean(np.abs(stft.data[0]) ** 2, axis=1)
     octaves = np.abs(np.log2(np.maximum(stft.f, 1) / center))
     return 10 * np.log10(power[octaves <= width / 2 - 1 / 12].mean() / power[octaves >= width / 2 + 0.5].mean())

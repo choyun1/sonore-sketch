@@ -44,7 +44,7 @@ def _speech_params() -> dict:
 
 
 def _cases() -> dict[str, dict]:
-    common = {"sonore": "0.6.0", "duration": DURATION, "fs": FS}
+    common = {"sonore": "0.7.0", "duration": DURATION, "fs": FS}
     painting = {
         "painted": painted.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256,
         "floor_db": -60, "f0": painted.EXAMPLE_F0, "seed": 1, "levels": painted.encode_levels(painted.example_levels()),
