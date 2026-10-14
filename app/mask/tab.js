@@ -13,16 +13,28 @@
 // the same axes and scale, with the mask's outline over it, and its waveform.
 
 import { magma } from "../colormap.js";
-import { drawWaveform, fitCanvas, niceStep } from "../plot.js";
-import { applyCut, dab, dabsAlong, decodeLevels, encodeLevels, typedNumber } from "../painted/model.js";
-import { MAX_RECORDING_S, encodePcm16, pcm16Length } from "../edit/model.js";
-import { decodeAudio } from "../edit/tab.js";
+import {
+  drawAxisName,
+  drawBrush,
+  drawFrame,
+  drawMaskOutline,
+  drawPlayhead,
+  drawTimeTicks,
+  drawTitle,
+  drawValueTicks,
+  drawWaveform,
+  fitCanvasInCssPixels,
+  frequencyLabel,
+  pointerPosition,
+  soundSeconds,
+} from "../plot.js";
+import { LevelCache, applyCut, dab, dabsAlong, typedNumber } from "../painted/model.js";
+import { attachSourceControls, sourceFieldset } from "../sources.js";
 import { COLUMNS, FLOOR_DB, ROWS, blank, retime } from "./model.js";
 
 const MARGIN = { left: 52, right: 10, top: 8, bottom: 22 };
 const CACHE = 200; // decoded masks kept, so undo and redo are instant
 const OUTLINE_DB = 30; // the mask's outline runs where the cut crosses this
-const SOURCE_LABELS = { syllables: "Syllable train", speech: "The Draw speech tab's sound", file: "A recording" };
 const FREQUENCY_STEPS = [250, 500, 1000, 2000, 5000];
 
 export function createMaskTab(root, { commit, openRecording, hasRecording, log }) {
@@ -35,7 +47,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   let sound = null;
   let source = null; // {key, picture}: the source's spectrogram, kept while only the mask changes
   let playhead = null;
-  const cache = new Map();
+  const cache = new LevelCache(CACHE);
 
   root.innerHTML = `
     <div class="mask-body">
@@ -55,14 +67,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
         </section>
       </div>
       <aside class="side">
-        <fieldset><legend>Source</legend>
-          <select class="source" title="The sound you erase from">
-            ${Object.entries(SOURCE_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
-          </select>
-          <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to erase from; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
-          <input type="file" class="audio-file" accept="audio/*" hidden>
-          <p class="hint recording-note"></p>
-        </fieldset>
+        ${sourceFieldset("The sound you erase from")}
         <fieldset><legend>Brush</legend>
           <label class="choice" title="Erase what you paint over (E)"><input type="radio" name="mask-mode" value="paint" checked> Erase <kbd>E</kbd></label>
           <label class="choice" title="Restore what was erased; right-drag restores too (R)"><input type="radio" name="mask-mode" value="erase"> Restore <kbd>R</kbd></label>
@@ -73,12 +78,11 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
         <p class="hint">Paint on the spectrogram to erase that part of the sound; right-drag restores it. Harmonics are the evenly spaced lines, so one is a straight stroke. Space plays.</p>
       </aside>
     </div>`;
-  const $ = (selector) => root.querySelector(selector);
-  const canvas = $("canvas.filter-plane");
+  const query = (selector) => root.querySelector(selector);
+  const canvas = query("canvas.filter-plane");
   const ui = {
-    source: $(".source"), openAudio: $(".open-audio"), audioFile: $(".audio-file"), recordingNote: $(".recording-note"),
-    size: $(".size"), softness: $(".softness"), cut: $(".cut"),
-    result: $("canvas.filter-result"), wave: $("canvas.wave"),
+    size: query(".size"), softness: query(".softness"), cut: query(".cut"),
+    result: query("canvas.filter-result"), wave: query("canvas.wave"),
   };
   for (const input of root.querySelectorAll('input[name="mask-mode"]')) input.addEventListener("change", () => (mode = input.value));
   function setMode(next) {
@@ -88,16 +92,9 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
 
   // --- the mask and its state --------------------------------------------------------
 
-  function remember(levels, decoded) {
-    cache.delete(levels);
-    cache.set(levels, decoded);
-    if (cache.size > CACHE) cache.delete(cache.keys().next().value);
-  }
-
   async function commitBytes(next) {
     const before = state;
-    const levels = await encodeLevels(next);
-    remember(levels, next);
+    const levels = await cache.encode(next);
     // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
     if (state !== before) return;
     // `bytes` are on the duration's columns (load retimes them), so the span goes
@@ -106,16 +103,9 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   }
 
   async function load(next) {
-    let decoded = cache.get(next.levels);
-    if (!decoded) {
-      try {
-        decoded = await decodeLevels(next.levels, ROWS * COLUMNS);
-      } catch (error) {
-        log?.error(`could not read the Erase spectrogram mask: ${error.message}`);
-        decoded = blank();
-      }
-      remember(next.levels, decoded);
-    }
+    const decoded = await cache.decode(next.levels, ROWS * COLUMNS, blank, (error) =>
+      log?.error(`could not read the Erase spectrogram mask: ${error.message}`),
+    );
     if (state === next) {
       bytes = retime(decoded, next.span, next.duration); // erasures kept in seconds (model.js, stretchSection)
       renderAll();
@@ -123,41 +113,10 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   }
 
   // The source's identity: its picture is kept while only the mask changes.
-  const sourceKey = (s) => JSON.stringify([s.source, s.duration, s.fs, s.speech ?? null, s.recording?.pcm16.length ?? 0, s.recording?.name ?? ""]);
+  const sourceKey = (tabState) =>
+    JSON.stringify([tabState.source, tabState.duration, tabState.fs, tabState.speech ?? null, tabState.recording?.pcm16.length ?? 0, tabState.recording?.name ?? ""]);
 
-  function showSettings() {
-    ui.source.value = state.source;
-    const recording = state.recording;
-    ui.recordingNote.textContent =
-      state.source !== "file" ? "" : recording
-        ? `${recording.name}: ${(pcm16Length(recording.pcm16) / recording.fs).toFixed(2)} s, heard at ${state.duration} s.`
-        : "No recording yet: open an audio file. Links do not carry recordings, so open it again after following one.";
-  }
-
-  ui.source.addEventListener("change", () => {
-    // the page may hold a recording while another source is chosen
-    if (ui.source.value === "file" && !hasRecording()) {
-      showSettings(); // the source changes when a recording opens
-      return ui.audioFile.click();
-    }
-    commit({ ...state, source: ui.source.value });
-  });
-
-  ui.openAudio.addEventListener("click", () => ui.audioFile.click());
-  ui.audioFile.addEventListener("change", async () => {
-    const file = ui.audioFile.files[0];
-    ui.audioFile.value = "";
-    if (!file) return;
-    try {
-      const { samples, seconds } = await decodeAudio(file, state.fs);
-      if (!samples.some((x) => x !== 0)) throw new Error("it is silent");
-      openRecording({ name: file.name, fs: state.fs, pcm16: encodePcm16(samples) }, seconds);
-      log?.info(`opened the recording ${file.name} (${seconds.toFixed(2)} s)`);
-    } catch (error) {
-      ui.recordingNote.textContent = `Could not open ${file.name}: ${error.message}`;
-      log?.error(`could not open the recording ${file.name}: ${error.message}`);
-    }
-  });
+  const showSettings = attachSourceControls(root, { state: () => state, commit, openRecording, hasRecording, log });
 
   // --- the plane -------------------------------------------------------------------
 
@@ -175,35 +134,35 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
       x: (t) => x0 + (t / duration) * (x1 - x0),
       y: (f) => y1 - (f / nyquist) * (y1 - y0),
       // a pixel's place on the mask, in cells: [row from 0 Hz, column]
-      cell: (px, py) => [((y1 - py) / (y1 - y0)) * ROWS, ((px - x0) / (x1 - x0)) * COLUMNS],
+      cell: (x, y) => [((y1 - y) / (y1 - y0)) * ROWS, ((x - x0) / (x1 - x0)) * COLUMNS],
     };
   }
 
   // A spectrogram (`shown`, in the mask's STFT) darkened where `mask` cuts,
   // into `image`, one pixel per CSS pixel of the plot.
-  function picture(g, shown, mask, image) {
-    const width = Math.max(1, Math.round(g.x1 - g.x0));
-    const height = Math.max(1, Math.round(g.y1 - g.y0));
+  function picture(plot, shown, mask, image) {
+    const width = Math.max(1, Math.round(plot.x1 - plot.x0));
+    const height = Math.max(1, Math.round(plot.y1 - plot.y0));
     image.width = width;
     image.height = height;
     const context = image.getContext("2d");
     const pixels = context.createImageData(width, height);
     const floor = magma(0);
-    const rowOf = Int32Array.from({ length: height }, (_, py) => Math.min(ROWS - 1, Math.max(0, Math.floor(((height - py - 0.5) / height) * ROWS))));
-    const binOf = Int32Array.from({ length: height }, (_, py) =>
-      shown ? Math.round((((height - py - 0.5) / height) * g.nyquist / shown.fMax) * (shown.nFreqs - 1)) : -1,
+    const maskRowOf = Int32Array.from({ length: height }, (_, pixelY) => Math.min(ROWS - 1, Math.max(0, Math.floor(((height - pixelY - 0.5) / height) * ROWS))));
+    const binOf = Int32Array.from({ length: height }, (_, pixelY) =>
+      shown ? Math.round((((height - pixelY - 0.5) / height) * plot.nyquist / shown.fMax) * (shown.nFreqs - 1)) : -1,
     );
-    for (let px = 0; px < width; px++) {
-      const t = ((px + 0.5) / width) * g.duration;
-      const column = Math.min(COLUMNS - 1, Math.floor(((px + 0.5) / width) * COLUMNS));
+    for (let pixelX = 0; pixelX < width; pixelX++) {
+      const t = ((pixelX + 0.5) / width) * plot.duration;
+      const column = Math.min(COLUMNS - 1, Math.floor(((pixelX + 0.5) / width) * COLUMNS));
       const timeWindow = shown ? Math.round((t - shown.tStart) / shown.tStep) : -1;
       const inside = shown && timeWindow >= 0 && timeWindow < shown.nWindows;
-      for (let py = 0; py < height; py++) {
-        const bin = binOf[py];
+      for (let pixelY = 0; pixelY < height; pixelY++) {
+        const bin = binOf[pixelY];
         const color = inside && bin >= 0 && bin < shown.nFreqs ? magma(shown.data[bin * shown.nWindows + timeWindow] / 255) : floor;
-        const cut = mask ? Math.min(mask[rowOf[py] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
+        const cut = mask ? Math.min(mask[maskRowOf[pixelY] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
         const keep = 1 - 0.6 * cut; // erased cells stay readable underneath
-        const i = 4 * (py * width + px);
+        const i = 4 * (pixelY * width + pixelX);
         pixels.data[i] = color[0] * keep;
         pixels.data[i + 1] = color[1] * keep;
         pixels.data[i + 2] = color[2] * keep;
@@ -215,89 +174,32 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   }
 
   // The mask's outline: cell edges where the cut crosses OUTLINE_DB.
-  function outline(context, g, mask) {
-    const deep = (r, c) => mask[r * COLUMNS + c] >= OUTLINE_DB;
-    const rowY = (r) => g.y1 - (r / ROWS) * (g.y1 - g.y0);
-    const columnX = (c) => g.x0 + (c / COLUMNS) * (g.x1 - g.x0);
-    context.beginPath();
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLUMNS; c++) {
-        const here = deep(r, c);
-        if (c + 1 < COLUMNS && here !== deep(r, c + 1)) {
-          const x = Math.round(columnX(c + 1)) + 0.5;
-          context.moveTo(x, rowY(r));
-          context.lineTo(x, rowY(r + 1));
-        }
-        if (r + 1 < ROWS && here !== deep(r + 1, c)) {
-          const y = Math.round(rowY(r + 1)) + 0.5;
-          context.moveTo(columnX(c), y);
-          context.lineTo(columnX(c + 1), y);
-        }
-      }
-    }
-    context.stroke();
+  function outline(context, plot, mask) {
+    const columnX = (column) => plot.x0 + (column / COLUMNS) * (plot.x1 - plot.x0);
+    const rowY = (row) => plot.y1 - (row / ROWS) * (plot.y1 - plot.y0);
+    drawMaskOutline(context, mask, ROWS, COLUMNS, OUTLINE_DB, columnX, rowY);
   }
 
-  function axes(context, target, g) {
-    const style = getComputedStyle(target);
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.fillStyle = style.getPropertyValue("--muted").trim() || "#6b7280";
-    context.strokeStyle = style.getPropertyValue("--line").trim() || "#d5d9e0";
-    context.strokeRect(g.x0 + 0.5, g.y0 + 0.5, g.x1 - g.x0 - 1, g.y1 - g.y0 - 1);
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    const fStep = FREQUENCY_STEPS.find((s) => ((g.y1 - g.y0) * s) / g.nyquist >= 28) ?? 5000;
-    for (let f = 0; f <= g.nyquist + 1e-9; f += fStep) {
-      const y = Math.round(g.y(f)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(g.x0, y);
-      context.lineTo(g.x1, y);
-      context.stroke();
-      context.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, g.x0 - 6, Math.min(Math.max(y, g.y0 + 5), g.y1 - 5));
-    }
-    context.save();
-    context.translate(12, (g.y0 + g.y1) / 2);
-    context.rotate(-Math.PI / 2);
-    context.textAlign = "center";
-    context.fillText("Hz", 0, 0);
-    context.restore();
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    const step = niceStep(g.duration, g.x1 - g.x0);
-    for (let k = 0; k * step <= g.duration + 1e-9; k++) {
-      const x = g.x(k * step);
-      if (x < g.x1 - 24) context.fillText(`${+(k * step).toFixed(2)}`, x, g.y1 + 5);
-    }
-    context.textAlign = "right";
-    context.fillText("s", g.x1, g.y1 + 5);
-    if (playhead !== null) {
-      const x = Math.round(g.x(playhead)) + 0.5;
-      context.strokeStyle = "#ffffff";
-      context.beginPath();
-      context.moveTo(x, g.y0);
-      context.lineTo(x, g.y1);
-      context.stroke();
-    }
-  }
-
-  function title(context, g, text) {
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillStyle = "rgba(255, 255, 255, 0.85)";
-    context.fillText(text, g.x0 + 6, g.y0 + 4);
+  function axes(context, target, plot) {
+    drawFrame(context, target, plot);
+    const frequencyStep = FREQUENCY_STEPS.find((step) => ((plot.y1 - plot.y0) * step) / plot.nyquist >= 28) ?? 5000;
+    const frequencies = [];
+    for (let f = 0; f <= plot.nyquist + 1e-9; f += frequencyStep) frequencies.push(f);
+    drawValueTicks(context, plot, frequencies, plot.y, frequencyLabel);
+    drawAxisName(context, plot, "Hz");
+    drawTimeTicks(context, plot, plot.duration, 5);
+    if (playhead !== null) drawPlayhead(context, plot, plot.x(playhead), "#ffffff");
   }
 
   // The pictures are redrawn only when what they show changes, not for the playhead.
-  const image = document.createElement("canvas");
+  const planeImage = document.createElement("canvas");
   const resultImage = document.createElement("canvas");
   const drawn = new Map(); // image -> [shown, mask, width, height, duration, fs]
-  function cached(g, shown, mask, target) {
-    const key = [shown, mask, Math.round(g.x1 - g.x0), Math.round(g.y1 - g.y0), g.duration, g.nyquist];
+  function cached(plot, shown, mask, target) {
+    const key = [shown, mask, Math.round(plot.x1 - plot.x0), Math.round(plot.y1 - plot.y0), plot.duration, plot.nyquist];
     const last = drawn.get(target);
-    if (!last || key.some((k, i) => k !== last[i])) {
-      picture(g, shown, mask, target);
+    if (!last || key.some((part, i) => part !== last[i])) {
+      picture(plot, shown, mask, target);
       drawn.set(target, key);
     }
     return target;
@@ -305,58 +207,46 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
 
   function render() {
     if (!state) return;
-    const context = fitCanvas(canvas);
-    const ratio = canvas.width / (canvas.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const g = geometry();
-    context.clearRect(0, 0, g.width, g.height);
+    const context = fitCanvasInCssPixels(canvas);
+    const plot = geometry();
+    context.clearRect(0, 0, plot.width, plot.height);
     const mask = stroke?.preview ?? bytes;
     context.imageSmoothingEnabled = false;
-    context.drawImage(cached(g, source?.picture ?? null, mask, image), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-    axes(context, canvas, g);
+    context.drawImage(cached(plot, source?.picture ?? null, mask, planeImage), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
+    axes(context, canvas, plot);
     if (mask) {
       context.strokeStyle = "rgba(255, 255, 255, 0.85)";
-      outline(context, g, mask);
+      outline(context, plot, mask);
     }
-    title(context, g, source ? "The source's spectrogram; what is erased is darkened and outlined" : "The source's spectrogram: Play to see it");
-    if (pointer) {
-      context.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      context.setLineDash([3, 3]);
-      context.beginPath();
-      context.arc(pointer[0], pointer[1], Number(ui.size.value) / 2, 0, 2 * Math.PI);
-      context.stroke();
-      context.setLineDash([]);
-    }
+    drawTitle(context, plot, source ? "The source's spectrogram; what is erased is darkened and outlined" : "The source's spectrogram: Play to see it");
+    if (pointer) drawBrush(context, pointer, Number(ui.size.value));
   }
 
   // What came out, in the same STFT and on the same scale as the source's,
   // with the mask's outline: a cut least squares could not keep shows here.
   function renderResult() {
     const target = ui.result;
-    const context = fitCanvas(target);
-    const ratio = target.width / (target.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const context = fitCanvasInCssPixels(target);
     if (!state) return;
-    const g = geometry(target);
-    context.clearRect(0, 0, g.width, g.height);
+    const plot = geometry(target);
+    context.clearRect(0, 0, plot.width, plot.height);
     const shown = sound?.resultStft ?? null;
     context.imageSmoothingEnabled = false;
-    context.drawImage(cached(g, shown, null, resultImage), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-    axes(context, target, g);
+    context.drawImage(cached(plot, shown, null, resultImage), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
+    axes(context, target, plot);
     // on the duration shown: the result keeps its own seconds, as its spectrogram does
     const mask = resultMask && retime(resultMask.bytes, resultMask.duration, state.duration);
     if (mask && shown) {
       context.strokeStyle = "rgba(255, 255, 255, 0.6)";
       context.setLineDash([3, 3]);
-      outline(context, g, mask);
+      outline(context, plot, mask);
       context.setLineDash([]);
     }
-    title(context, g, shown ? "The result's spectrogram; what was erased is outlined" : "The result's spectrogram: Play to hear it");
+    drawTitle(context, plot, shown ? "The result's spectrogram; what was erased is outlined" : "The result's spectrogram: Play to hear it");
   }
 
   function renderWave() {
-    const duration = sound ? sound.samples.length / sound.fs : state?.duration ?? 1;
-    drawWaveform(ui.wave, sound?.samples, sound?.fs, duration);
+    drawWaveform(ui.wave, sound, sound ? soundSeconds(sound) : state?.duration ?? 1);
   }
 
   function renderAll() {
@@ -366,23 +256,20 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
 
   // --- painting --------------------------------------------------------------------
 
-  function local(event) {
-    const box = canvas.getBoundingClientRect();
-    return [event.clientX - box.left, event.clientY - box.top];
-  }
+  const local = (event) => pointerPosition(canvas, event);
 
-  function brush(g) {
+  function brush(plot) {
     const radius = Number(ui.size.value) / 2;
     return {
-      rRow: Math.max(0.5, (radius / (g.y1 - g.y0)) * ROWS),
-      rColumn: Math.max(0.5, (radius / (g.x1 - g.x0)) * COLUMNS),
+      rowRadius: Math.max(0.5, (radius / (plot.y1 - plot.y0)) * ROWS),
+      columnRadius: Math.max(0.5, (radius / (plot.x1 - plot.x0)) * COLUMNS),
       softness: Number(ui.softness.value),
     };
   }
 
   function dabAt(at) {
-    const { rRow, rColumn, softness } = brush(geometry());
-    dab(stroke.weights, ROWS, COLUMNS, at[0], at[1], rRow, rColumn, softness);
+    const { rowRadius, columnRadius, softness } = brush(geometry());
+    dab(stroke.weights, ROWS, COLUMNS, at[0], at[1], rowRadius, columnRadius, softness);
   }
 
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -402,11 +289,11 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   canvas.addEventListener("pointermove", (event) => {
     pointer = local(event);
     if (stroke) {
-      const { rRow, rColumn } = brush(geometry());
+      const { rowRadius, columnRadius } = brush(geometry());
       const moves = event.getCoalescedEvents?.() ?? [event];
       for (const move of moves.length ? moves : [event]) {
         const at = geometry().cell(...local(move));
-        for (const center of dabsAlong(stroke.last, at, rRow, rColumn)) dabAt(center);
+        for (const center of dabsAlong(stroke.last, at, rowRadius, columnRadius)) dabAt(center);
         stroke.last = at;
       }
       stroke.preview = applyCut(bytes, stroke.weights, stroke.target);
@@ -421,7 +308,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
     if (!stroke) return;
     const next = stroke.preview;
     stroke = null;
-    if (event.type === "pointercancel" || next.every((b, i) => b === bytes[i])) return render();
+    if (event.type === "pointercancel" || next.every((cell, i) => cell === bytes[i])) return render();
     bytes = next;
     renderAll();
     commitBytes(next);

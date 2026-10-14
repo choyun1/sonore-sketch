@@ -7,7 +7,7 @@
 // removes one), Line (press at one end, release at the other) and Freehand
 // (a stroke, simplified to the fewest breakpoints within a tolerance).
 
-import { drawSpectrogram, niceStep } from "../plot.js";
+import { drawSpectrogram, niceStep, pointerPosition } from "../plot.js";
 import {
   TRACKS,
   clampValue,
@@ -36,7 +36,7 @@ const DECIDE_PX = 4; // with Line or Freehand, how far a press on a circle moves
 const SELECT_PX = 7; // a press this close to another track's line selects it
 
 const PANELS = [
-  { id: "formants", label: "Formants", tracks: ["F1", "F2", "F3", "F4", "F5", "FNZ"], ticks: [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000], format: (v) => `${v / 1000}k` },
+  { id: "formants", label: "Formants", tracks: ["F1", "F2", "F3", "F4", "F5", "FNZ"], ticks: [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000], format: (hertz) => `${hertz / 1000}k` },
   { id: "F0", label: "F0 (Hz)", tracks: ["F0"], ticks: [25, 50, 100, 200, 400, 800], linearTicks: [0, 200, 400, 600, 800] },
   { id: "AV", label: "AV (dB)", tracks: ["AV"], ticks: [0, 20, 40, 60, 80] },
   { id: "noise", label: "Noise (dB)", tracks: ["AF", "AH"], ticks: [0, 20, 40, 60, 80] },
@@ -53,7 +53,7 @@ const TOOLS = [
 // sit in the same place whatever the layout: on AZERTY the digits need no
 // Shift this way. F0 has 0 and also the key left of 1 (` on US layouts).
 const TRACK_KEYS = {
-  ...Object.fromEntries([1, 2, 3, 4, 5].flatMap((k) => [[`Digit${k}`, `F${k}`], [`Numpad${k}`, `F${k}`]])),
+  ...Object.fromEntries([1, 2, 3, 4, 5].flatMap((number) => [[`Digit${number}`, `F${number}`], [`Numpad${number}`, `F${number}`]])),
   Digit0: "F0", Numpad0: "F0", Backquote: "F0",
 };
 // The other tracks have letters under the left hand, matched by the letter
@@ -75,7 +75,7 @@ function element(name, attributes = {}, parent = null) {
 }
 
 export function createTracksTab(root, { commit }) {
-  let doc = null;
+  let drawing = null;
   let selected = "F2";
   let tool = "point";
   let picture = null;
@@ -99,7 +99,7 @@ export function createTracksTab(root, { commit }) {
   } catch {}
   const panelOf = (name) => TRACKS[name].panel;
   // A value drawn at a pointer, kept inside what its panel shows.
-  const valueFor = (name, v) => clampValue(name, panelOf(name) === "formants" ? Math.min(v, formantTop) : v);
+  const valueFor = (name, value) => clampValue(name, panelOf(name) === "formants" ? Math.min(value, formantTop) : value);
   // Whether F1-F5 are drawn over the spectrogram. Also only a view: hidden
   // formants still shape the sound, since Klatt's voice is made of them.
   let showFormants = true;
@@ -173,9 +173,9 @@ export function createTracksTab(root, { commit }) {
     button.type = "button";
     button.textContent = name;
     if (TRACK_KEY_LABELS[name]) {
-      const kbd = document.createElement("kbd");
-      kbd.textContent = TRACK_KEY_LABELS[name];
-      button.append(" ", kbd);
+      const keyLabel = document.createElement("kbd");
+      keyLabel.textContent = TRACK_KEY_LABELS[name];
+      button.append(" ", keyLabel);
       button.title = `Select ${name} (${TRACK_KEY_TITLES[name]})`;
     }
     if (TRACK_TITLES[name]) button.title = `${TRACK_TITLES[name]} (${TRACK_KEY_TITLES[name]})`;
@@ -220,10 +220,10 @@ export function createTracksTab(root, { commit }) {
   showFormantsBox.addEventListener("change", () => setShowFormants(showFormantsBox.checked));
 
   showBandwidths.addEventListener("change", () => {
-    panels.find((p) => p.id === "bandwidths").node.hidden = !showBandwidths.checked;
+    panels.find((panel) => panel.id === "bandwidths").node.hidden = !showBandwidths.checked;
     render();
   });
-  panels.find((p) => p.id === "bandwidths").node.hidden = true;
+  panels.find((panel) => panel.id === "bandwidths").node.hidden = true;
 
   function select(name) {
     selected = name;
@@ -234,7 +234,8 @@ export function createTracksTab(root, { commit }) {
     else render();
   }
 
-  // Panel geometry, in the SVG's own pixels.
+  // Panel geometry, in the SVG's own pixels: the plot from x0 to x1 and y0
+  // to y1, and pixels to and from time and the panel's track values.
   function geometry(panel) {
     const width = panel.svg.clientWidth || 600;
     const height = panel.svg.clientHeight || 100;
@@ -243,87 +244,87 @@ export function createTracksTab(root, { commit }) {
     const { min } = trackSpec(name, scale);
     const max = panel.id === "formants" ? formantTop : trackSpec(name, scale).max;
     // Positions go by the panel's scale: octaves on a log one.
-    const [lo, hi] = [toScale(name, min, scale), toScale(name, max, scale)];
+    const [scaledMin, scaledMax] = [toScale(name, min, scale), toScale(name, max, scale)];
     const x0 = MARGIN.left;
     const x1 = width - MARGIN.right;
     const y0 = MARGIN.top;
     const y1 = height - MARGIN.bottom;
     return {
       width, height, x0, x1, y0, y1, min, max,
-      x: (t) => x0 + (t / doc.duration) * (x1 - x0),
-      y: (v) => y1 - ((toScale(name, v, scale) - lo) / (hi - lo)) * (y1 - y0),
-      t: (x) => Math.min(doc.duration, Math.max(0, ((x - x0) / (x1 - x0)) * doc.duration)),
-      v: (y) => fromScale(name, lo + ((y1 - y) / (y1 - y0)) * (hi - lo), scale),
+      x: (t) => x0 + (t / drawing.duration) * (x1 - x0),
+      y: (value) => y1 - ((toScale(name, value, scale) - scaledMin) / (scaledMax - scaledMin)) * (y1 - y0),
+      t: (x) => Math.min(drawing.duration, Math.max(0, ((x - x0) / (x1 - x0)) * drawing.duration)),
+      value: (y) => fromScale(name, scaledMin + ((y1 - y) / (y1 - y0)) * (scaledMax - scaledMin), scale),
     };
   }
 
   function renderPanel(panel) {
-    if (panel.node.hidden || !doc) return;
-    const g = geometry(panel);
+    if (panel.node.hidden || !drawing) return;
+    const plot = geometry(panel);
     const svg = panel.svg;
-    svg.setAttribute("viewBox", `0 0 ${g.width} ${g.height}`);
+    svg.setAttribute("viewBox", `0 0 ${plot.width} ${plot.height}`);
     svg.replaceChildren();
     const grid = element("g", { class: "grid" }, svg);
     const ticks = panel.linearTicks && trackSpec(trackList(panel)[0], scaleOf(trackList(panel)[0])).scale === "linear" ? panel.linearTicks : panel.ticks;
     for (const tick of ticks) {
-      if (tick > g.max) continue;
-      element("line", { x1: g.x0, x2: g.x1, y1: g.y(tick), y2: g.y(tick) }, grid);
-      const label = element("text", { x: g.x0 - 6, y: g.y(tick), class: "tick" }, grid);
+      if (tick > plot.max) continue;
+      element("line", { x1: plot.x0, x2: plot.x1, y1: plot.y(tick), y2: plot.y(tick) }, grid);
+      const label = element("text", { x: plot.x0 - 6, y: plot.y(tick), class: "tick" }, grid);
       label.textContent = panel.format ? panel.format(tick) : tick;
     }
-    const step = niceStep(doc.duration, g.x1 - g.x0);
-    for (let t = 0; t <= doc.duration + 1e-9; t += step) {
-      element("line", { x1: g.x(t), x2: g.x(t), y1: g.y0, y2: g.y1, class: "time" }, grid);
+    const step = niceStep(drawing.duration, plot.x1 - plot.x0);
+    for (let t = 0; t <= drawing.duration + 1e-9; t += step) {
+      element("line", { x1: plot.x(t), x2: plot.x(t), y1: plot.y0, y2: plot.y1, class: "time" }, grid);
     }
-    const title = element("text", { x: g.x0 + 6, y: g.y0 + 3, class: "panel-title" }, svg);
+    const title = element("text", { x: plot.x0 + 6, y: plot.y0 + 3, class: "panel-title" }, svg);
     title.textContent = panel.id === "bandwidths" ? `${bandwidth} (Hz)` : panel.label;
 
     const names = shownTracks(panel);
     // The selected track last, so it is drawn on top.
-    for (const name of [...names.filter((n) => n !== selected), ...names.filter((n) => n === selected)]) {
-      const pts = points(doc, name);
+    for (const name of [...names.filter((other) => other !== selected), ...names.filter((other) => other === selected)]) {
+      const breakpoints = points(drawing, name);
       const isSelected = name === selected;
-      const ends = [[0, pts[0][1]], ...pts, [doc.duration, pts[pts.length - 1][1]]];
+      const ends = [[0, breakpoints[0][1]], ...breakpoints, [drawing.duration, breakpoints[breakpoints.length - 1][1]]];
       const group = element("g", { class: `track${isSelected ? " selected" : ""}`, style: `--track: ${TRACKS[name].color}; --track-bright: ${TRACKS[name].bright ?? TRACKS[name].color}` }, svg);
-      element("polyline", { points: drawnPoints(name, ends, scaleOf(name)).map(([t, v]) => `${g.x(t)},${g.y(v)}`).join(" ") }, group);
+      element("polyline", { points: drawnPoints(name, ends, scaleOf(name)).map(([t, value]) => `${plot.x(t)},${plot.y(value)}`).join(" ") }, group);
       if (names.length > 1) {
-        const label = element("text", { x: g.x1 - 4, y: g.y(pts[pts.length - 1][1]) - 5, class: "track-label" }, group);
+        const label = element("text", { x: plot.x1 - 4, y: plot.y(breakpoints[breakpoints.length - 1][1]) - 5, class: "track-label" }, group);
         label.textContent = name;
       }
       if (isSelected) {
-        for (const [t, v] of pts) element("circle", { cx: g.x(t), cy: g.y(v), r: 4 }, group);
+        for (const [t, value] of breakpoints) element("circle", { cx: plot.x(t), cy: plot.y(value), r: 4 }, group);
       }
     }
     if (gesture?.panel === panel && gesture.preview) {
-      element("polyline", { class: "preview", points: gesture.preview.map(([t, v]) => `${g.x(t)},${g.y(v)}`).join(" ") }, svg);
+      element("polyline", { class: "preview", points: gesture.preview.map(([t, value]) => `${plot.x(t)},${plot.y(value)}`).join(" ") }, svg);
     }
     if (playhead !== null) {
-      element("line", { class: "playhead", x1: g.x(playhead), x2: g.x(playhead), y1: g.y0, y2: g.y1 }, svg);
+      element("line", { class: "playhead", x1: plot.x(playhead), x2: plot.x(playhead), y1: plot.y0, y2: plot.y1 }, svg);
     }
   }
 
   function renderBackground() {
     const panel = panels[0];
-    if (!doc) return;
-    const g = geometry(panel);
+    if (!drawing) return;
+    const plot = geometry(panel);
     const canvas = panel.canvas;
     // The canvas covers the plotting area only.
-    Object.assign(canvas.style, { left: `${g.x0}px`, top: `${g.y0}px`, width: `${g.x1 - g.x0}px`, height: `${g.y1 - g.y0}px` });
-    drawSpectrogram(canvas, picture, doc.duration, g.max);
+    Object.assign(canvas.style, { left: `${plot.x0}px`, top: `${plot.y0}px`, width: `${plot.x1 - plot.x0}px`, height: `${plot.y1 - plot.y0}px` });
+    drawSpectrogram(canvas, picture, drawing.duration, plot.max);
     panel.node.classList.toggle("on-spectrogram", Boolean(picture));
   }
 
   function renderAxis() {
-    if (!doc) return;
+    if (!drawing) return;
     const width = axis.clientWidth || 600;
     const x0 = MARGIN.left;
     const x1 = width - MARGIN.right;
     axis.setAttribute("viewBox", `0 0 ${width} 18`);
     axis.replaceChildren();
     // labels at least 44 px apart, so a phone's narrow axis does not run them together
-    const step = niceStep(doc.duration, x1 - x0);
-    for (let t = 0; t <= doc.duration + 1e-9; t += step) {
-      const label = element("text", { x: x0 + (t / doc.duration) * (x1 - x0), y: 12 }, axis);
+    const step = niceStep(drawing.duration, x1 - x0);
+    for (let t = 0; t <= drawing.duration + 1e-9; t += step) {
+      const label = element("text", { x: x0 + (t / drawing.duration) * (x1 - x0), y: 12 }, axis);
       label.textContent = Number(t.toFixed(2));
     }
     const unit = element("text", { x: x0 - 16, y: 12, class: "unit" }, axis);
@@ -340,21 +341,18 @@ export function createTracksTab(root, { commit }) {
 
   function attachPointer(panel) {
     const svg = panel.svg;
-    const local = (event) => {
-      const box = svg.getBoundingClientRect();
-      return [event.clientX - box.left, event.clientY - box.top];
-    };
-    // The selected track's breakpoint whose circle is under (px, py), or -1.
-    const circleAt = (px, py) => {
+    const local = (event) => pointerPosition(svg, event);
+    // The selected track's breakpoint whose circle is under (pointerX, pointerY), or -1.
+    const circleAt = (pointerX, pointerY) => {
       if (!shownTracks(panel).includes(selected)) return -1;
-      const g = geometry(panel);
+      const plot = geometry(panel);
       let best = -1;
       let nearest = HIT_PX;
-      points(doc, selected).forEach(([t, v], i) => {
-        const d = Math.hypot(g.x(t) - px, g.y(v) - py);
-        if (d <= nearest) {
+      points(drawing, selected).forEach(([t, value], i) => {
+        const distance = Math.hypot(plot.x(t) - pointerX, plot.y(value) - pointerY);
+        if (distance <= nearest) {
           best = i;
-          nearest = d;
+          nearest = distance;
         }
       });
       return best;
@@ -362,44 +360,44 @@ export function createTracksTab(root, { commit }) {
 
     svg.addEventListener("pointerdown", (event) => {
       const names = shownTracks(panel);
-      if (!doc || event.button > 0 || !names.length) return;
-      const g = geometry(panel);
-      const [px, py] = local(event);
-      const t = g.t(px);
-      const distance = (name) => Math.abs(g.y(valueAt(points(doc, name), t)) - py);
+      if (!drawing || event.button > 0 || !names.length) return;
+      const plot = geometry(panel);
+      const [pointerX, pointerY] = local(event);
+      const t = plot.t(pointerX);
+      const distance = (name) => Math.abs(plot.y(valueAt(points(drawing, name), t)) - pointerY);
       if (!names.includes(selected)) {
         // Pressing in another panel selects its track; in a strip of one
         // track, drawing starts at once.
-        const nearest = names.reduce((a, b) => (distance(a) <= distance(b) ? a : b));
+        const nearest = names.reduce((nearer, other) => (distance(nearer) <= distance(other) ? nearer : other));
         select(nearest);
         if (names.length > 1) return;
       } else if (names.length > 1 && distance(selected) > SELECT_PX) {
-        const other = names.find((n) => n !== selected && distance(n) <= SELECT_PX);
+        const other = names.find((candidate) => candidate !== selected && distance(candidate) <= SELECT_PX);
         if (other) return select(other);
       }
       event.preventDefault();
       svg.setPointerCapture(event.pointerId);
       const name = selected;
-      const v = valueFor(name, g.v(py));
-      const pts = points(doc, name);
-      const start = doc;
+      const value = valueFor(name, plot.value(pointerY));
+      const breakpoints = points(drawing, name);
+      const start = drawing;
       // Point grabs the breakpoint under the press, or nearest in time, or
       // adds one. With Line or Freehand a press on a circle waits to see the
       // first movement: mostly up or down drags the breakpoint, mostly along
       // time draws from it as usual.
-      const onCircle = circleAt(px, py);
+      const onCircle = circleAt(pointerX, pointerY);
       if (tool !== "point" && onCircle >= 0) {
-        gesture = { panel, name, start, kind: "undecided", index: onCircle, at: [px, py], from: [t, v] };
+        gesture = { panel, name, start, kind: "undecided", index: onCircle, at: [pointerX, pointerY], from: [t, value] };
       } else if (tool === "point") {
-        let index = onCircle >= 0 ? onCircle : nearestPoint(pts, t, (GRAB_PX / (g.x1 - g.x0)) * doc.duration);
-        let current = pts;
-        if (index < 0) ({ pts: current, index } = insertPoint(pts, t, v));
+        let index = onCircle >= 0 ? onCircle : nearestPoint(breakpoints, t, (GRAB_PX / (plot.x1 - plot.x0)) * drawing.duration);
+        let current = breakpoints;
+        if (index < 0) ({ breakpoints: current, index } = insertPoint(breakpoints, t, value));
         gesture = { panel, name, start, kind: "point", index, base: current };
-        doc = withPoints(doc, name, current);
+        drawing = withPoints(drawing, name, current);
       } else if (tool === "line") {
-        gesture = { panel, name, start, kind: "line", from: [t, v], preview: [[t, v], [t, v]] };
+        gesture = { panel, name, start, kind: "line", from: [t, value], preview: [[t, value], [t, value]] };
       } else {
-        gesture = { panel, name, start, kind: "freehand", stroke: [[t, v]], preview: [[t, v]] };
+        gesture = { panel, name, start, kind: "freehand", stroke: [[t, value]], preview: [[t, value]] };
       }
       renderPanel(panel);
     });
@@ -407,27 +405,27 @@ export function createTracksTab(root, { commit }) {
     svg.addEventListener("pointermove", (event) => {
       if (!gesture) svg.classList.toggle("over-point", circleAt(...local(event)) >= 0);
       if (!gesture || gesture.panel !== panel) return;
-      const g = geometry(panel);
+      const plot = geometry(panel);
       const moves = event.getCoalescedEvents?.() ?? [event];
       for (const move of moves.length ? moves : [event]) {
-        const [px, py] = local(move);
-        const t = g.t(px);
-        const v = valueFor(gesture.name, g.v(py));
+        const [pointerX, pointerY] = local(move);
+        const t = plot.t(pointerX);
+        const value = valueFor(gesture.name, plot.value(pointerY));
         if (gesture.kind === "undecided") {
-          const dx = Math.abs(px - gesture.at[0]);
-          const dy = Math.abs(py - gesture.at[1]);
-          if (Math.max(dx, dy) < DECIDE_PX) continue;
+          const movedX = Math.abs(pointerX - gesture.at[0]);
+          const movedY = Math.abs(pointerY - gesture.at[1]);
+          if (Math.max(movedX, movedY) < DECIDE_PX) continue;
           const { from } = gesture;
-          if (dy >= dx) gesture = { ...gesture, kind: "point", base: points(doc, gesture.name) };
+          if (movedY >= movedX) gesture = { ...gesture, kind: "point", base: points(drawing, gesture.name) };
           else if (tool === "line") gesture = { ...gesture, kind: "line", preview: [from, from] };
           else gesture = { ...gesture, kind: "freehand", stroke: [from], preview: [from] };
         }
         if (gesture.kind === "point") {
-          doc = withPoints(doc, gesture.name, movePoint(gesture.base, gesture.index, t, v));
+          drawing = withPoints(drawing, gesture.name, movePoint(gesture.base, gesture.index, t, value));
         } else if (gesture.kind === "line") {
-          gesture.preview = [gesture.from, [t, v]];
+          gesture.preview = [gesture.from, [t, value]];
         } else {
-          gesture.stroke.push([t, v]);
+          gesture.stroke.push([t, value]);
           gesture.preview = gesture.stroke;
         }
       }
@@ -437,31 +435,31 @@ export function createTracksTab(root, { commit }) {
     const finish = (event) => {
       if (!gesture || gesture.panel !== panel) return;
       const { name, start, kind } = gesture;
-      const pts = points(doc, name);
+      const breakpoints = points(drawing, name);
       if (kind === "line") {
-        const [a, b] = gesture.preview;
-        const span = Math.abs(geometry(panel).x(b[0]) - geometry(panel).x(a[0])) < 3 && Math.abs(a[1] - b[1]) < 1e-9 ? [a] : lineSpan(name, a, b, scaleOf(name));
-        doc = withPoints(doc, name, span.length === 1 ? insertPoint(pts, ...span[0]).pts : replaceSpan(pts, span));
+        const [from, to] = gesture.preview;
+        const span = Math.abs(geometry(panel).x(to[0]) - geometry(panel).x(from[0])) < 3 && Math.abs(from[1] - to[1]) < 1e-9 ? [from] : lineSpan(name, from, to, scaleOf(name));
+        drawing = withPoints(drawing, name, span.length === 1 ? insertPoint(breakpoints, ...span[0]).breakpoints : replaceSpan(breakpoints, span));
       } else if (kind === "freehand") {
         const simplified = simplifyStroke(name, gesture.stroke, scaleOf(name));
-        doc = withPoints(doc, name, simplified.length === 1 ? insertPoint(pts, ...simplified[0]).pts : replaceSpan(pts, simplified));
+        drawing = withPoints(drawing, name, simplified.length === 1 ? insertPoint(breakpoints, ...simplified[0]).breakpoints : replaceSpan(breakpoints, simplified));
       }
       gesture = null;
-      if (event.type === "pointercancel") doc = start;
+      if (event.type === "pointercancel") drawing = start;
       renderPanel(panel);
-      if (JSON.stringify(doc.params[name]) !== JSON.stringify(start.params[name])) commit((doc = name === "AF" ? withFrication(doc) : doc));
-      else doc = start;
+      if (JSON.stringify(drawing.params[name]) !== JSON.stringify(start.params[name])) commit((drawing = name === "AF" ? withFrication(drawing) : drawing));
+      else drawing = start;
     };
     svg.addEventListener("pointerup", finish);
     svg.addEventListener("pointercancel", finish);
 
     svg.addEventListener("dblclick", (event) => {
-      if (!doc || tool !== "point" || !shownTracks(panel).includes(selected)) return;
-      const g = geometry(panel);
-      const [px] = local(event);
-      const pts = points(doc, selected);
-      const index = nearestPoint(pts, g.t(px), (GRAB_PX / (g.x1 - g.x0)) * doc.duration);
-      if (index >= 0 && pts.length > 1) commit((doc = withPoints(doc, selected, removePoint(pts, index))));
+      if (!drawing || tool !== "point" || !shownTracks(panel).includes(selected)) return;
+      const plot = geometry(panel);
+      const [pointerX] = local(event);
+      const breakpoints = points(drawing, selected);
+      const index = nearestPoint(breakpoints, plot.t(pointerX), (GRAB_PX / (plot.x1 - plot.x0)) * drawing.duration);
+      if (index >= 0 && breakpoints.length > 1) commit((drawing = withPoints(drawing, selected, removePoint(breakpoints, index))));
       render();
     });
   }
@@ -474,12 +472,9 @@ export function createTracksTab(root, { commit }) {
   return {
     id: "tracks",
     figure: panels[0].node, // the formants panel: where the shell shows synthesis progress
-    get document() {
-      return doc;
-    },
     setDocument(next) {
       gesture = null;
-      doc = next;
+      drawing = next;
       render();
       renderBackground();
     },
@@ -492,7 +487,7 @@ export function createTracksTab(root, { commit }) {
       render();
     },
     key(event) {
-      const toolKey = TOOLS.find((t) => t.key === event.key.toLowerCase());
+      const toolKey = TOOLS.find((entry) => entry.key === event.key.toLowerCase());
       if (toolKey) {
         tool = toolKey.id;
         toolGroup.querySelector(`input[value="${tool}"]`).checked = true;

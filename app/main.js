@@ -19,12 +19,12 @@ import { createTracksTab } from "./tracks/tab.js";
 
 const AUTOPLAY_MAX_S = 3; // longer sounds play on Play only (app.md, D10)
 
-const $ = (id) => document.getElementById(id);
+const byId = (id) => document.getElementById(id);
 const ui = {
-  play: $("play"), duration: $("duration"), autoplay: $("autoplay"), clear: $("clear"), reset: $("reset"), undo: $("undo"), redo: $("redo"),
-  open: $("open"), save: $("save"), link: $("link"), wav: $("wav"), file: $("file"),
-  status: $("status"), versions: $("versions"), waveform: $("waveform"),
-  log: $("log"), logToggle: $("log-toggle"), logLines: $("log-lines"), logCopy: $("log-copy"), logClear: $("log-clear"),
+  play: byId("play"), duration: byId("duration"), autoplay: byId("autoplay"), clear: byId("clear"), reset: byId("reset"), undo: byId("undo"), redo: byId("redo"),
+  open: byId("open"), save: byId("save"), link: byId("link"), wav: byId("wav"), file: byId("file"),
+  status: byId("status"), versions: byId("versions"), waveform: byId("waveform"),
+  log: byId("log"), logToggle: byId("log-toggle"), logLines: byId("log-lines"), logCopy: byId("log-copy"), logClear: byId("log-clear"),
 };
 
 // --- the log ---------------------------------------------------------------------
@@ -51,11 +51,11 @@ window.addEventListener("unhandledrejection", (event) =>
 // Loading the synthesizer takes several seconds on every visit (docs/design/app.md, M1): say so under the header, with a clock
 const loadStart = performance.now();
 const loadClock = setInterval(() => {
-  $("loading-time").textContent = `${((performance.now() - loadStart) / 1000).toFixed(0)} s`;
+  byId("loading-time").textContent = `${((performance.now() - loadStart) / 1000).toFixed(0)} s`;
 }, 1000);
 function loading(text, failed = false) {
-  $("loading-step").textContent = text.replace(/ \(\d+(\.\d+)? s\)$/, "");
-  $("loading").classList.toggle("failed", failed);
+  byId("loading-step").textContent = text.replace(/ \(\d+(\.\d+)? s\)$/, "");
+  byId("loading").classList.toggle("failed", failed);
   if (failed) {
     clearInterval(loadClock);
     ui.play.textContent = "▶ Play";
@@ -79,7 +79,7 @@ const engine = new LatestOnly(
       ui.play.disabled = false;
       ui.play.textContent = "▶ Play";
       clearInterval(loadClock);
-      $("loading").hidden = true;
+      byId("loading").hidden = true;
       status("Ready. Draw, then press Play.");
       synthesize({ play: false });
     },
@@ -92,7 +92,7 @@ const engine = new LatestOnly(
 );
 
 const player = new Player();
-let result = null; // {key, doc, sound}: the last sound made, from which tab's state
+let result = null; // {key, page, sound}: the last sound made, from which tab's state
 
 function status(text, error = false) {
   ui.status.textContent = text;
@@ -115,16 +115,16 @@ let opened = initial;
 const hasRecording = () => Boolean(history.present.recording);
 const commitFrom = (id) => (state) => change(withTabState(history.present, id, state));
 const tabs = {
-  tracks: createTracksTab($("tab-tracks"), { commit: commitFrom("tracks") }),
-  painted: createPaintedTab($("tab-painted"), { commit: commitFrom("painted"), log }),
-  mask: createMaskTab($("tab-mask"), {
+  tracks: createTracksTab(byId("tab-tracks"), { commit: commitFrom("tracks") }),
+  painted: createPaintedTab(byId("tab-painted"), { commit: commitFrom("painted"), log }),
+  mask: createMaskTab(byId("tab-mask"), {
     commit: commitFrom("mask"),
     openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "mask")),
     hasRecording,
     log,
   }),
-  blobs: createBlobsTab($("tab-blobs"), { commit: commitFrom("blobs") }),
-  edit: createEditTab($("tab-edit"), {
+  blobs: createBlobsTab(byId("tab-blobs"), { commit: commitFrom("blobs") }),
+  edit: createEditTab(byId("tab-edit"), {
     commit: commitFrom("edit"),
     // a recording belongs to the page, and sets its duration (edit.md, E1)
     openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds)),
@@ -142,11 +142,12 @@ function showTab() {
     const active = button.dataset.tab === tab.id;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1; // Tab reaches the tab shown; the arrow keys reach the others
   }
-  for (const id of Object.keys(tabs)) $(`tab-${id}`).hidden = id !== tab.id;
+  for (const id of Object.keys(tabs)) byId(`tab-${id}`).hidden = id !== tab.id;
   // a tab that draws the result's waveform itself (the Draw modulation tab, in its Result box)
   document.querySelector("main > .result").hidden = Boolean(tab.ownWaveform);
-  $("tab-caption").textContent = tabButtons.find((b) => b.dataset.tab === tab.id)?.dataset.caption ?? "";
+  byId("tab-caption").textContent = tabButtons.find((button) => button.dataset.tab === tab.id)?.dataset.caption ?? "";
 }
 
 function switchTab(id, { synthesizes = true } = {}) {
@@ -161,6 +162,19 @@ function switchTab(id, { synthesizes = true } = {}) {
   if (ready && synthesizes) synthesize({ play: false });
 }
 for (const button of tabButtons) button.addEventListener("click", () => switchTab(button.dataset.tab));
+// The arrow keys, Home and End move between the tabs, as in the WAI-ARIA
+// tabs pattern: the tab focused is the tab shown.
+document.querySelector(".tabs").addEventListener("keydown", (event) => {
+  const index = tabButtons.indexOf(event.target);
+  if (index < 0 || event.ctrlKey || event.metaKey || event.altKey) return;
+  const last = tabButtons.length - 1;
+  const moves = { ArrowLeft: index ? index - 1 : last, ArrowRight: index < last ? index + 1 : 0, Home: 0, End: last };
+  if (!(event.key in moves)) return;
+  event.preventDefault();
+  const button = tabButtons[moves[event.key]];
+  button.focus();
+  switchTab(button.dataset.tab);
+});
 
 // The document as saved and linked: with the tab shown (a link without the recording).
 // stamped with the sonore that makes its sound now, not the one of the file it was opened from
@@ -168,26 +182,26 @@ const saved = () => ({ ...history.present, sonore: SONORE_VERSION, tab: tab.id }
 const linked = () => forLink(saved());
 
 function show() {
-  const doc = history.present;
-  tab.setDocument(tabState(doc, tab.id));
-  ui.duration.value = doc.duration;
+  const page = history.present;
+  tab.setDocument(tabState(page, tab.id));
+  ui.duration.value = page.duration;
   ui.undo.disabled = !history.past.length;
   ui.redo.disabled = !history.future.length;
   window.history.replaceState(null, "", `${location.pathname}${location.search}#state=${encodeState(linked())}`);
 }
 
 // An edit has ended: keep it, and hear it if it is short enough.
-function change(doc) {
-  history.push(doc);
+function change(page) {
+  history.push(page);
   show();
   afterChange();
 }
 
 // A drawing from a file or a link: it opens on the tab it was saved on, and is synthesized once, there.
-function openOnItsTab(doc) {
-  opened = doc;
-  history.push(doc);
-  switchTab(doc.tab, { synthesizes: false });
+function openOnItsTab(page) {
+  opened = page;
+  history.push(page);
+  switchTab(page.tab, { synthesizes: false });
   show();
   afterChange();
 }
@@ -222,9 +236,9 @@ function showProgress(fraction) {
 // --- synthesis and playback ----------------------------------------------------
 
 async function synthesize({ play }) {
-  const doc = history.present;
+  const page = history.present;
   const asked = tab;
-  const state = tabState(doc, tab.id);
+  const state = tabState(page, tab.id);
   const key = `${tab.id} ${JSON.stringify(state)}`;
   if (running?.key === key) {
     // this drawing is already being made: hear it when it comes, rather than start over
@@ -248,7 +262,7 @@ async function synthesize({ play }) {
     status(blocked);
     return null;
   }
-  status(doc.duration > 1 ? `Synthesizing ${doc.duration} s…` : "Synthesizing…");
+  status(page.duration > 1 ? `Synthesizing ${page.duration} s…` : "Synthesizing…");
   const made = engine.synthesize({ tab: tab.id, state }, (fraction) => mine === requests && showProgress(fraction));
   const asking = (running = { play, key, made });
   showProgress(undefined);
@@ -261,7 +275,7 @@ async function synthesize({ play }) {
     showProgress(null);
     status(`Synthesis failed: ${error.message} (see Log; Reset starts again)`, true);
     log.error(`synthesis failed: ${error.message}`, error.detail ?? "");
-    if (tab === asked && history.present === doc) tab.failed?.(error.message);
+    if (tab === asked && history.present === page) tab.failed?.(error.message);
     return null;
   }
   if (mine === requests) {
@@ -271,21 +285,21 @@ async function synthesize({ play }) {
   if (!sound) return null; // a newer drawing replaced this request
   // The drawing changed while this was made, to one that asks for no sound
   // (nothing drawn) or to another tab: this sound is no longer what is shown.
-  if (tab !== asked || history.present !== doc) return null;
-  result = { key, doc, sound };
+  if (tab !== asked || history.present !== page) return null;
+  result = { key, page, sound };
   showResult();
-  status(`Made ${doc.duration} s in ${sound.synthesisSeconds.toFixed(2)} s.`);
-  log.info(`made ${doc.duration} s in ${sound.synthesisSeconds.toFixed(2)} s`);
-  if (asking.play && history.present === doc) start(sound);
+  status(`Made ${page.duration} s in ${sound.synthesisSeconds.toFixed(2)} s.`);
+  log.info(`made ${page.duration} s in ${sound.synthesisSeconds.toFixed(2)} s`);
+  if (asking.play && history.present === page) start(sound);
   return sound;
 }
 
 function showResult() {
   if (result && !result.key.startsWith(`${tab.id} `)) result = null;
   const sound = result?.sound;
-  const duration = result?.doc.duration ?? history.present.duration;
+  const duration = result?.page.duration ?? history.present.duration;
   tab.setResult(sound);
-  drawWaveform(ui.waveform, sound?.samples, sound?.fs, duration);
+  drawWaveform(ui.waveform, sound, duration);
   ui.wav.disabled = !sound;
 }
 
@@ -297,9 +311,9 @@ function start(sound) {
   if (ticking) return;
   ticking = true;
   const tick = () => {
-    const t = player.position;
-    tab.setPlayhead(t);
-    if (t !== null) requestAnimationFrame(tick);
+    const position = player.position;
+    tab.setPlayhead(position);
+    if (position !== null) requestAnimationFrame(tick);
     else ticking = false;
   };
   requestAnimationFrame(tick);
@@ -358,8 +372,8 @@ ui.redo.addEventListener("click", redo);
 
 function download(blob, name) {
   const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement("a"), { href: url, download: name });
-  a.click();
+  const link = Object.assign(document.createElement("a"), { href: url, download: name });
+  link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -369,7 +383,7 @@ ui.save.addEventListener("click", () => {
 });
 // The sound of the drawing shown: made first if the last one is of an older drawing.
 ui.wav.addEventListener("click", async () => {
-  const sound = result?.doc === history.present ? result.sound : await synthesize({ play: false });
+  const sound = result?.page === history.present ? result.sound : await synthesize({ play: false });
   if (sound) download(wavBlob(sound.samples, sound.fs), "sketch.wav");
 });
 ui.open.addEventListener("click", () => ui.file.click());
@@ -378,8 +392,8 @@ ui.file.addEventListener("change", async () => {
   ui.file.value = "";
   if (!file) return;
   try {
-    const doc = openDocument(JSON.parse(await file.text()));
-    openOnItsTab(doc); // as a link does
+    const page = openDocument(JSON.parse(await file.text()));
+    openOnItsTab(page); // as a link does
     status(`Opened ${file.name}.`);
     log.info(`opened ${file.name}`);
   } catch (error) {
@@ -392,9 +406,9 @@ ui.file.addEventListener("change", async () => {
 // (The page's own replaceState does not fire this.)
 window.addEventListener("hashchange", () => {
   try {
-    const linkedDoc = stateFromHash(location.hash);
-    if (!linkedDoc) return switchTab(tabFromHash(location.hash));
-    openOnItsTab(openDocument(linkedDoc));
+    const linkedPage = stateFromHash(location.hash);
+    if (!linkedPage) return switchTab(tabFromHash(location.hash));
+    openOnItsTab(openDocument(linkedPage));
     status("Opened the drawing in the link.");
   } catch (error) {
     status(`Could not open the drawing in the link: ${error.message}`, true);
@@ -440,16 +454,16 @@ ui.logCopy.addEventListener("click", async () => {
 document.addEventListener("keydown", (event) => {
   // keys typed into a field, a list or a slider are theirs (radios and checkboxes leave Space to Play)
   if (event.target.closest?.("select, textarea, input:not([type=radio]):not([type=checkbox])")) return;
-  const mod = event.ctrlKey || event.metaKey;
-  if (mod && event.key.toLowerCase() === "z") {
+  const modifier = event.ctrlKey || event.metaKey;
+  if (modifier && event.key.toLowerCase() === "z") {
     event.preventDefault();
     return event.shiftKey ? redo() : undo();
   }
-  if (mod && event.key.toLowerCase() === "y") {
+  if (modifier && event.key.toLowerCase() === "y") {
     event.preventDefault();
     return redo();
   }
-  if (mod || event.altKey) return;
+  if (modifier || event.altKey) return;
   if (event.key === " ") {
     if (event.target.closest?.("button, a[href], summary")) return; // Space presses a focused button, as everywhere else
     event.preventDefault();

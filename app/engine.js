@@ -7,7 +7,9 @@
 // Draw modulation tab modulation: {...}, and on the Erase modulation tab
 // modulation, sourceModulation: {...} (modulationPicture) and clipped (a
 // fraction), and on the Erase spectrogram tab sourceStft, resultStft: {...}
-// (spectrogramPicture).
+// (spectrogramPicture; both in pictures.js).
+
+import { modulationPicture, spectrogramPicture } from "./pictures.js";
 
 function bytesFromBase64(text) {
   const binary = atob(text);
@@ -89,40 +91,19 @@ class LocalEngine {
       fs: body.fs,
       samples: new Float32Array(bytesFromBase64(body.samples).buffer),
       synthesisSeconds: body.synthesis_s,
-      spectrogram: spectrogramPicture(body.spectrogram),
-      sourceStft: body.source_stft && spectrogramPicture(body.source_stft),
-      resultStft: body.result_stft && spectrogramPicture(body.result_stft),
-      modulation: body.modulation && modulationPicture(body.modulation, bytesFromBase64(body.modulation.data)),
-      sourceModulation: body.source_modulation && modulationPicture(body.source_modulation, bytesFromBase64(body.source_modulation.data)),
+      spectrogram: readPicture(body.spectrogram, spectrogramPicture),
+      sourceStft: body.source_stft && readPicture(body.source_stft, spectrogramPicture),
+      resultStft: body.result_stft && readPicture(body.result_stft, spectrogramPicture),
+      modulation: body.modulation && readPicture(body.modulation, modulationPicture),
+      sourceModulation: body.source_modulation && readPicture(body.source_modulation, modulationPicture),
       clipped: body.clipped ?? null,
     };
   }
 }
 
-// A spectrogram picture (sonore_sketch.page.spectrogram, mask.pictures) from the local server.
-function spectrogramPicture(picture) {
-  return {
-    data: bytesFromBase64(picture.data),
-    nFreqs: picture.n_freqs,
-    nWindows: picture.n_windows,
-    fMax: picture.f_max,
-    tStart: picture.t_start,
-    tStep: picture.t_step,
-  };
-}
-
-// A modulation spectrum on the plane: the Draw modulation tab's measured one
-// (sonore_sketch.blobs.measured_picture), the Erase modulation tab's source
-// (sonore_sketch.edit.plane_picture).
-export function modulationPicture(picture, data) {
-  return {
-    data,
-    nDensities: picture.n_densities,
-    nRates: picture.n_rates,
-    rateFirst: picture.rate_first,
-    rateStep: picture.rate_step,
-    densityStep: picture.density_step,
-  };
+// A picture from the local server, as `make` (pictures.js) reads it.
+function readPicture(picture, make) {
+  return make((field) => picture[field], bytesFromBase64(picture.data));
 }
 
 export function createEngine(kind, callbacks) {

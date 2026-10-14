@@ -24,8 +24,8 @@ const FORMANT_COLORS = ["#d1495b", "#2e86ab", "#3c9d5d", "#9a6fb0", "#c07a1e"];
 const FORMANT_BRIGHT = ["#00e5ff", "#a6ff4d", "#ffffff", "#5aa9ff", "#d9b3ff"];
 export const TRACKS = {
   ...Object.fromEntries(
-    [1, 2, 3, 4, 5].map((k, i) => [
-      `F${k}`,
+    [1, 2, 3, 4, 5].map((number, i) => [
+      `F${number}`,
       { panel: "formants", min: 0, max: 8000, unit: "Hz", tolerance: 15, color: FORMANT_COLORS[i], bright: FORMANT_BRIGHT[i] },
     ]),
   ),
@@ -50,23 +50,19 @@ export const TRACKS = {
   // Hz it cancels the nasal pole and does nothing.
   FNZ: { panel: "formants", min: 0, max: 8000, unit: "Hz", tolerance: 15, color: "#888", bright: "#ff7ab8" },
   ...Object.fromEntries(
-    [1, 2, 3, 4, 5].map((k, i) => [
-      `B${k}`,
+    [1, 2, 3, 4, 5].map((number, i) => [
+      `B${number}`,
       { panel: "bandwidths", min: 0, max: 600, unit: "Hz", tolerance: 5, color: FORMANT_COLORS[i] },
     ]),
   ),
 };
 
-// sonore's KLATT_DEFAULTS for the drawable tracks.
+// sonore's KLATT_DEFAULTS for the drawable tracks; also what Clear leaves on
+// the Draw speech tab, which cannot be blank (document.js, clearTab).
 export const DEFAULTS = {
   F0: 100, AV: 60, F1: 500, F2: 1500, F3: 2500, F4: 3500, F5: 4500, AF: 0, AH: 0, FNZ: 250,
   B1: 60, B2: 90, B3: 150, B4: 200, B5: 250,
 };
-
-// What Clear leaves on the Draw speech tab, which cannot be blank: every
-// track flat at its default, a steady schwa on 100 Hz (F1-F5 at 500, 1500,
-// 2500, 3500 and 4500 Hz, a uniform tube's resonances), voiced, no noise.
-export const NEUTRAL = { ...DEFAULTS };
 
 // A first drawing to hear at once: sonore saying its name, /sɔnɔʁ/, with the
 // tracks of "sonore says its name" in sonore's gallery
@@ -106,20 +102,20 @@ export function defaultDocument() {
 // on, these, the example's /s/, come with it, so the hiss is heard.
 export const FRICATION_SETTINGS = { F6: 6500, B6: 1500, A4: 34, A5: 50, A6: 60 };
 
-export function withFrication(doc) {
-  const on = ["A1", "A2", "A3", "A4", "A5", "A6", "AB"].some((name) => {
-    const value = doc.params[name];
-    return typeof value === "number" ? value > 0 : Array.isArray(value) && value[1].some((v) => v > 0);
+export function withFrication(drawing) {
+  const parallelOn = ["A1", "A2", "A3", "A4", "A5", "A6", "AB"].some((name) => {
+    const value = drawing.params[name];
+    return typeof value === "number" ? value > 0 : Array.isArray(value) && value[1].some((level) => level > 0);
   });
-  return on ? doc : { ...doc, params: { ...FRICATION_SETTINGS, ...doc.params } };
+  return parallelOn ? drawing : { ...drawing, params: { ...FRICATION_SETTINGS, ...drawing.params } };
 }
 
-const round = (x, digits) => Number(x.toFixed(digits));
+const round = (number, digits) => Number(number.toFixed(digits));
 
-// A track's breakpoints as [[t, v], ...]; a number is a flat line.
-export function points(doc, name) {
-  const value = doc.params[name] ?? DEFAULTS[name];
-  if (typeof value === "number") return [[0, value], [doc.duration, value]];
+// A track's breakpoints as [[t, value], ...]; a number is a flat line.
+export function points(drawing, name) {
+  const value = drawing.params[name] ?? DEFAULTS[name];
+  if (typeof value === "number") return [[0, value], [drawing.duration, value]];
   const [times, values] = value;
   return times.map((t, i) => [t, values[i]]);
 }
@@ -132,41 +128,41 @@ const TIME_STEP = 10 ** -TIME_DIGITS;
 // value per time. Where several land on the same time (a line drawn with no
 // width in time, a point dragged onto its neighbor, a stretch that shrinks
 // two times into one), the last of them wins, so the newest edit is kept.
-export function tidyPoints(pts) {
-  const sorted = pts
-    .map(([t, v], order) => [round(t, TIME_DIGITS), round(v, 2), order])
+export function tidyPoints(breakpoints) {
+  const sorted = breakpoints
+    .map(([t, value], order) => [round(t, TIME_DIGITS), round(value, 2), order])
     .sort((a, b) => a[0] - b[0] || a[2] - b[2]);
   const tidy = [];
-  for (const [t, v] of sorted) {
-    if (tidy.length && tidy[tidy.length - 1][0] === t) tidy[tidy.length - 1] = [t, v];
-    else tidy.push([t, v]);
+  for (const [t, value] of sorted) {
+    if (tidy.length && tidy[tidy.length - 1][0] === t) tidy[tidy.length - 1] = [t, value];
+    else tidy.push([t, value]);
   }
   return tidy;
 }
 
-// A new document with `name` set to the breakpoints `pts`.
-export function withPoints(doc, name, pts) {
-  const tidy = tidyPoints(pts);
-  return { ...doc, params: { ...doc.params, [name]: [tidy.map(([t]) => t), tidy.map(([, v]) => v)] } };
+// A new document with `name` set to the breakpoints `breakpoints`.
+export function withPoints(drawing, name, breakpoints) {
+  const tidy = tidyPoints(breakpoints);
+  return { ...drawing, params: { ...drawing.params, [name]: [tidy.map(([t]) => t), tidy.map(([, value]) => value)] } };
 }
 
-// Every track of `doc` tidied (tidyPoints), for documents from a file or a
+// Every track of `drawing` tidied (tidyPoints), for documents from a file or a
 // link, which may come from an older page.
-export function tidyDocument(doc) {
+export function tidyDocument(drawing) {
   const params = Object.fromEntries(
-    Object.entries(doc.params ?? {}).map(([name, value]) => {
+    Object.entries(drawing.params ?? {}).map(([name, value]) => {
       const floor = TRACKS[name]?.floor ?? -Infinity;
       if (typeof value === "number") return [name, Math.max(floor, value)];
       const tidy = tidyPoints(value[0].map((t, i) => [t, Math.max(floor, value[1][i])]));
-      return [name, [tidy.map(([t]) => t), tidy.map(([, v]) => v)]];
+      return [name, [tidy.map(([t]) => t), tidy.map(([, tidyValue]) => tidyValue)]];
     }),
   );
-  return { ...doc, params };
+  return { ...drawing, params };
 }
 
-export function clampValue(name, v) {
+export function clampValue(name, value) {
   const { min, max, floor = min } = TRACKS[name];
-  return Math.min(max, Math.max(floor, v));
+  return Math.min(max, Math.max(floor, value));
 }
 
 // A track's settings as its panel shows it: `scale` "log" or "linear", or
@@ -179,113 +175,114 @@ export function trackSpec(name, scale = TRACKS[name].scale) {
 
 // A track's values as its panel spaces them: octaves (log2 Hz) for a log
 // scale, the value itself otherwise.
-export const toScale = (name, v, scale) => (trackSpec(name, scale).scale === "log" ? Math.log2(v) : v);
-export const fromScale = (name, u, scale) => (trackSpec(name, scale).scale === "log" ? 2 ** u : u);
+export const toScale = (name, value, scale) => (trackSpec(name, scale).scale === "log" ? Math.log2(value) : value);
+export const fromScale = (name, scaled, scale) => (trackSpec(name, scale).scale === "log" ? 2 ** scaled : scaled);
 
 // A freehand stroke simplified within the track's tolerance, measured as the
 // panel spaces values, so on a log scale the same detail is kept in every
 // octave.
 export function simplifyStroke(name, stroke, scale) {
-  const scaled = stroke.map(([t, v]) => [t, toScale(name, v, scale)]);
-  return simplify(scaled, trackSpec(name, scale).tolerance).map(([t, u]) => [t, fromScale(name, u, scale)]);
+  const scaled = stroke.map(([t, value]) => [t, toScale(name, value, scale)]);
+  return simplify(scaled, trackSpec(name, scale).tolerance).map(([t, scaledValue]) => [t, fromScale(name, scaledValue, scale)]);
 }
 
-// The breakpoints of a Line from a to b (sorted by time). sonore goes in a
-// straight line in Hz between breakpoints, so on a log scale the line is
-// laid as enough breakpoints to stay within the tolerance of a straight
-// line in octaves, which is what was drawn.
-export function lineSpan(name, a, b, scale) {
-  const [p, q] = [a, b].sort((x, y) => x[0] - y[0]);
+// The breakpoints of a Line from `from` to `to` (sorted by time). sonore
+// goes in a straight line in Hz between breakpoints, so on a log scale the
+// line is laid as enough breakpoints to stay within the tolerance of a
+// straight line in octaves, which is what was drawn.
+export function lineSpan(name, from, to, scale) {
+  const [first, last] = [from, to].sort((a, b) => a[0] - b[0]);
   const { scale: kind, tolerance } = trackSpec(name, scale);
-  if (kind !== "log" || p[0] === q[0] || p[1] === q[1]) return [p, q];
-  // Each of n equal pieces spans ratio r; the straight-in-Hz chord across it
-  // strays furthest from the octave line somewhere inside, found by sampling.
-  const octaves = Math.log2(q[1] / p[1]);
-  const stray = (n) => {
-    const r = 2 ** (octaves / n);
+  if (kind !== "log" || first[0] === last[0] || first[1] === last[1]) return [first, last];
+  // Each of `pieces` equal pieces spans a ratio; the straight-in-Hz chord
+  // across it strays furthest from the octave line somewhere inside, found
+  // by sampling.
+  const octaves = Math.log2(last[1] / first[1]);
+  const stray = (pieces) => {
+    const ratio = 2 ** (octaves / pieces);
     let worst = 0;
-    for (let s = 0.05; s < 1; s += 0.05) worst = Math.max(worst, Math.abs(Math.log2(1 + (r - 1) * s) - s * Math.log2(r)));
+    for (let fraction = 0.05; fraction < 1; fraction += 0.05) worst = Math.max(worst, Math.abs(Math.log2(1 + (ratio - 1) * fraction) - fraction * Math.log2(ratio)));
     return worst;
   };
-  let n = 1;
-  while (stray(n) > tolerance) n++;
-  return Array.from({ length: n + 1 }, (_, i) =>
-    i === 0 ? p : i === n ? q : [p[0] + ((q[0] - p[0]) * i) / n, p[1] * 2 ** ((octaves * i) / n)],
+  let pieces = 1;
+  while (stray(pieces) > tolerance) pieces++;
+  return Array.from({ length: pieces + 1 }, (_, i) =>
+    i === 0 ? first : i === pieces ? last : [first[0] + ((last[0] - first[0]) * i) / pieces, first[1] * 2 ** ((octaves * i) / pieces)],
   );
 }
 
 // Points to draw a track through: its breakpoints, and on a log scale the
 // curve sonore takes between them (straight in Hz is bent in octaves).
-export function drawnPoints(name, pts, scale) {
-  if (trackSpec(name, scale).scale !== "log") return pts;
-  const out = [pts[0]];
-  for (let i = 1; i < pts.length; i++) {
-    const [t0, v0] = pts[i - 1];
-    const [t1, v1] = pts[i];
-    const n = v0 === v1 || t0 === t1 ? 1 : 16;
-    for (let k = 1; k <= n; k++) out.push([t0 + ((t1 - t0) * k) / n, v0 + ((v1 - v0) * k) / n]);
+export function drawnPoints(name, breakpoints, scale) {
+  if (trackSpec(name, scale).scale !== "log") return breakpoints;
+  const out = [breakpoints[0]];
+  for (let i = 1; i < breakpoints.length; i++) {
+    const [t0, value0] = breakpoints[i - 1];
+    const [t1, value1] = breakpoints[i];
+    const steps = value0 === value1 || t0 === t1 ? 1 : 16;
+    for (let step = 1; step <= steps; step++) out.push([t0 + ((t1 - t0) * step) / steps, value0 + ((value1 - value0) * step) / steps]);
   }
   return out;
 }
 
 // The track's value at time t: linear between breakpoints, held beyond the
 // ends, as sonore does.
-export function valueAt(pts, t) {
-  if (t <= pts[0][0]) return pts[0][1];
-  for (let i = 1; i < pts.length; i++) {
-    const [t1, v1] = pts[i];
+export function valueAt(breakpoints, t) {
+  if (t <= breakpoints[0][0]) return breakpoints[0][1];
+  for (let i = 1; i < breakpoints.length; i++) {
+    const [t1, value1] = breakpoints[i];
     if (t <= t1) {
-      const [t0, v0] = pts[i - 1];
-      return t1 === t0 ? v1 : v0 + ((v1 - v0) * (t - t0)) / (t1 - t0);
+      const [t0, value0] = breakpoints[i - 1];
+      return t1 === t0 ? value1 : value0 + ((value1 - value0) * (t - t0)) / (t1 - t0);
     }
   }
-  return pts[pts.length - 1][1];
+  return breakpoints[breakpoints.length - 1][1];
 }
 
 // The index of the breakpoint nearest t, if within `tolerance` seconds.
-export function nearestPoint(pts, t, tolerance) {
+export function nearestPoint(breakpoints, t, tolerance) {
   let best = -1;
   let distance = tolerance;
-  pts.forEach(([pt], i) => {
-    const d = Math.abs(pt - t);
-    if (d <= distance) {
+  breakpoints.forEach(([pointTime], i) => {
+    const gap = Math.abs(pointTime - t);
+    if (gap <= distance) {
       best = i;
-      distance = d;
+      distance = gap;
     }
   });
   return best;
 }
 
 // Add a breakpoint, keeping times sorted; returns the points and its index.
-export function insertPoint(pts, t, v) {
-  let index = pts.findIndex(([pt]) => pt > t);
-  if (index < 0) index = pts.length;
-  return { pts: [...pts.slice(0, index), [t, v], ...pts.slice(index)], index };
+export function insertPoint(breakpoints, t, value) {
+  let index = breakpoints.findIndex(([pointTime]) => pointTime > t);
+  if (index < 0) index = breakpoints.length;
+  return { breakpoints: [...breakpoints.slice(0, index), [t, value], ...breakpoints.slice(index)], index };
 }
 
 // Move breakpoint i, kept strictly between its neighbors in time.
-export function movePoint(pts, i, t, v) {
-  const lo = i > 0 ? pts[i - 1][0] + TIME_STEP : 0;
-  const hi = i < pts.length - 1 ? pts[i + 1][0] - TIME_STEP : Infinity;
-  const moved = pts.slice();
-  moved[i] = [Math.min(hi, Math.max(lo, t)), v];
+export function movePoint(breakpoints, i, t, value) {
+  const earliest = i > 0 ? breakpoints[i - 1][0] + TIME_STEP : 0;
+  const latest = i < breakpoints.length - 1 ? breakpoints[i + 1][0] - TIME_STEP : Infinity;
+  const moved = breakpoints.slice();
+  moved[i] = [Math.min(latest, Math.max(earliest, t)), value];
   return moved;
 }
 
-export function removePoint(pts, i) {
-  return pts.length > 1 ? pts.filter((_, j) => j !== i) : pts;
+export function removePoint(breakpoints, i) {
+  return breakpoints.length > 1 ? breakpoints.filter((_, other) => other !== i) : breakpoints;
 }
 
 // Replace the breakpoints under a span (line and freehand): those strictly
 // inside the new points' time range go, and the new points come in.
-export function replaceSpan(pts, span) {
+export function replaceSpan(breakpoints, span) {
   const t0 = span[0][0];
   const t1 = span[span.length - 1][0];
-  const kept = pts.filter(([t]) => t < t0 || t > t1);
+  const kept = breakpoints.filter(([t]) => t < t0 || t > t1);
   return [...kept, ...span].sort((a, b) => a[0] - b[0]);
 }
 
-// Ramer-Douglas-Peucker on a stroke [[t, v], ...], keeping every point
+// Ramer-Douglas-Peucker on a stroke [[t, value], ...], keeping every point
 // whose value is more than `tolerance` (in the track's unit) from the chord
 // between the kept points on either side.
 export function simplify(stroke, tolerance) {
@@ -295,23 +292,23 @@ export function simplify(stroke, tolerance) {
   keep[0] = keep[sorted.length - 1] = true;
   const stack = [[0, sorted.length - 1]];
   while (stack.length) {
-    const [a, b] = stack.pop();
-    const [ta, va] = sorted[a];
-    const [tb, vb] = sorted[b];
+    const [first, last] = stack.pop();
+    const [firstTime, firstValue] = sorted[first];
+    const [lastTime, lastValue] = sorted[last];
     let worst = -1;
     let deviation = tolerance;
-    for (let i = a + 1; i < b; i++) {
-      const [t, v] = sorted[i];
-      const chord = tb === ta ? va : va + ((vb - va) * (t - ta)) / (tb - ta);
-      const d = Math.abs(v - chord);
-      if (d > deviation) {
+    for (let i = first + 1; i < last; i++) {
+      const [t, value] = sorted[i];
+      const chord = lastTime === firstTime ? firstValue : firstValue + ((lastValue - firstValue) * (t - firstTime)) / (lastTime - firstTime);
+      const offChord = Math.abs(value - chord);
+      if (offChord > deviation) {
         worst = i;
-        deviation = d;
+        deviation = offChord;
       }
     }
     if (worst >= 0) {
       keep[worst] = true;
-      stack.push([a, worst], [worst, b]);
+      stack.push([first, worst], [worst, last]);
     }
   }
   return sorted.filter((_, i) => keep[i]);
@@ -323,30 +320,30 @@ export function clampDuration(duration) {
 
 // Change the duration, stretching every track with it: breakpoint times
 // scale exactly (tracks.md, C3), so nothing is resampled or splined.
-export function stretch(doc, duration) {
-  const factor = duration / doc.duration;
+export function stretch(drawing, duration) {
+  const factor = duration / drawing.duration;
   const params = Object.fromEntries(
-    Object.entries(doc.params).map(([name, value]) =>
+    Object.entries(drawing.params).map(([name, value]) =>
       typeof value === "number" ? [name, value] : [name, [value[0].map((t) => t * factor), value[1]]],
     ),
   );
-  return tidyDocument({ ...doc, duration, params });
+  return tidyDocument({ ...drawing, duration, params });
 }
 
 // Raise an Error saying what is wrong with a document read from a file or a
 // link; the Python side checks the same (sonore_sketch.tracks.check).
-export function check(doc) {
-  if (!doc || doc.trackdraw !== FORMAT) throw new Error(`not a TrackDraw document of format ${FORMAT}`);
-  if (!(typeof doc.duration === "number" && doc.duration >= MIN_DURATION && doc.duration <= MAX_DURATION))
+export function check(drawing) {
+  if (!drawing || drawing.trackdraw !== FORMAT) throw new Error(`not a TrackDraw document of format ${FORMAT}`);
+  if (!(typeof drawing.duration === "number" && drawing.duration >= MIN_DURATION && drawing.duration <= MAX_DURATION))
     throw new Error(`duration must be from ${MIN_DURATION} to ${MAX_DURATION} s`);
-  if (!(doc.fs > 0)) throw new Error("fs must be a positive sampling rate");
-  if ((doc.mode ?? "klatt") !== "klatt") throw new Error(`mode ${doc.mode} is not supported yet`);
-  for (const [name, value] of Object.entries(doc.params ?? {})) {
+  if (!(drawing.fs > 0)) throw new Error("fs must be a positive sampling rate");
+  if ((drawing.mode ?? "klatt") !== "klatt") throw new Error(`mode ${drawing.mode} is not supported yet`);
+  for (const [name, value] of Object.entries(drawing.params ?? {})) {
     if (typeof value === "number") continue;
-    const ok =
+    const valid =
       Array.isArray(value) && value.length === 2 && Array.isArray(value[0]) && Array.isArray(value[1]) &&
       value[0].length === value[1].length && value[0].length > 0;
-    if (!ok) throw new Error(`${name} must be a number or [times, values]`);
+    if (!valid) throw new Error(`${name} must be a number or [times, values]`);
   }
-  return doc;
+  return drawing;
 }

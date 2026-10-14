@@ -57,22 +57,22 @@ export function grid({ duration, f_lo, f_hi, bands_per_octave }) {
   const nBands = Math.round(Math.log2(f_hi / f_lo) * bands_per_octave) - 1; // the filterbank's bands, less its two edges
   const densityStep = bands_per_octave / nBands;
   const nDensities = Math.ceil(nBands / 2);
-  return { rateStep: ENV_FS / nTimes, nTimes, densityStep, densities: Array.from({ length: nDensities }, (_, j) => j * densityStep) };
+  return { rateStep: ENV_FS / nTimes, nTimes, densityStep, densities: Array.from({ length: nDensities }, (_, index) => index * densityStep) };
 }
 
-// One blob's power at (rate, density), zero on the other side of the rate
-// axis (ModulationBlob.power).
-export function blobPower({ rate, density, rate_width, density_width, level }, r, d) {
-  if (Math.sign(r) !== Math.sign(rate)) return 0;
-  const octaves = Math.log2(Math.abs(r) / Math.abs(rate));
-  return 10 ** (level / 10) * Math.exp(-(octaves ** 2) / (2 * rate_width ** 2) - (d - density) ** 2 / (2 * density_width ** 2));
+// One blob's power at (atRate, atDensity), zero on the other side of the
+// rate axis (ModulationBlob.power).
+export function blobPower({ rate, density, rate_width, density_width, level }, atRate, atDensity) {
+  if (Math.sign(atRate) !== Math.sign(rate)) return 0;
+  const octaves = Math.log2(Math.abs(atRate) / Math.abs(rate));
+  return 10 ** (level / 10) * Math.exp(-(octaves ** 2) / (2 * rate_width ** 2) - (atDensity - density) ** 2 / (2 * density_width ** 2));
 }
 
 // The drawing's power at (rate, density): the blobs' sum, made the same at
 // (-rate, -density), as from_blobs does, since a real envelope's spectrum is.
-export function power(items, r, d) {
+export function power(items, rate, density) {
   let total = 0;
-  for (const blob of items) total += blobPower(blob, r, d) + blobPower(blob, -r, -d);
+  for (const blob of items) total += blobPower(blob, rate, density) + blobPower(blob, -rate, -density);
   return total / 2;
 }
 
@@ -83,15 +83,15 @@ export function power(items, r, d) {
 // on the seam.
 export function rateToUnit(rate) {
   const span = Math.log2(RATE_MAX / RATE_MIN);
-  const u = Math.min(1, Math.max(0, Math.log2(Math.max(Math.abs(rate), RATE_MIN) / RATE_MIN) / span));
-  return rate < 0 ? -u : u;
+  const unit = Math.min(1, Math.max(0, Math.log2(Math.max(Math.abs(rate), RATE_MIN) / RATE_MIN) / span));
+  return rate < 0 ? -unit : unit;
 }
 
 // The rate at a place on the axis (the inverse of rateToUnit); 0 is taken
 // as the positive side's RATE_MIN.
-export function unitToRate(u) {
-  const magnitude = RATE_MIN * 2 ** (Math.min(1, Math.abs(u)) * Math.log2(RATE_MAX / RATE_MIN));
-  return u < 0 ? -magnitude : magnitude;
+export function unitToRate(unit) {
+  const magnitude = RATE_MIN * 2 ** (Math.min(1, Math.abs(unit)) * Math.log2(RATE_MAX / RATE_MIN));
+  return unit < 0 ? -magnitude : magnitude;
 }
 
 // A blob's rate kept on the plane: 1 to 64 Hz in size, on its own side.
@@ -109,7 +109,7 @@ export function clampWidth(width) {
 }
 
 // Numbers as saved: two decimals are finer than any blob's width.
-export const tidy = (x) => Math.round(x * 100) / 100;
+export const tidy = (number) => Math.round(number * 100) / 100;
 
 // --- sonore's refusals -----------------------------------------------------------
 
@@ -147,13 +147,13 @@ export function bandCenter(points, t) {
 }
 
 export function newBand(bands, duration) {
-  const inside = (f) => bands.some((b) => [0, duration / 2, duration].some((t) => Math.abs(Math.log2(f / bandCenter(b.points, t))) <= b.width / 2));
+  const inside = (f) => bands.some((band) => [0, duration / 2, duration].some((t) => Math.abs(Math.log2(f / bandCenter(band.points, t))) <= band.width / 2));
   const center = NEW_BAND_CENTERS.find((f) => !inside(f)) ?? 1000;
   return { points: [[0, center], [Math.min(duration, tidyTime(duration)), center]], width: 1, level: 0 };
 }
 
-export const clampBandWidth = (w) => Math.min(BAND_WIDTH_MAX, Math.max(BAND_WIDTH_MIN, w));
-export const clampBandLevel = (l) => Math.min(0, Math.max(BAND_LEVEL_MIN, l));
+export const clampBandWidth = (width) => Math.min(BAND_WIDTH_MAX, Math.max(BAND_WIDTH_MIN, width));
+export const clampBandLevel = (level) => Math.min(0, Math.max(BAND_LEVEL_MIN, level));
 // Times to the millisecond, centers to the hertz, as saved.
 export const tidyTime = (t) => Math.round(t * 1000) / 1000;
 export const tidyHz = (f) => Math.round(f);
@@ -164,7 +164,7 @@ export const tidyHz = (f) => Math.round(f);
 export const STROKE_TOLERANCE_OCT = 0.04;
 export function strokeOnto(points, stroke) {
   const inOctaves = stroke.map(([t, f]) => [tidyTime(t), Math.log2(f)]);
-  const span = simplify(inOctaves, STROKE_TOLERANCE_OCT).map(([t, o]) => [t, tidyHz(2 ** o)]);
+  const span = simplify(inOctaves, STROKE_TOLERANCE_OCT).map(([t, octave]) => [t, tidyHz(2 ** octave)]);
   const merged = points?.length ? replaceSpan(points, span) : span;
   const tidied = [];
   for (const point of merged) {
@@ -177,13 +177,13 @@ export function strokeOnto(points, stroke) {
 // Every band's times scaled to a new duration (the page's length changed).
 export function stretchBands(bands, from, to) {
   if (!bands?.length || !(from > 0)) return bands;
-  return bands.map((b) => {
+  return bands.map((band) => {
     const points = [];
-    for (const [t, f] of b.points) {
+    for (const [t, f] of band.points) {
       const next = Math.min(to, tidyTime((t / from) * to));
       if (!points.length || next > points[points.length - 1][0]) points.push([next, f]);
     }
-    return { ...b, points };
+    return { ...band, points };
   });
 }
 
@@ -214,10 +214,10 @@ export function check(state) {
     const { points, width, level = 0 } = band ?? {};
     if (!(width >= BAND_WIDTH_MIN - 1e-9 && width <= BAND_WIDTH_MAX)) throw new Error(`band ${i + 1}'s width must be from 1/6 to ${BAND_WIDTH_MAX} octaves`);
     if (!(level >= BAND_LEVEL_MIN && level <= 0)) throw new Error(`band ${i + 1}'s level must be from ${BAND_LEVEL_MIN} to 0 dB`);
-    if (!Array.isArray(points) || !points.length || !points.every((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite))) {
+    if (!Array.isArray(points) || !points.length || !points.every((point) => Array.isArray(point) && point.length === 2 && point.every(Number.isFinite))) {
       throw new Error(`band ${i + 1} needs a list of [time, Hz] points`);
     }
-    if (points.some(([t], k) => t < 0 || (duration !== undefined && t > duration + 1e-9) || (k > 0 && t <= points[k - 1][0]))) {
+    if (points.some(([t], index) => t < 0 || (duration !== undefined && t > duration + 1e-9) || (index > 0 && t <= points[index - 1][0]))) {
       throw new Error(`band ${i + 1}'s times must increase, within the duration`);
     }
     if (points.some(([, f]) => f < f_lo || f > f_hi)) throw new Error(`band ${i + 1}'s center must stay within ${f_lo}-${f_hi} Hz`);
