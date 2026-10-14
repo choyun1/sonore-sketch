@@ -3,13 +3,14 @@
 // sampling rate belong to the page; each tab keeps its own section, so you
 // can switch tabs and come back to what you drew.
 //
-//   {"app": "sonore-sketch", "version": 2, "sonore": "0.6.0",
+//   {"app": "sonore-sketch", "version": 2, "sonore": "0.7.0",
 //    "duration": 0.6, "fs": 16000, "tab": "tracks",
 //    "tracks": {"mode": "klatt", "params": {...}},
 //    "painted": {"f_lo": 100, "f_hi": 6400, ..., "levels": "..."},
 //    "blobs": {"carrier": "tones", ..., "items": [{"rate": 4, ...}]},
 //    "edit": {"source": "syllables", ..., "levels": "..."},
 //    "mask": {"source": "syllables", ..., "levels": "..."},
+//    "paths": {"source": "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0},
 //    "recording": {"name": "talk.wav", "fs": 16000, "pcm16": "..."}}
 //
 // A recording opened on the Erase modulation or Erase spectrogram tab belongs
@@ -27,19 +28,20 @@ import * as blobs from "./blobs/model.js";
 import * as edit from "./edit/model.js";
 import * as mask from "./mask/model.js";
 import * as painted from "./painted/model.js";
+import * as paths from "./paths/model.js";
 import { MAX_RECORDING_S, checkRecording } from "./sources.js";
 import * as tracks from "./tracks/model.js";
 
 export const APP = "sonore-sketch";
 export const VERSION = 2;
-export const TABS = ["tracks", "painted", "mask", "blobs", "edit"];
+export const TABS = ["tracks", "painted", "mask", "blobs", "edit", "paths"];
 
 export function defaultPage() {
   const { sonore, duration, fs, mode, params } = tracks.defaultDocument();
   return {
     app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
     tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-    mask: mask.defaultSection(),
+    mask: mask.defaultSection(), paths: paths.defaultSection(),
   };
 }
 
@@ -51,7 +53,7 @@ export function upgrade(opened) {
     return {
       app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
       tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-      mask: mask.defaultSection(),
+      mask: mask.defaultSection(), paths: paths.defaultSection(),
     };
   }
   if (opened?.app !== APP || opened.version !== VERSION) {
@@ -64,6 +66,7 @@ export function upgrade(opened) {
     blobs: opened.blobs ?? blobs.defaultSection(),
     edit: opened.edit ?? edit.defaultSection(),
     mask: opened.mask ?? mask.defaultSection(),
+    paths: opened.paths ?? paths.defaultSection(),
   };
 }
 
@@ -81,10 +84,11 @@ export function tabState(page, tab) {
     const { sonore, duration, fs } = page;
     return { blobs: blobs.FORMAT, sonore, duration, fs, ...page.blobs };
   }
-  if (tab === "edit" || tab === "mask") {
+  if (tab === "edit" || tab === "mask" || tab === "paths") {
     // the source's own drawing goes with the state, so a change to it is heard
     const { sonore, duration, fs } = page;
-    const state = { [tab]: tab === "edit" ? edit.FORMAT : mask.FORMAT, sonore, duration, fs, ...page[tab] };
+    const format = { edit: edit.FORMAT, mask: mask.FORMAT, paths: paths.FORMAT }[tab];
+    const state = { [tab]: format, sonore, duration, fs, ...page[tab] };
     if (state.source === "speech") state.speech = page.tracks;
     if (state.source === "file" && page.recording) state.recording = page.recording;
     return state;
@@ -106,7 +110,7 @@ export function withTabState(page, tab, state) {
     const { blobs: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
     return { ...page, blobs: section };
   }
-  if (tab === "edit" || tab === "mask") {
+  if (tab === "edit" || tab === "mask" || tab === "paths") {
     const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, speech: _speech, recording: _recording, ...section } = state;
     return { ...page, [tab]: section };
   }
@@ -136,6 +140,7 @@ export function openDocument(opened) {
   blobs.check(tabState(page, "blobs"));
   edit.check(tabState(page, "edit"));
   mask.check(tabState(page, "mask"));
+  paths.check(tabState(page, "paths"));
   if (page.recording !== undefined) checkRecording(page.recording);
   return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "tracks" }, "tracks", state);
 }
@@ -147,7 +152,8 @@ export function openDocument(opened) {
 export function stretchPage(page, duration) {
   const state = tracks.stretch(tabState(page, "tracks"), duration);
   const stretched = withTabState({ ...page, duration }, "tracks", state);
-  const out = page.mask ? { ...stretched, mask: mask.stretchSection(page.mask, page.duration, duration) } : stretched;
+  const masked = page.mask ? { ...stretched, mask: mask.stretchSection(page.mask, page.duration, duration) } : stretched;
+  const out = page.paths ? { ...masked, paths: paths.stretchSection(page.paths, page.duration, duration) } : masked;
   if (!page.blobs?.bands?.length) return out;
   return { ...out, blobs: { ...page.blobs, bands: blobs.stretchBands(page.blobs.bands, page.duration, duration) } };
 }
@@ -173,6 +179,7 @@ export async function clearTab(page, tab) {
   if (tab === "painted") return { ...cleared, painted: { ...page.painted, levels: await painted.encodeLevels(painted.blank(page.painted)) } };
   if (tab === "blobs") return { ...cleared, blobs: { ...page.blobs, items: [], bands: [] } };
   if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };
+  if (tab === "paths") return { ...cleared, paths: { ...page.paths, stroke: [], elevation: 0 } };
   if (tab === "mask") {
     const { span: _span, ...section } = page.mask;
     return { ...cleared, mask: { ...section, levels: mask.BLANK_LEVELS } };

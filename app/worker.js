@@ -19,9 +19,15 @@ const SONORE_VERSION = "0.7.0"; // keep in step with pyproject.toml (app.md, D5)
 // header that lets a page fetch it. Change it with SONORE_VERSION (tests/test_page.py checks).
 const SONORE_WHEEL =
   "https://files.pythonhosted.org/packages/ff/ce/3035d3609ca822be92e2ed8d4871cc83edb8569aba4424d1b374aa93d2ab/sonore-0.7.0-py3-none-any.whl";
-const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "shared.py", "sources.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
+const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "paths.py", "shared.py", "sources.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
 
 let steps = null;
+let python = null; // the Pyodide instance, once loaded
+const FOLDER = "/home/pyodide/sonore_sketch";
+// The Draw path tab's HRIRs (src/sonore_sketch/data/mit_kemar.npz, 1.25 MB),
+// fetched the first time that tab asks for a sound, not on every visit.
+const HRIR_FILE = "data/mit_kemar.npz";
+let hrirs = null;
 let latest = -1; // the newest request's id: an older one stops at its next step
 
 function progress(text) {
@@ -93,9 +99,9 @@ async function load() {
   await pyodide.loadPackage(["numpy", "scipy", SONORE_WHEEL], { errorCallback: (text) => problems.push(text) });
   if (problems.length) throw new Error(`could not load the packages: ${problems.join("; ")}`);
   phase("packages");
-  const folder = "/home/pyodide/sonore_sketch";
-  pyodide.FS.mkdirTree(folder);
-  for (const [name, text] of await sources) pyodide.FS.writeFile(`${folder}/${name}`, text);
+  pyodide.FS.mkdirTree(FOLDER);
+  for (const [name, text] of await sources) pyodide.FS.writeFile(`${FOLDER}/${name}`, text);
+  python = pyodide;
   progress(`Importing sonore… (${seconds()} s)`);
   steps = pyodide.runPython(`
 import json, sys
@@ -111,6 +117,21 @@ lambda text: handle_steps(json.loads(text))
     seconds: Number(seconds()),
     phases: phases.join(", "),
   });
+}
+
+function loadHrirs() {
+  hrirs ??= (async () => {
+    const url = new URL(`../src/sonore_sketch/${HRIR_FILE}`, self.location);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`could not fetch the HRIRs (sonore_sketch/${HRIR_FILE}): HTTP ${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    python.FS.mkdirTree(`${FOLDER}/data`);
+    python.FS.writeFile(`${FOLDER}/${HRIR_FILE}`, bytes);
+  })().catch((error) => {
+    hrirs = null; // the next request tries again
+    throw error;
+  });
+  return hrirs;
 }
 
 // A picture in `result` under `key`, as `make` (pictures.js) reads it, or null.
@@ -129,6 +150,7 @@ function convert(result) {
     return {
       fs: result.get("fs"),
       samples: new Float32Array(toBytes(result.get("samples")).buffer),
+      right: result.has("samples_right") ? new Float32Array(toBytes(result.get("samples_right")).buffer) : null,
       synthesisSeconds: result.get("synthesis_s"),
       spectrogram: readPicture(result, "spectrogram", spectrogramPicture),
       sourceStft: readPicture(result, "source_stft", spectrogramPicture),
@@ -156,6 +178,7 @@ onmessage = async ({ data: { id, request } }) => {
   let work = null;
   try {
     await loading;
+    if (request.tab === "paths") await loadHrirs();
     if (id !== latest) return postMessage({ id, type: "dropped" });
     work = steps(JSON.stringify(request));
     let result;
@@ -170,6 +193,7 @@ onmessage = async ({ data: { id, request } }) => {
       if (id !== latest) return postMessage({ id, type: "dropped" });
     }
     const transfer = [result.samples.buffer, result.spectrogram.data.buffer];
+    if (result.right) transfer.push(result.right.buffer);
     for (const picture of [result.modulation, result.sourceModulation, result.sourceStft, result.resultStft]) if (picture) transfer.push(picture.data.buffer);
     postMessage({ id, type: "result", result }, transfer);
   } catch (error) {

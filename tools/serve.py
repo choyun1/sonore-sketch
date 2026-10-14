@@ -30,6 +30,8 @@ def encode(result: dict) -> dict:
     """``page.handle``'s result as JSON, its bytes in base64, as the page's
     local engine reads it (also the made-ahead sounds, tools/make_examples.py)."""
     result = dict(result, samples=base64.b64encode(result["samples"]).decode())
+    if "samples_right" in result:
+        result["samples_right"] = base64.b64encode(result["samples_right"]).decode()
     for key in ("spectrogram", "modulation", "source_modulation", "source_stft", "result_stft"):
         if key in result:
             result[key] = dict(result[key], data=base64.b64encode(result[key]["data"]).decode())

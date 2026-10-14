@@ -29,6 +29,9 @@
       <button role="tab" id="tab-button-edit" aria-selected="false" aria-controls="tab-edit" tabindex="-1" data-tab="edit"
         data-caption="Take a sound and erase parts of its modulation spectrum: remove every rate above 4 Hz from speech and it blurs into a murmur that keeps its rhythm."
         title="Parts of a sound's modulation spectrum painted out, heard through sonore's ModulationSpectrum.with_gain and to_sound">Erase modulation</button>
+      <button role="tab" id="tab-button-paths" aria-selected="false" aria-controls="tab-paths" tabindex="-1" data-tab="paths"
+        data-caption="Draw where a sound goes around you, seen from above, and how high it is over time, and hear it move. Use headphones."
+        title="A path around the listener, heard through sonore's move_sound and the MIT KEMAR head-related impulse responses (Gardner &amp; Martin, 1995)">Draw path</button>
     </nav>
     <div class="controls">
       <button type="button" id="play" class="primary" title="Play or stop (Space)" disabled>Loading…</button>
@@ -63,6 +66,7 @@
     <section class="tab-body" id="tab-mask" role="tabpanel" aria-labelledby="tab-button-mask" hidden></section>
     <section class="tab-body" id="tab-blobs" role="tabpanel" aria-labelledby="tab-button-blobs" hidden></section>
     <section class="tab-body" id="tab-edit" role="tabpanel" aria-labelledby="tab-button-edit" hidden></section>
+    <section class="tab-body" id="tab-paths" role="tabpanel" aria-labelledby="tab-button-paths" hidden></section>
     <section class="result">
       <div class="result-row">
         <span class="result-label">Result</span>

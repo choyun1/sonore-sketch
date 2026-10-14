@@ -11,7 +11,7 @@ what sonore makes of it; or open a recording and erase parts of its
 spectrogram or its modulation spectrum. sonore does the synthesis, in your
 browser (Python under Pyodide); this project is only the interface.
 
-**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: five tabs, each a different
+**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: six tabs, each a different
 picture of sound to draw on, with nothing to install.
 
 **[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
@@ -56,6 +56,7 @@ different sound from it.
 | **[Erase spectrogram](https://choyun1.github.io/sonore-sketch/#tab=erase-spectrogram)** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
 | **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
+| **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
 
 ## Using the page
 
@@ -301,6 +302,28 @@ what 50 do, at a ceiling set by the bands' width
 iterations are offered only with bands: without them the harmonics that
 share each band beat at F0 and pull the search away (K-M5b).
 
+### Draw path
+
+1. The stroke on the top view keeps the pointer's own timing, so how fast
+   you draw is how fast the sound moves; it is stretched to the page's
+   duration. Its points are put every 10 ms and smoothed with a 30 ms
+   Gaussian, which takes out the speed changes the pointer adds at every
+   screen frame (`docs/design/tabs/paths.md`, W-M2).
+2. Each point keeps its direction and distance around the listener (at
+   least 25 cm from the head's center), and the elevation track lifts it
+   on the sphere of that distance, from −40° to 90°, the range MIT
+   measured.
+3. sonore's `move_sound` renders the source along the path through the
+   MIT KEMAR HRIRs (Gardner & Martin, 1995; `src/sonore_sketch/data/`):
+   each ear hears the sound through its own smoothly changing delay and
+   the HRIRs interpolated between measured directions. They were measured
+   at 1.4 m only, so nearer and farther change only the level (1/r) and
+   the delay, and their files leave out the travel time from 1.4 m, which
+   the tab puts back so nearer paths render (W-M1).
+4. The sound is made at 32 kHz rather than the page's 16 kHz, since the
+   cues that change most with elevation lie above 8 kHz (W-M4). It is
+   played and saved in stereo, both ears at one gain.
+
 ### What the Result panels measure
 
 The Result panels analyze the sound that came out the same way as the
@@ -325,6 +348,9 @@ Douglas, D. H., & Peucker, T. K. (1973). Algorithms for the reduction of
 the number of points required to represent a digitized line or its
 caricature. *Cartographica*, *10*(2), 112–122.
 https://doi.org/10.3138/FM57-6770-U75U-7727
+
+Gardner, W. G., & Martin, K. D. (1995). HRTF measurements of a KEMAR.
+*The Journal of the Acoustical Society of America*, *97*(6), 3907–3908.
 
 Griffin, D. W., & Lim, J. S. (1984). Signal estimation from modified
 short-time Fourier transform. *IEEE Transactions on Acoustics, Speech, and
@@ -356,7 +382,7 @@ The page is static: `index.html` and the ES modules in `app/`, with no
 build step and no JavaScript dependencies. The Python half, which the page
 runs under Pyodide, is in `src/sonore_sketch/` (one module per tab,
 `sources.py` and `shared.py`, which the tabs share, and `page.py`, which
-the page calls). It needs sonore 0.6.
+the page calls). It needs sonore 0.7.
 
 ```
 pip install -e ".[test]" playwright
@@ -378,7 +404,7 @@ The screenshots above are of each tab's example; retake them with
 `tools/make_screenshots.py` when the header, the toolbar or an example
 changes.
 
-Five things to keep in step:
+Six things to keep in step:
 
 - The sonore version is pinned twice, in `pyproject.toml` and as
   `SONORE_VERSION` in `app/worker.js`.
@@ -397,13 +423,17 @@ Five things to keep in step:
 - `PYTHON_FILES` in `app/worker.js` lists every module in
   `src/sonore_sketch/`. A new module must be added there, or the page fails
   in the browser while the local engine still works.
+- The Draw path tab's HRIRs, `src/sonore_sketch/data/mit_kemar.npz`, are
+  made by `tools/make_hrirs.py` from MIT's SOFA file; the worker fetches
+  that file the first time the tab makes a sound.
 
 ## Design documents
 
 Every tab is designed before it is built, in `docs/design/`: `app.md` for
 the page as a whole, and `tabs/` for each tab (`tracks.md` for Draw speech,
 `painted.md` for Draw spectrogram, `blobs.md` and `bands.md` for Draw modulation,
-`mask.md` for Erase spectrogram, `edit.md` for Erase modulation).
+`mask.md` for Erase spectrogram, `edit.md` for Erase modulation, `paths.md`
+for Draw path).
 Each records the measurements behind it, made by the scripts in `tools/`,
 and the decisions Cho made.
 
