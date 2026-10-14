@@ -31,6 +31,8 @@ export const SLOWEST = 1 / 20; // of the speed track's fastest (W8; sonore_sketc
 export const SPEED_RANGE = [1 / 8, 8]; // the track's range, times the average speed
 const STEP = 0.01; // s (sonore_sketch.paths.STEP)
 const SMOOTHING = 0.03; // s (sonore_sketch.paths.SMOOTHING)
+const SHAPE_SMOOTHING = 0.15; // m (sonore_sketch.paths.SHAPE_SMOOTHING)
+const SHAPE_STEP = 0.01; // m (sonore_sketch.paths.SHAPE_STEP)
 const SPEED_TOLERANCE = 0.08; // octaves, how far a simplified speed curve may stray
 
 // The starting path: a source passing in front from left to right, 1.2 m
@@ -76,7 +78,8 @@ export function elevationAt(section, duration, t) {
 
 // --- the path in time ------------------------------------------------------------
 
-// The stroke put every 10 ms and smoothed with a 30 ms Gaussian, as
+// The stroke put every 10 ms and smoothed with a 30 ms Gaussian, then its
+// shape smoothed with a 15 cm Gaussian along the path, as
 // sonore_sketch.paths.smoothed does (scipy's gaussian_filter1d, mode
 // "nearest"): its times from 0 and its [x, y] points.
 export function smoothed(stroke) {
@@ -97,21 +100,55 @@ export function smoothed(stroke) {
     const fraction = strokeTime <= t0 ? 0 : strokeTime >= t1 ? 1 : (strokeTime - t0) / (t1 - t0);
     return [x0 + (x1 - x0) * fraction, y0 + (y1 - y0) * fraction];
   });
-  const sigma = SMOOTHING / STEP;
+  return { times: grid, points: smoothShape(gaussian(resampled, SMOOTHING / STEP)) };
+}
+
+// scipy's gaussian_filter1d on [x, y] points, mode "nearest", truncated at 4 SDs.
+function gaussian(values, sigma) {
   const radius = Math.floor(4 * sigma + 0.5);
   const weights = Array.from({ length: 2 * radius + 1 }, (_, k) => Math.exp(-0.5 * ((k - radius) / sigma) ** 2));
   const total = weights.reduce((a, b) => a + b, 0);
-  const points = resampled.map((_, i) => {
+  return values.map((_, i) => {
     let x = 0;
     let y = 0;
     weights.forEach((weight, k) => {
-      const [px, py] = resampled[Math.min(resampled.length - 1, Math.max(0, i + k - radius))];
+      const [px, py] = values[Math.min(values.length - 1, Math.max(0, i + k - radius))];
       x += weight * px;
       y += weight * py;
     });
     return [x / total, y / total];
   });
-  return { times: grid, points };
+}
+
+// Linear interpolation of `ys` (numbers or [x, y]) over increasing `xs` at `at`, held beyond the ends.
+function interpolate(at, xs, ys) {
+  let j = 1;
+  return at.map((a) => {
+    if (a <= xs[0]) return ys[0];
+    if (a >= xs[xs.length - 1]) return ys[ys.length - 1];
+    while (xs[j] < a) j++;
+    const part = (a - xs[j - 1]) / (xs[j] - xs[j - 1]);
+    return [0, 1].map((k) => ys[j - 1][k] + (ys[j][k] - ys[j - 1][k]) * part);
+  });
+}
+
+// Each point moved to a Gaussian average of the path around it, 15 cm wide
+// along it, at the same distance along the path (sonore_sketch.paths.smooth_shape).
+function smoothShape(points) {
+  const along = distances(points);
+  const length = along[along.length - 1];
+  if (!(length > 0)) return points;
+  const grid = [];
+  for (let i = 0; i * SHAPE_STEP < length + SHAPE_STEP / 2; i++) grid.push(i * SHAPE_STEP);
+  const even = interpolate(grid, along, points);
+  // mirrored through each end point, so a straight end stays where it was drawn
+  const pad = Math.min(even.length - 1, Math.floor((4 * SHAPE_SMOOTHING) / SHAPE_STEP + 0.5));
+  const mirror = (end, k) => [2 * end[0] - even[k][0], 2 * end[1] - even[k][1]];
+  const before = Array.from({ length: pad }, (_, i) => mirror(even[0], pad - i));
+  const after = Array.from({ length: pad }, (_, i) => mirror(even[even.length - 1], even.length - 2 - i));
+  const shape = gaussian([...before, ...even, ...after], SHAPE_SMOOTHING / SHAPE_STEP).slice(pad, pad + even.length);
+  return interpolate(along, grid, shape);
+
 }
 
 // Each point's distance along the path from its start, in meters.

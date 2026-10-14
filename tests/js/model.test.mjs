@@ -219,3 +219,12 @@ test("drawing frication turns the parallel formants on only when they are all of
   // The example already has its /s/ settings.
   assert.equal(withFrication(defaultDocument()).params.A4, 34);
 });
+
+test("a freehand stroke drawn back over itself keeps only the newer pass", async () => {
+  const { extendStroke } = await import("../../app/tracks/model.js");
+  const stroke = [];
+  for (const t of [0, 1, 2, 3, 4, 5]) extendStroke(stroke, [t, 10]); // forward at 10
+  for (const t of [4.5, 3.5, 2.5]) extendStroke(stroke, [t, 20]); // back to 2.5 at 20
+  const sorted = [...stroke].sort((a, b) => a[0] - b[0]);
+  assert.deepEqual(sorted, [[0, 10], [1, 10], [2, 10], [2.5, 20], [3.5, 20], [4.5, 20], [5, 10]]);
+});

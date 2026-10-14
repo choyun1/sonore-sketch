@@ -21,7 +21,7 @@ import {
   pointerPosition,
   soundSeconds,
 } from "../plot.js";
-import { replaceSpan, simplify } from "../tracks/model.js";
+import { extendStroke, replaceSpan, simplify } from "../tracks/model.js";
 import {
   DEFAULT_RATE,
   EVENTS,
@@ -169,7 +169,7 @@ export function createEventsTab(root, { commit }) {
   track.addEventListener("pointermove", (event) => {
     if (!drawing) return;
     const moves = event.getCoalescedEvents?.() ?? [];
-    for (const move of moves.length ? moves : [event]) drawing.push(fromTrack(move));
+    for (const move of moves.length ? moves : [event]) extendStroke(drawing, fromTrack(move));
     renderTrack();
   });
   function finishStroke(event) {

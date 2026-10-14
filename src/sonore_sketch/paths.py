@@ -55,6 +55,8 @@ MAX_POINTS = 20000  # a stroke of 10 s at 120 events a second is 1200
 SLOWEST = 1 / 20  # of the speed track's fastest (W8)
 STEP = 0.01  # s, the spacing the stroke is put on before smoothing (W3)
 SMOOTHING = 0.03  # s, the Gaussian's standard deviation (W3)
+SHAPE_SMOOTHING = 0.15  # m, a second Gaussian along the path, for the hand's wobble
+SHAPE_STEP = 0.01  # m, the spacing the path is put on for it
 HRIR_FILE = Path(__file__).resolve().parent / "data" / "mit_kemar.npz"
 
 
@@ -99,7 +101,10 @@ def check(state: Mapping[str, Any]) -> None:
 
 def smoothed(stroke: list[list[float]]) -> tuple[np.ndarray, np.ndarray]:
     """The stroke put every ``STEP`` seconds and smoothed with a Gaussian of
-    ``SMOOTHING`` seconds (W3): its times from 0 and its (x, y) points."""
+    ``SMOOTHING`` seconds (W3), which takes out the pointer's steps, then its
+    shape smoothed along the path with a Gaussian of ``SHAPE_SMOOTHING``
+    meters, which takes out the hand's wobble and leaves each point's time:
+    its times from 0 and its (x, y) points."""
     drawn = np.asarray(stroke, dtype=float)
     times = drawn[:, 0] - drawn[0, 0]
     if times[-1] <= 0:
@@ -109,7 +114,23 @@ def smoothed(stroke: list[list[float]]) -> tuple[np.ndarray, np.ndarray]:
     times, points = times[keep], drawn[keep, 1:]
     grid = np.arange(0.0, times[-1] + STEP / 2, STEP)
     resampled = np.column_stack([np.interp(grid, times, points[:, k]) for k in range(2)])
-    return grid, gaussian_filter1d(resampled, SMOOTHING / STEP, axis=0, mode="nearest")
+    return grid, smooth_shape(gaussian_filter1d(resampled, SMOOTHING / STEP, axis=0, mode="nearest"))
+
+
+def smooth_shape(points: np.ndarray) -> np.ndarray:
+    """``points`` moved to a Gaussian average of the path around them,
+    ``SHAPE_SMOOTHING`` meters wide along it, each at the same distance
+    along the path as before."""
+    along = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))])
+    if not along[-1] > 0:
+        return points
+    grid = np.arange(0.0, along[-1] + SHAPE_STEP / 2, SHAPE_STEP)
+    even = np.column_stack([np.interp(grid, along, points[:, k]) for k in range(2)])
+    # mirrored through each end point, so a straight end stays where it was drawn
+    pad = min(len(even) - 1, int(4 * SHAPE_SMOOTHING / SHAPE_STEP + 0.5))
+    padded = np.concatenate([2 * even[0] - even[pad:0:-1], even, 2 * even[-1] - even[-2 : -2 - pad : -1]])
+    shape = gaussian_filter1d(padded, SHAPE_SMOOTHING / SHAPE_STEP, axis=0, mode="nearest")[pad : pad + len(even)]
+    return np.column_stack([np.interp(along, grid, shape[:, k]) for k in range(2)])
 
 
 def speed_times(state: Mapping[str, Any], points: np.ndarray) -> np.ndarray | None:

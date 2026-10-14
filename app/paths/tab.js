@@ -15,7 +15,7 @@
 // three.
 
 import { drawAxisName, drawBorder, drawPlayhead, drawTimeTicks, drawValueTicks, fitCanvasInCssPixels, pointerPosition } from "../plot.js";
-import { replaceSpan, simplify } from "../tracks/model.js";
+import { extendStroke, replaceSpan, simplify } from "../tracks/model.js";
 import {
   ELEVATION_RANGE,
   HALF_WIDTH,
@@ -219,7 +219,10 @@ export function createPathsTab(root, { commit, hasRecording }) {
     context.textAlign = "right";
     context.fillText("right", plot.width - 4, cy);
 
-    const shown = drawing ?? state?.stroke ?? [];
+    // while drawing, the pointer's own positions; after, the path as it is
+    // heard, smoothed with the same 30 ms Gaussian, which takes out the
+    // steps the pointer's events make
+    const shown = drawing ?? path?.points.map(([x, y]) => [0, x, y]) ?? [];
     drawStroke(context, plot, shown, accent, 2.5);
     if (!shown.length) {
       context.fillStyle = muted;
@@ -357,7 +360,7 @@ export function createPathsTab(root, { commit, hasRecording }) {
       return;
     }
     const moves = event.getCoalescedEvents?.() ?? [];
-    for (const move of moves.length ? moves : [event]) shaping.push(fromSpeed(move));
+    for (const move of moves.length ? moves : [event]) extendStroke(shaping, fromSpeed(move));
     renderSpeed();
     renderTop();
   });
@@ -430,7 +433,7 @@ export function createPathsTab(root, { commit, hasRecording }) {
   track.addEventListener("pointermove", (event) => {
     if (!lifting) return;
     const moves = event.getCoalescedEvents?.() ?? [];
-    for (const move of moves.length ? moves : [event]) lifting.push(fromTrack(move));
+    for (const move of moves.length ? moves : [event]) extendStroke(lifting, fromTrack(move));
     renderTrack();
   });
   function finishLift(event) {
