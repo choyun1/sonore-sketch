@@ -1,4 +1,4 @@
-"""Take the README's screenshots: Draw speech, Draw spectrogram and Draw modulation.
+"""Take the README's screenshots: Draw speech, Draw spectrogram and Draw path.
 
 Each tab is shown as it opens (its example), 1280 × 823, with the local
 engine, and saved to docs/screenshots/. Retake them when the header, the
@@ -24,7 +24,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTLE_S = 12
-SHOTS = {"tracks": "draw-speech.png", "painted": "draw-spectrogram.png", "blobs": "draw-modulation.png"}
+SHOTS = {"tracks": "draw-speech.png", "painted": "draw-spectrogram.png", "paths": "draw-path.png"}
 
 
 def free_port() -> int:
