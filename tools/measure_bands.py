@@ -1,15 +1,15 @@
 """Measure band-limiting the Draw modulation tab's sound (docs/design/tabs/bands.md).
 
 This script runs sonore to measure it; it is not an independent check. A
-band is a centre-frequency track (breakpoints in time) and a width in
-octaves; its gain is 1 within half the width of the centre, falls along a
+band is a center-frequency track (breakpoints in time) and a width in
+octaves; its gain is 1 within half the width of the center, falls along a
 raised-cosine skirt and reaches a floor of -60 dB. Several bands combine by
 taking the largest gain. Three routes put the gain on the sound:
 
 * ``envelopes``: multiply each carrier band's envelope by the gain at its
-  centre before the carrier goes under it (the tones route of
+  center before the carrier goes under it (the tones route of
   ``ModulationSpectrum.to_sound``, written out here);
-* ``subbands``: synthesize as now, analyse the result with the same cosine
+* ``subbands``: synthesize as now, analyze the result with the same cosine
   filterbank, and apply a ``so.Mask`` to the subbands;
 * ``stft``: the same with a 20 ms STFT and a gain per bin.
 
@@ -23,7 +23,7 @@ The script prints:
    and a band gliding 1 octave per second.
 3. Speed: plain synthesis, the envelopes route (synthesis included) and
    what the subbands and stft routes add, at 3 and 10 s.
-4. The measured plane analysed within the bands, against the whole range.
+4. The measured plane analyzed within the bands, against the whole range.
 
     python tools/measure_bands.py
 """
@@ -43,17 +43,17 @@ BLOBS = [so.ModulationBlob(4.0, 0.0), so.ModulationBlob(8.0, 1.0, level=-3.0)]
 WARM_REPEATS = 3
 
 
-def gain(freqs, centre, width, skirt=SKIRT):
-    """Amplitude gain of one band at ``freqs`` (any shape) around ``centre``
+def gain(freqs, center, width, skirt=SKIRT):
+    """Amplitude gain of one band at ``freqs`` (any shape) around ``center``
     (broadcast against it), ``width`` octaves of flat top."""
-    distance = np.abs(np.log2(np.maximum(freqs, 1e-3) / centre)) - width / 2
+    distance = np.abs(np.log2(np.maximum(freqs, 1e-3) / center)) - width / 2
     floor = 10 ** (FLOOR_DB / 20)
     edge = np.clip(distance / skirt, 0, 1)
     return floor + (1 - floor) * 0.5 * (1 + np.cos(np.pi * edge))
 
 
-def centres(track, t):
-    """The centre track (list of (time, Hz)) at times ``t``, interpolated in
+def centers(track, t):
+    """The center track (list of (time, Hz)) at times ``t``, interpolated in
     log frequency and held at the ends."""
     times, hz = zip(*track)
     return 2 ** np.interp(t, times, np.log2(hz))
@@ -61,7 +61,7 @@ def centres(track, t):
 
 def band_gain(bands, freqs, t):
     """Largest gain over ``bands`` (list of (track, width)), shape (len(t), len(freqs))."""
-    return np.max([gain(freqs[None, :], centres(track, t)[:, None], width) for track, width in bands], axis=0)
+    return np.max([gain(freqs[None, :], centers(track, t)[:, None], width) for track, width in bands], axis=0)
 
 
 def target(duration):
@@ -130,9 +130,9 @@ def long_term_db(sound):
     return bank.cfs, 10 * np.log10(np.mean(env**2, axis=0) + 1e-20)
 
 
-def rejection(sound, centre, width):
+def rejection(sound, center, width):
     cfs, level = long_term_db(sound)
-    distance = np.abs(np.log2(cfs / centre))
+    distance = np.abs(np.log2(cfs / center))
     inside = distance <= width / 2
     outside = distance >= width / 2 + 0.5
     lin = 10 ** (level / 10)
@@ -214,7 +214,7 @@ for name, bands in {
     inside = near & (drawn.level >= drawn.level[near].max() - 6)
     outside = near & (drawn.level <= drawn.level[near].max() - 30)
     cells = []
-    for analysed in ({**state, "bands": []}, state):
-        power = 10 ** (tab.measured(sound, analysed).level / 10)
+    for analyzed in ({**state, "bands": []}, state):
+        power = 10 ** (tab.measured(sound, analyzed).level / 10)
         cells.append(10 * np.log10(power[inside].mean() / power[outside].mean()))
     print(f"  {name:<28s} whole range {cells[0]:5.1f} dB, within the bands {cells[1]:5.1f} dB")

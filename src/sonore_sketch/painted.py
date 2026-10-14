@@ -12,7 +12,7 @@ A painting is a grid of levels over time and log-frequency
 time 0, row after row. A byte is the cell's level in dB below 0 dB: 0 is
 0 dB and ``-floor_db`` (or more) is silence. Rows are equal steps in octaves
 and columns equal fractions of the duration, so a painting stretches with
-the duration. Between cell centres the envelope is read bilinearly, in
+the duration. Between cell centers the envelope is read bilinearly, in
 amplitude, and the result is ``so.ripple_sound``'s, normalized to RMS 1.
 """
 
@@ -92,7 +92,7 @@ def encode_levels(levels_db: np.ndarray, floor_db: float = -60) -> str:
 
 def pattern(state: Mapping[str, Any]):
     """``pattern(t, x)`` for ``so.ripple_sound``: the painting read
-    bilinearly between cell centres (held beyond the outer ones), as an
+    bilinearly between cell centers (held beyond the outer ones), as an
     amplitude, for ``t`` in seconds and ``x`` in octaves above ``f_lo``."""
     amplitude = 10 ** (levels(state) / 20)  # -inf dB -> 0
     n_rows, n_columns = amplitude.shape

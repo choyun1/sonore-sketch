@@ -46,7 +46,7 @@ test("a downward-sweep cut is the right side above density 0", () => {
   assert.equal(bytes[0 * COLUMNS + COLUMNS - 1], 0); // density 0 has no direction
   assert.equal(bytes[5 * COLUMNS + COLUMNS - 1], 60);
   assert.equal(bytes[5 * COLUMNS + 0], 0);
-  assert.equal(bytes[5 * COLUMNS + SIDE], 0); // the centre strip
+  assert.equal(bytes[5 * COLUMNS + SIDE], 0); // the center strip
 });
 
 test("the page carries the edit section, with the source's drawing in its state", () => {

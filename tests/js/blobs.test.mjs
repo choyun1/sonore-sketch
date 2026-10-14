@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import {
-  bandCentre,
+  bandCenter,
   check,
   clampRate,
   defaultSection,
@@ -82,11 +82,11 @@ test("the page keeps the blobs in their own section, and old pages gain it", () 
 
 // --- bands (docs/design/tabs/bands.md) ---------------------------------------------
 
-test("a band's centre is its points, interpolated in log frequency and held past its ends", () => {
+test("a band's center is its points, interpolated in log frequency and held past its ends", () => {
   const points = [[0.2, 500], [0.6, 2000]];
-  assert.equal(bandCentre(points, 0), 500);
-  assert.ok(Math.abs(bandCentre(points, 0.4) - 1000) < 1e-9);
-  assert.equal(bandCentre(points, 1), 2000);
+  assert.equal(bandCenter(points, 0), 500);
+  assert.ok(Math.abs(bandCenter(points, 0.4) - 1000) < 1e-9);
+  assert.equal(bandCenter(points, 1), 2000);
 });
 
 test("a new band goes where no band is, flat across the page", () => {

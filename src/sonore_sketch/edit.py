@@ -1,6 +1,6 @@
 """The Erase modulation tab's state, and the sound it describes.
 
-Take a sound, analyse its modulation spectrum, cut parts of it with a mask
+Take a sound, analyze its modulation spectrum, cut parts of it with a mask
 painted on rate x density, and hear the sound rebuilt from what is left
 (docs/design/tabs/edit.md)::
 
@@ -15,7 +15,7 @@ The source (E1) is a Klatt syllable train made here at the page's duration,
 the Draw speech tab's sound, or a recording opened in the page. The mask (E4) is
 a grid of cuts in dB, one byte a cell like the Draw spectrogram tab's painting:
 0 keeps a cell, ``-floor_db`` and more removes it. Its columns are 16 per
-octave of rate from 1 to 64 Hz on each side of the plane plus one centre
+octave of rate from 1 to 64 Hz on each side of the plane plus one center
 column for |rate| < 1 Hz (the static spectral shape); its rows are density
 from 0 to 6 cyc/oct in steps of 0.125. The sound is
 ``ModulationSpectrum.octave(source).with_gain(mask).to_sound(carrier, iterations)``.
@@ -46,7 +46,7 @@ MAX_ITERATIONS = 20  # E5
 RATE_MIN, RATE_MAX = 1.0, 64.0  # the plane's rate axis on each side (E2, as blobs.md B1)
 COLUMNS_PER_OCTAVE = 16
 SIDE = COLUMNS_PER_OCTAVE * round(math.log2(RATE_MAX / RATE_MIN))  # 96 columns a side
-COLUMNS = 2 * SIDE + 1  # and the centre column (E4)
+COLUMNS = 2 * SIDE + 1  # and the center column (E4)
 DENSITY_STEP = 0.125
 ROWS = 48  # density 0 to 6 cyc/oct
 FLOOR_DB = -60.0  # a cut this deep removes the cell (E3)
@@ -106,7 +106,7 @@ def encode(cut_db: np.ndarray) -> str:
 
 
 def column_rates() -> np.ndarray:
-    """Each column's centre rate [Hz]: negative side, centre (0), positive side."""
+    """Each column's center rate [Hz]: negative side, center (0), positive side."""
     side = RATE_MIN * 2 ** ((np.arange(SIDE) + 0.5) / COLUMNS_PER_OCTAVE)
     return np.concatenate([-side[::-1], [0.0], side])
 
@@ -135,7 +135,7 @@ def gain(state: Mapping[str, Any]):
     """``g(rate, density)`` for ``with_gain``: the mask read bilinearly in dB
     at each cell (E4), as an amplitude gain. A cell at negative density reads
     the mask at (-rate, -density), its mirror image, where the plane shows
-    it; rates under 1 Hz read the centre column, and the axes hold their
+    it; rates under 1 Hz read the center column, and the axes hold their
     ends beyond the plane."""
     cut = cuts(state)
     span = math.log2(RATE_MAX / RATE_MIN)
@@ -155,8 +155,8 @@ def gain(state: Mapping[str, Any]):
         c1 = np.where(rate > 0, np.minimum(c0 + 1, COLUMNS - 1), np.minimum(c0 + 1, SIDE - 1))
         wc = column - c0
         db = (1 - wr) * ((1 - wc) * cut[r0, c0] + wc * cut[r0, c1]) + wr * ((1 - wc) * cut[r1, c0] + wc * cut[r1, c1])
-        centre = (1 - wr) * cut[r0, SIDE] + wr * cut[r1, SIDE]
-        db = np.where(np.abs(rate) < RATE_MIN, centre, db)
+        center = (1 - wr) * cut[r0, SIDE] + wr * cut[r1, SIDE]
+        db = np.where(np.abs(rate) < RATE_MIN, center, db)
         return np.where(db >= -FLOOR_DB - 1e-9, 0.0, 10 ** (-db / 20))
 
     return g
@@ -235,7 +235,7 @@ def source(state: Mapping[str, Any], silent: str = "there is no modulation to er
 # --- the sound -------------------------------------------------------------------------
 
 
-def analyse(sound: so.Sound, state: Mapping[str, Any]) -> so.ModulationSpectrum:
+def analyze(sound: so.Sound, state: Mapping[str, Any]) -> so.ModulationSpectrum:
     """The modulation spectrum the mask is painted on (``octave``, as the
     Draw modulation tab's plane)."""
     return so.ModulationSpectrum.octave(
@@ -255,7 +255,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     total = iterations + 3
     original = source(state)
     yield 1 / total
-    spectrum = analyse(original, state)
+    spectrum = analyze(original, state)
     yield 2 / total
     edited = spectrum.with_gain(gain(state))
     carrier = state["carrier"]
@@ -309,7 +309,7 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
 def plane_picture(spectrum: so.ModulationSpectrum) -> dict[str, Any]:
     """The source's modulation spectrum on the plane (E7) as 8-bit levels,
     rows densities from 0 to 6 cyc/oct, columns rates from -64 to 64 Hz with
-    rate 0 among them (the plane's centre column), 0 at ``PICTURE_FLOOR_DB``
+    rate 0 among them (the plane's center column), 0 at ``PICTURE_FLOOR_DB``
     below the peak away from rate 0 and 255 at it."""
     rates = np.abs(spectrum.w_t) <= RATE_MAX
     densities = spectrum.w_f <= ROWS * DENSITY_STEP + 1e-9

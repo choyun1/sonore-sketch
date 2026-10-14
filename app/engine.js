@@ -104,7 +104,7 @@ function spectrogramPicture(picture) {
   return {
     data: bytesFromBase64(picture.data),
     nFreqs: picture.n_freqs,
-    nFrames: picture.n_frames,
+    nWindows: picture.n_windows,
     fMax: picture.f_max,
     tStart: picture.t_start,
     tStep: picture.t_step,

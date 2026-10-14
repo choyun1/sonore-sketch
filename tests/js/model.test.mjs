@@ -46,14 +46,14 @@ test("valueAt interpolates linearly and holds beyond the ends, as sonore does", 
   assert.equal(valueAt(pts, 1), 300);
 });
 
-test("point edits: grab within tolerance, insert in order, move between neighbours", () => {
+test("point edits: grab within tolerance, insert in order, move between neighbors", () => {
   const pts = [[0, 1], [0.2, 2], [0.4, 3]];
   assert.equal(nearestPoint(pts, 0.21, 0.02), 1);
   assert.equal(nearestPoint(pts, 0.3, 0.02), -1);
   const { pts: added, index } = insertPoint(pts, 0.3, 9);
   assert.equal(index, 2);
   assert.deepEqual(added.map(([t]) => t), [0, 0.2, 0.3, 0.4]);
-  // Kept 0.1 ms inside its neighbours: sonore needs times to increase.
+  // Kept 0.1 ms inside its neighbors: sonore needs times to increase.
   const [right] = movePoint(pts, 1, 0.9, 5)[1];
   const [left] = movePoint(pts, 1, -1, 5)[1];
   assert.ok(Math.abs(right - 0.3999) < 1e-12 && Math.abs(left - 0.0001) < 1e-12);
@@ -135,7 +135,7 @@ const increasing = (times) => times.every((t, i) => i === 0 || t > times[i - 1])
 // A falling F0 of two breakpoints, the old default.
 const twoPointF0 = () => withPoints(defaultDocument(), "F0", [[0, 125], [0.6, 95]]);
 
-test("a point dragged onto its neighbour stays just beside it", () => {
+test("a point dragged onto its neighbor stays just beside it", () => {
   const doc = twoPointF0();
   const pts = points(doc, "F0");
   const next = withPoints(doc, "F0", movePoint(pts, 1, -1, 110));

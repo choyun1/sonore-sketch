@@ -1,7 +1,7 @@
 """Draw the README's banner: sonore's logo lines beside the wordmark "sonore-sketch".
 
 It is sonore's own banner (sonore's docs/logo/make_logo.py) with the longer name, so the lines,
-colours, font and placement come from that script, and the two stay alike when sonore's logo
+colors, font and placement come from that script, and the two stay alike when sonore's logo
 changes. The wordmark is set in Spectral SemiBold (SIL Open Font License) as outlines, so the
 files need no font. Run from the repository root with sonore's script and the font file:
 

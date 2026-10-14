@@ -8,7 +8,7 @@ Sine-wave speech (Remez, Rubin, Pisoni & Carrell, 1981), as Track-Draw's
 SWSYNTH made it (Assmann et al., 1994, Equations 2 and 3): one sinusoid per
 formant track, x(i) = sum_k a_k(i) cos(theta_k(i)), with the phase
 accumulated sample by sample, theta_k(i) = theta_k(i-1) + 2 pi F_k(i) T. A
-frame below 30 Hz drops that tone. The question is whether
+time window below 30 Hz drops that tone. The question is whether
 ``so.harmonic_complex(duration, fs, (times, F_k), harmonics=[1])`` is that
 sinusoid, and what it does differently. Each line prints a measurement
 number (M1-M5, as in docs/design/tabs/tracks.md) and the value.
@@ -38,7 +38,7 @@ def interpolated(times, values, fs, duration):
 
 def accumulated_phase(frequency, fs, rule):
     """Equation 3 (each sample adds 2 pi F T: the rectangle rule) or the
-    trapezoid rule (each sample adds the mean of two neighbouring F)."""
+    trapezoid rule (each sample adds the mean of two neighboring F)."""
     if rule == "rectangle":
         steps = frequency[:-1]
     else:

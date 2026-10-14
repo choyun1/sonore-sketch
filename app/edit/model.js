@@ -5,7 +5,7 @@
 // Draw spectrogram tab stores its painting (base64 of deflated bytes, rows from
 // density 0 up): 0 keeps a cell, -floor_db (60) removes it. Its columns are
 // 16 per octave of rate from 1 to 64 Hz on each side of the plane, the
-// negative side first, with one centre column between them for |rate| < 1 Hz.
+// negative side first, with one center column between them for |rate| < 1 Hz.
 //
 // No DOM here, so this file runs under `node --test`.
 
@@ -40,7 +40,7 @@ export function defaultSection() {
 
 // --- the grid ---------------------------------------------------------------------
 
-// A column's centre rate [Hz]: the negative side, 0 for the centre column, the positive side.
+// A column's center rate [Hz]: the negative side, 0 for the center column, the positive side.
 export function columnRate(c) {
   if (c === SIDE) return 0;
   const k = c > SIDE ? c - SIDE - 1 : SIDE - 1 - c;

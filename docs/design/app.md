@@ -76,7 +76,7 @@ then the modulation spectrum (a transform of the spectrogram's envelope).
 | **Tracks** (TrackDraw) | F1–F5, F0, AV, bandwidths as tracks over time, optionally over a recording's spectrogram | `so.klatt_synthesize`; sine-wave speech by a new function (`tabs/tracks.md`, D6) | Yes |
 | **Painted spectrogram** | Level painted on time × log-frequency | `so.ripple_sound(pattern, ...)` with the painting as `pattern(t, x)` | Yes |
 | **Spectrogram mask** | A mask painted over a recording's spectrogram (erase a band, a moment, a harmonic) | `(stft * mask).to_sound()`, least squares (`GaborFrame`) | Yes |
-| **Modulation blobs** | Gaussian blobs on rate (Hz, signed) × density (cycles/octave): centre, two widths, level; carrier, depth, seed | `ModulationSpectrum.from_blobs(...).to_sound(carrier=...)` | No: on sonore's main branch, unreleased |
+| **Modulation blobs** | Gaussian blobs on rate (Hz, signed) × density (cycles/octave): center, two widths, level; carrier, depth, seed | `ModulationSpectrum.from_blobs(...).to_sound(carrier=...)` | No: on sonore's main branch, unreleased |
 | **Edit a modulation spectrum** | A gain mask painted on a recording's modulation spectrum | `spectrum.with_gain(g).to_sound(carrier=recording, iterations=n)` | No: same |
 
 Further ideas, not proposed for now: an F0 contour drawn over a recording and
@@ -192,13 +192,13 @@ Assmann et al. (1994), with "Tracks" as one tab;
 of sonore;
 (c) a name of its own, such as **Soundsketch** or **Drawn Sound**.
 For the repository: rename `choyun1/TrackDraw`, which keeps the 2016 history
-and the MIT licence with Daniel R Guest as co-author (GitHub redirects the
+and the MIT license with Daniel R Guest as co-author (GitHub redirects the
 old URL), or start a new repository and keep TrackDraw as it is.
 *Recommended:* (b), with the repository renamed. The app is sonore's views
 made drawable, so the name should point there, and renaming keeps the
 history. The Tracks tab keeps the TrackDraw name and credits Assmann et
 al. *Decided (2026-10-05):* (b), as a new repository,
-`choyun1/sonore-sketch`, which carries TrackDraw's history and licence;
+`choyun1/sonore-sketch`, which carries TrackDraw's history and license;
 `choyun1/TrackDraw` stays as it was. None of the four names (`sonore-sketch`, `soundsketch`,
 `trackdraw`, `drawn-sound`) was taken on PyPI on 2026-10-04; GitHub was not
 searched.
@@ -226,7 +226,7 @@ The Blobs and Edit tabs need `ModulationSpectrum.from_blobs`, `with_gain`
 and `to_sound`, which are on sonore's main branch but not in a release
 (sonore's CHANGELOG, "Unreleased"). The page installs sonore from PyPI with
 micropip, so those tabs need a release (0.5.0, by sonore's versioning rule
-for new behaviour).
+for new behavior).
 *Recommended:* pin `sonore>=0.5,<0.6` once 0.5.0 exists, and build Tracks,
 Painted and Mask on 0.4.0 until then. Each upgrade is a PR that bumps the
 pin and re-runs the tests comparing the app's samples with Python's.
@@ -308,7 +308,7 @@ Erase spectrogram (Mask) tab's in `tabs/mask.md`.
 
 After the decisions, each step a PR for Cho:
 
-1. Repository and name (D1): README with credits, licence, a package
+1. Repository and name (D1): README with credits, license, a package
    pinning sonore (D5), `python -m pytest` running.
 2. The shell: tabs, the duration setting, the worker with Pyodide and
    sonore, playback, the result picture, save and open, load progress

@@ -303,7 +303,7 @@ export function createPaintedTab(root, { commit, log }) {
       const moves = event.getCoalescedEvents?.() ?? [event];
       for (const move of moves.length ? moves : [event]) {
         const at = geometry().cell(...local(move));
-        for (const centre of dabsAlong(stroke.last, at, rRow, rColumn)) dabAt(centre);
+        for (const center of dabsAlong(stroke.last, at, rRow, rColumn)) dabAt(center);
         stroke.last = at;
       }
       stroke.preview = applyStroke(bytes, stroke.weights, stroke.target);

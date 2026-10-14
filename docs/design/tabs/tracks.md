@@ -60,10 +60,10 @@ Track-Draw was three MATLAB 4 programs sharing one synthesizer:
 
 - **SYNTH**: tracks drawn with the mouse on an empty time-frequency grid:
   F1–F5 in the main window, and F0, AV and B1–B5 each in a window of its own.
-  Two drawing modes: *point-draw* (left button) sets one time frame;
-  *line-draw* (right button held from one end to the other) sets every frame
+  Two drawing modes: *point-draw* (left button) sets one time window;
+  *line-draw* (right button held from one end to the other) sets every time window
   between two endpoints by linear interpolation; the middle button (or
-  Escape) ends drawing. Frames are 5 ms (`nmspf`, changeable). Buttons
+  Escape) ends drawing. Time windows are 5 ms (`nmspf`, changeable). Buttons
   for track selection, synthesize, play, restart and exit. Synthesis shows a
   "schematic spectrogram" as it runs, then the waveform. A command-line mode
   scales or shifts tracks (formants scaled, F0 up an octave) and changes the
@@ -75,7 +75,7 @@ Track-Draw was three MATLAB 4 programs sharing one synthesizer:
   the synthesis. With no input, a 200 ms neutral vowel.
 - **SWSYNTH**: as SPECSYNTH, but sine-wave speech (Remez, Rubin, Pisoni &
   Carrell, 1981): one FM and AM sinusoid per formant, at the formant's
-  frequency, with amplitude |S(F_k)|. A frame set below 30 Hz drops that
+  frequency, with amplitude |S(F_k)|. A time window set below 30 Hz drops that
   tone, so a single glissando is possible.
 
 Synthesis is a frequency-domain Klatt cascade for voiced speech only
@@ -88,7 +88,7 @@ S(f) = G(f) V(f) R(f); G a resonator at 0 Hz, 100 Hz wide; R lip radiation,
 
 `choyun1/TrackDraw` (the history of this repository, removed from its tree
 on 2026-10-05; Adrian Y. Cho and Daniel R Guest, MIT
-licence, last commit July 2016) has about 1,000 lines of Python: PyQt5 and
+license, last commit July 2016) has about 1,000 lines of Python: PyQt5 and
 matplotlib in a model/view/controller split, its own Klatt resonators, a
 temporary sine-wave synthesizer (`controller/synth/sine.py`), and 40 fixed
 points per track that are edited by clicking near a point and dragging. The
@@ -136,9 +136,9 @@ B1–B5 tracks still set the relative tone levels, and a sine-wave mode should
 compute levels from the full parameter set, not from formant frequencies
 alone.
 
-**C3. Breakpoints stretch exactly; splined frames overshoot.** [check] A
+**C3. Breakpoints stretch exactly; splined time windows overshoot.** [check] A
 line-drawn F2 transition (1200 Hz held, 40 ms up to 1700 Hz, held), sampled
-in 5 ms frames and stretched ×1.5 with a not-a-knot cubic spline (MATLAB's
+in 5 ms time windows and stretched ×1.5 with a not-a-knot cubic spline (MATLAB's
 `spline`; the paper does not say which spline), overshoots 1700 Hz and
 undershoots 1200 Hz by 5.3 Hz each. Scaling the breakpoint times instead
 gives the stretched line to 2e-13 Hz. A breakpoint track model (D4) makes
@@ -169,11 +169,11 @@ therefore needs either one call returning all tones with their levels, or a
 small function of its own (D6).
 
 **M4. sonore drops a tone where the track is 0, not below 30 Hz, and a
-single 0 reaches halfway to its neighbours.** [measure] A breakpoint at
+single 0 reaches halfway to its neighbors.** [measure] A breakpoint at
 0 Hz silences the tone (RMS 0 around it); one at 20 Hz still sounds (RMS
 1.07), where the paper's rule would drop it. With voiced breakpoints 0.1 s
 either side, a single 0 breakpoint silences 0.095 s: from halfway to each
-neighbour, less the 5 ms ramps. For drawing, "no tone here" is better stored
+neighbor, less the 5 ms ramps. For drawing, "no tone here" is better stored
 as an explicit gap (two breakpoints bounding it) than as a value (D4).
 
 **M5. Synthesis speed, native Python.** [measure] `so.klatt_synthesize` at
@@ -331,14 +331,14 @@ nearly free, and /s/ or /h/ is the first thing users will try to draw.
 
 **D4. Track model.**
 (a) sparse breakpoints per parameter (sonore's `(times, values)`); (b) fixed
-frames every 5 ms, as in the paper and the 2016 code (40 points).
-The case for (b): the paper's point-draw sets exactly one frame, edits are
-always local, and Klatt's own tables are 5 ms frames. For (a): what is drawn
+time windows every 5 ms, as in the paper and the 2016 code (40 points).
+The case for (b): the paper's point-draw sets exactly one time window, edits are
+always local, and Klatt's own tables are 5 ms time windows. For (a): what is drawn
 is what is stored, files are small and readable, duration change is exact
 (C3), and sonore takes it as-is.
 *Recommended:* (a). Point adds or moves a breakpoint, line and freehand
 replace a span. sonore interpolates linearly while the paper splined
-frames when stretching; with breakpoints there is nothing to spline. Gaps
+time windows when stretching; with breakpoints there is nothing to spline. Gaps
 are explicit pairs of zeros (M4).
 
 **D5. File format.**

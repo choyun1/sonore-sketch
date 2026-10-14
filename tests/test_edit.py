@@ -20,7 +20,7 @@ def band_power(spectrum, rates, densities=(0, 4)):
 
 
 def test_the_grid_is_the_designs():
-    # edit.md, E4: 16 columns an octave each side from 1 to 64 Hz, a centre column, 0-6 cyc/oct in 0.125 steps
+    # edit.md, E4: 16 columns an octave each side from 1 to 64 Hz, a center column, 0-6 cyc/oct in 0.125 steps
     rates = edit.column_rates()
     assert rates.size == 193 and rates[96] == 0
     assert rates[97] == pytest.approx(2 ** (0.5 / 16)) and rates[-1] == pytest.approx(64 * 2 ** (-0.5 / 16))
@@ -49,7 +49,7 @@ def test_keeping_slow_rates_removes_the_fast_ones():
     # E-M3: removing every rate above 4 Hz leaves much less power at 6-40 Hz
     state = {**STATE, "duration": 2.0, "iterations": 5}
     sound, spectrum = _run(state)
-    assert band_power(spectrum, (6, 40)) - band_power(edit.analyse(sound, state), (6, 40)) > 8
+    assert band_power(spectrum, (6, 40)) - band_power(edit.analyze(sound, state), (6, 40)) > 8
 
 
 def test_doing_nothing_gives_the_source_back():

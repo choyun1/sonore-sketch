@@ -79,14 +79,14 @@ def synthesize(document: Mapping[str, Any], tab: str | None = None) -> so.Sound:
 # (docs/design/tabs/tracks.md, "What sonore provides").
 WINDOW_S = 0.005
 N_FFT = 512
-MAX_FRAMES = 1200
+MAX_WINDOWS = 1200
 FLOOR_DB = -70.0
 
 
 def spectrogram(sound: so.Sound) -> dict[str, Any]:
     """A wideband spectrogram of ``sound`` as 8-bit levels, 0 at ``FLOOR_DB``
     below the loudest cell and 255 at it, frequency rows from 0 Hz up."""
-    hop = max(0.001, sound.duration / MAX_FRAMES)
+    hop = max(0.001, sound.duration / MAX_WINDOWS)
     stft = so.GaborFrame(WINDOW_S, hop, n_fft=N_FFT).analyze(sound.mono())
     magnitude = np.abs(stft.data[0])
     level = 20 * np.log10(np.maximum(magnitude, 1e-12) / max(magnitude.max(), 1e-12))
@@ -94,7 +94,7 @@ def spectrogram(sound: so.Sound) -> dict[str, Any]:
     return {
         "data": np.ascontiguousarray(scaled, dtype=np.uint8).tobytes(),
         "n_freqs": int(magnitude.shape[0]),
-        "n_frames": int(magnitude.shape[1]),
+        "n_windows": int(magnitude.shape[1]),
         "f_max": float(stft.f[-1]),
         "t_start": float(stft.t[0]),
         "t_step": float(stft.t[1] - stft.t[0]) if stft.t.size > 1 else hop,
@@ -169,7 +169,7 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
         result["modulation"] = blobs.measured_picture(blobs.measured(sound, request["state"]))
     if tab == "edit":  # the source's modulation spectrum and the result's, on the plane (edit.md, E7, E9)
         result["source_modulation"] = edit.plane_picture(original)
-        result["modulation"] = edit.plane_picture(edit.analyse(sound, request["state"]))
+        result["modulation"] = edit.plane_picture(edit.analyze(sound, request["state"]))
         result["clipped"] = clipped
     if tab == "mask":  # the source's and the result's spectrograms in the mask's own STFT (mask.md)
         result["source_stft"], result["result_stft"] = mask.pictures(source_stft, result_stft)

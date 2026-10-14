@@ -14,7 +14,7 @@ prints:
    band outside the painted time, from the sound's own spectrum.
 3. One harmonic: the 10th harmonic (1000 Hz) of a 100 Hz harmonic complex
    painted at -60 dB over the whole sound, the band 970-1030 Hz; its level
-   in the result relative to its neighbours' (900 and 1100 Hz).
+   in the result relative to its neighbors' (900 and 1100 Hz).
 4. Link size: a 256 x 256 mask quantized to whole dB, deflated and
    base64-encoded, blank and with a band and a harmonic erased.
 
@@ -38,11 +38,11 @@ WARM_REPEATS = 3
 
 def mask_values(grid_db, stft, duration):
     """The grid read bilinearly at each coefficient's (f, t), as gains, held
-    beyond the outer cell centres; shape (freqs, frames)."""
+    beyond the outer cell centers; shape (freqs, time windows)."""
     fc = (np.arange(N_ROWS) + 0.5) / N_ROWS * FS / 2
     tc = (np.arange(N_COLUMNS) + 0.5) / N_COLUMNS * duration
     gain = np.where(grid_db <= FLOOR_DB, 0.0, 10 ** (grid_db / 20))
-    along_time = np.stack([np.interp(stft.t, tc, r) for r in gain])  # rows x frames
+    along_time = np.stack([np.interp(stft.t, tc, r) for r in gain])  # rows x time windows
     return np.stack([np.interp(stft.f, fc, along_time[:, j]) for j in range(len(stft.t))], axis=1)
 
 
@@ -60,7 +60,7 @@ def level_db(sound, f_lo, f_hi, t_lo, t_hi):
 
 
 def rows(f_lo, f_hi):
-    """The rows whose centres lie in [f_lo, f_hi)."""
+    """The rows whose centers lie in [f_lo, f_hi)."""
     fc = (np.arange(N_ROWS) + 0.5) / N_ROWS * FS / 2
     return (fc >= f_lo) & (fc < f_hi)
 
@@ -109,8 +109,8 @@ for name, win in WINDOWS.items():
     grid[rows(970, 1030)] = FLOOR_DB
     out = masked(grid, complex_tone, win)
     target = level_db(out, 990, 1010, 0.2, 0.8)
-    neighbours = (level_db(out, 890, 910, 0.2, 0.8) + level_db(out, 1090, 1110, 0.2, 0.8)) / 2
-    print(f"  {name:<7s} the 10th harmonic is {target - neighbours:6.1f} dB against its neighbours")
+    neighbors = (level_db(out, 890, 910, 0.2, 0.8) + level_db(out, 1090, 1110, 0.2, 0.8)) / 2
+    print(f"  {name:<7s} the 10th harmonic is {target - neighbors:6.1f} dB against its neighbors")
 
 print("\n4. link size (base64 of the deflated whole-dB mask)")
 blank = np.zeros((N_ROWS, N_COLUMNS))

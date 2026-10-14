@@ -86,12 +86,12 @@ def test_page_result_holds_the_samples_and_a_picture():
     np.testing.assert_allclose(samples, tracks.synthesize(DOCUMENT).data[:, 0], rtol=1e-6, atol=1e-6)
     assert result["fs"] == 16000
     picture = result["spectrogram"]
-    levels = np.frombuffer(picture["data"], dtype=np.uint8).reshape(picture["n_freqs"], picture["n_frames"])
+    levels = np.frombuffer(picture["data"], dtype=np.uint8).reshape(picture["n_freqs"], picture["n_windows"])
     assert levels.max() == 255
     assert picture["f_max"] == 8000
-    # Voicing is off at the ends (AV 0 dB), so the loudest frames are inside.
+    # Voicing is off at the ends (AV 0 dB), so the loudest time windows are inside.
     loudness = levels.astype(float).mean(axis=0)
-    middle = slice(picture["n_frames"] // 4, 3 * picture["n_frames"] // 4)
+    middle = slice(picture["n_windows"] // 4, 3 * picture["n_windows"] // 4)
     assert loudness[middle].mean() > loudness[:5].mean()
 
 

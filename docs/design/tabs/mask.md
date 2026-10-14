@@ -21,7 +21,7 @@ drafted by Claude (Claude Code), for Cho to review.
 
 Erasing part of a spectrogram and hearing the result is the most direct
 demonstration of what a spectrogram is, and of its limits: a short-time
-Fourier transform cannot be edited freely, because neighbouring
+Fourier transform cannot be edited freely, because neighboring
 coefficients overlap, so the sound that comes back is the closest sound to
 the edited picture, not the picture itself. Showing the result's own
 spectrogram under the painting makes that visible, as `../app.md` asks
@@ -40,7 +40,7 @@ source or docstrings; **[estimate]** gives its basis.
   `(stft * gains).to_sound()` the least-squares sound for masked
   coefficients [read: `STFT`'s docstring, "the least-squares signal for a
   modified one"]. `gains` may be a plain array of the coefficients' shape
-  (frequencies × frames) [measure: run in the script]. Nothing upstream is
+  (frequencies × time windows) [measure: run in the script]. Nothing upstream is
   needed.
 - `so.load(path)` reads audio files in Python, but in the browser the file
   is decoded by the browser (Web Audio's `decodeAudioData`), which reads
@@ -74,7 +74,7 @@ edges. With 32 ms the cut is what was painted.
 
 **F-M3. One harmonic can be taken out, partly.** [measure] The 10th
 harmonic (1000 Hz) of a 100 Hz complex, removed over 970–1030 Hz for the
-whole sound: −15.6 dB against its neighbours with a 32 ms window, −3.8 dB
+whole sound: −15.6 dB against its neighbors with a 32 ms window, −3.8 dB
 with 5 ms. A 32 ms Hann window's main lobe is 125 Hz wide [read: 4 bins of
 31.25 Hz], so a narrow cut leaves some of the harmonic; painting a wider
 stroke removes more [inferred, not measured].

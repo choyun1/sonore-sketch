@@ -21,19 +21,19 @@ export function drawSpectrogram(canvas, picture, duration, fTop) {
   const { width, height } = canvas;
   context.clearRect(0, 0, width, height);
   if (!picture) return;
-  const { data, nFreqs, nFrames, fMax, tStart, tStep } = picture;
+  const { data, nFreqs, nWindows, fMax, tStart, tStep } = picture;
   const image = context.createImageData(width, height);
   const [r0, g0, b0] = magma(0);
   for (let i = 0; i < image.data.length; i += 4) image.data.set([r0, g0, b0, 255], i);
   for (let x = 0; x < width; x++) {
     const t = ((x + 0.5) / width) * duration;
-    const frame = Math.round((t - tStart) / tStep);
-    if (frame < 0 || frame >= nFrames) continue;
+    const timeWindow = Math.round((t - tStart) / tStep);
+    if (timeWindow < 0 || timeWindow >= nWindows) continue;
     for (let y = 0; y < height; y++) {
       const f = (1 - (y + 0.5) / height) * fTop;
       const row = Math.round((f / fMax) * (nFreqs - 1));
       if (row < 0 || row >= nFreqs) continue;
-      const level = data[row * nFrames + frame] / 255;
+      const level = data[row * nWindows + timeWindow] / 255;
       const i = 4 * (y * width + x);
       image.data.set(magma(level), i);
       image.data[i + 3] = 255;

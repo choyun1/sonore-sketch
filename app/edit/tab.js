@@ -2,9 +2,9 @@
 // and hear what is left (docs/design/tabs/edit.md).
 //
 // The plane is the Draw modulation tab's (signed log rate, 1 to 64 Hz each side;
-// density 0 to 6 cyc/oct) with a narrow centre strip for |rate| < 1 Hz, the
+// density 0 to 6 cyc/oct) with a narrow center strip for |rate| < 1 Hz, the
 // sound's static spectral shape (E2). It shows the source's modulation
-// spectrum, analysed by Python with each sound made; the mask painted on it
+// spectrum, analyzed by Python with each sound made; the mask painted on it
 // darkens what it cuts and is outlined where the cut is deep, so the source
 // stays readable (E7). A stroke collects each cell's largest brush weight
 // and moves every cell toward the brush's cut by its weight when it ends, as
@@ -36,7 +36,7 @@ import {
 } from "./model.js";
 
 const MARGIN = { left: 52, right: 10, top: 8, bottom: 36 };
-const STRIP = 8; // half the centre strip's width, px
+const STRIP = 8; // half the center strip's width, px
 const RATE_TICKS = [1, 2, 4, 8, 16, 32, 64];
 const CACHE = 200; // decoded masks kept, so undo and redo are instant
 const OUTLINE_DB = 30; // the mask's outline runs where the cut crosses this
@@ -231,7 +231,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     const unit = (rate) => Math.min(1, Math.log2(Math.max(Math.abs(rate), RATE_MIN) / RATE_MIN) / span);
     return {
       width, height, x0, x1, y0, y1, xc, half,
-      // rates under 1 Hz sit in the centre strip
+      // rates under 1 Hz sit in the center strip
       x: (rate) => (Math.abs(rate) < RATE_MIN ? xc : rate > 0 ? xc + STRIP + unit(rate) * half : xc - STRIP - unit(rate) * half),
       y: (density) => y1 - (density / DENSITY_MAX) * (y1 - y0),
       // the rate at a pixel; the strip is |rate| < 1 Hz, shown as 0
@@ -294,12 +294,12 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       }
       for (let py = 0; py < height; py++) {
         const i = 4 * (py * width + px);
-        const colour = level[py] >= 0 ? magma(level[py]) : floor;
+        const color = level[py] >= 0 ? magma(level[py]) : floor;
         const cut = mask ? Math.min(mask[rowOf[py] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
         const keep = 1 - 0.6 * cut; // cut cells stay readable underneath
-        pixels.data[i] = colour[0] * keep;
-        pixels.data[i + 1] = colour[1] * keep;
-        pixels.data[i + 2] = colour[2] * keep;
+        pixels.data[i] = color[0] * keep;
+        pixels.data[i + 1] = color[1] * keep;
+        pixels.data[i + 2] = color[2] * keep;
         pixels.data[i + 3] = 255;
       }
     }
@@ -330,8 +330,8 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     context.stroke();
   }
 
-  // The plane's frame, gridlines and labels, as on the Draw modulation tab
-  // (`densities`: the ones labelled; `words`: the rate axis's name and directions).
+  // The plane's border, gridlines and labels, as on the Draw modulation tab
+  // (`densities`: the ones labeled; `words`: the rate axis's name and directions).
   function axes(context, target, g, densities, words) {
     const style = getComputedStyle(target);
     const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
@@ -461,7 +461,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   }
 
   // A dab of the brush at pixel `at`, weighed by distance on screen, so the
-  // wide centre strip is cut only where the circle drawn on it reaches (a
+  // wide center strip is cut only where the circle drawn on it reaches (a
   // radius in cells would be in side columns, about 6 times narrower).
   function dabAt(at) {
     const g = geometry();
@@ -474,7 +474,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     for (let c = 0; c < COLUMNS; c++) {
       const left = g.columnX(c);
       const right = c === COLUMNS - 1 ? g.x1 : g.columnX(c + 1);
-      // distance to the column: from its centre, less any width beyond a side column's
+      // distance to the column: from its center, less any width beyond a side column's
       const dx = Math.max(0, Math.abs(at[0] - (left + right) / 2) - Math.max(0, (right - left - side) / 2));
       if (dx > radius) continue;
       for (let r = r0; r <= r1; r++) {
@@ -486,7 +486,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     }
   }
 
-  // Dab centres from a to b (px), a quarter of the brush's radius apart, not including a.
+  // Dab centers from a to b (px), a quarter of the brush's radius apart, not including a.
   function dabsAlongPx(a, b) {
     const step = Math.max(1, Number(ui.size.value) / 8);
     const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
@@ -513,7 +513,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       const moves = event.getCoalescedEvents?.() ?? [event];
       for (const move of moves.length ? moves : [event]) {
         const at = local(move);
-        for (const centre of dabsAlongPx(stroke.last, at)) dabAt(centre);
+        for (const center of dabsAlongPx(stroke.last, at)) dabAt(center);
         stroke.last = at;
       }
       stroke.preview = applyCut(bytes, stroke.weights, stroke.target);
@@ -672,15 +672,15 @@ function paintLogSpectrogram(target, picture, w, h, f_lo, span, duration) {
     pixels.data[i + 3] = 255;
   }
   if (picture) {
-    const { data, nFreqs, nFrames, fMax, tStart, tStep } = picture;
+    const { data, nFreqs, nWindows, fMax, tStart, tStep } = picture;
     const bins = Int32Array.from({ length: h }, (_, py) => Math.round(((f_lo * 2 ** ((1 - (py + 0.5) / h) * span)) / fMax) * (nFreqs - 1)));
     for (let px = 0; px < w; px++) {
-      const frame = Math.round((((px + 0.5) / w) * duration - tStart) / tStep);
-      if (frame < 0 || frame >= nFrames) continue;
+      const timeWindow = Math.round((((px + 0.5) / w) * duration - tStart) / tStep);
+      if (timeWindow < 0 || timeWindow >= nWindows) continue;
       for (let py = 0; py < h; py++) {
         const bin = bins[py];
         if (bin < 0 || bin >= nFreqs) continue;
-        pixels.data.set(magma(data[bin * nFrames + frame] / 255), 4 * (py * w + px));
+        pixels.data.set(magma(data[bin * nWindows + timeWindow] / 255), 4 * (py * w + px));
       }
     }
   }

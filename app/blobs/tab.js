@@ -4,14 +4,14 @@
 // The plane shows the drawn spectrum itself, on the grid sonore puts it on
 // (rate steps of 1/duration), computed here with sonore's formula so it
 // follows a drag at once; each blob's outline (one standard deviation), its
-// centre and, for the selected blob, its two width handles go on top. An
+// center and, for the selected blob, its two width handles go on top. An
 // edit is one gesture: adding, moving or resizing a blob is committed when
 // the pointer comes up.
 //
 // The design panels come first: the plane, then the result's spectrogram
 // (the shell's 5 ms STFT) on a log-frequency axis over the carrier's bands,
 // so a blob's density shows as the slope of its stripes in octaves. The bands that confine the sound
-// (docs/design/tabs/bands.md) are drawn on it: each a centre track with
+// (docs/design/tabs/bands.md) are drawn on it: each a center track with
 // breakpoints and a strip its width wide. Drag a breakpoint to move it, click
 // a band's line to add one, drag inside a strip to move the whole band.
 // Then the result: its own modulation spectrum, measured from the sound
@@ -25,7 +25,7 @@ import {
   BAND_WIDTH_MIN,
   CARRIERS,
   MAX_BANDS,
-  bandCentre,
+  bandCenter,
   clampBandLevel,
   clampBandWidth,
   newBand,
@@ -55,7 +55,7 @@ const RATE_TICKS = [1, 2, 4, 8, 16, 32, 64];
 const BAND_TOOLS = [
   { id: "point", label: "Point", key: "p", title: "Drag a breakpoint; click a band's line to add one; drag inside a band to move it (P)" },
   { id: "line", label: "Line", key: "l", title: "Press at one end and release at the other: a straight stretch of the band (L)" },
-  { id: "freehand", label: "Freehand", key: "f", title: "Draw the band's centre; outside every band, a new band (F)" },
+  { id: "freehand", label: "Freehand", key: "f", title: "Draw the band's center; outside every band, a new band (F)" },
 ];
 
 export function createBlobsTab(root, { commit: commitDocument }) {
@@ -326,7 +326,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     };
   }
 
-  // A blob's outline in pixels: centre, the ellipse's extent, and its two handles.
+  // A blob's outline in pixels: center, the ellipse's extent, and its two handles.
   function shape(g, blob) {
     const xl = g.x(blob.rate * 2 ** -blob.rate_width);
     const xr = g.x(blob.rate * 2 ** blob.rate_width);
@@ -378,12 +378,12 @@ export function createBlobsTab(root, { commit: commitDocument }) {
       for (let py = 0; py < height; py++) {
         const i = 4 * (py * width + px);
         const j = rowCell[py];
-        let colour = floor;
+        let color = floor;
         if (column && j >= 0 && peak > 0) {
           const level = 10 * Math.log10(column[j] / peak);
-          colour = magma(Math.max(0, 1 - level / FLOOR_DB));
+          color = magma(Math.max(0, 1 - level / FLOOR_DB));
         }
-        pixels.data.set(colour, i);
+        pixels.data.set(color, i);
         pixels.data[i + 3] = column || Math.abs(g.x0 + px + 0.5 - g.xc) >= SEAM ? 255 : 0;
       }
     }
@@ -482,16 +482,16 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   }
 
   // What is under the pointer: the selected blob's handles first, then the
-  // nearest centre, then the inside of the smallest outline.
+  // nearest center, then the inside of the smallest outline.
   function pick(g, [px, py]) {
     const list = items();
     const near = (x, y) => Math.hypot(px - x, py - y) <= PICK_PX;
     if (selected !== null && list[selected]) {
       const s = shape(g, list[selected]);
-      // a handle held on the centre by the plane's edge leaves the centre to Move
-      const onCentre = (handle) => Math.hypot(handle[0] - s.cx, handle[1] - s.cy) <= PICK_PX;
-      if (near(...s.widthHandle) && !onCentre(s.widthHandle)) return { kind: "rate_width", index: selected };
-      if (near(...s.heightHandle) && !onCentre(s.heightHandle)) return { kind: "density_width", index: selected };
+      // a handle held on the center by the plane's edge leaves the center to Move
+      const onCenter = (handle) => Math.hypot(handle[0] - s.cx, handle[1] - s.cy) <= PICK_PX;
+      if (near(...s.widthHandle) && !onCenter(s.widthHandle)) return { kind: "rate_width", index: selected };
+      if (near(...s.heightHandle) && !onCenter(s.heightHandle)) return { kind: "density_width", index: selected };
     }
     let best = null;
     list.forEach((blob, index) => {
@@ -536,7 +536,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     selected = hit.index;
     focus = "blob";
     const blob = list[hit.index];
-    // a move keeps the blob's centre where it was relative to the pointer
+    // a move keeps the blob's center where it was relative to the pointer
     drag = { ...hit, items: list, added, changed: false, offset: [at[0] - g.x(blob.rate), at[1] - g.y(blob.density)] };
     showSettings();
     render();
@@ -694,15 +694,15 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     }
     const picture = sound?.spectrogram;
     if (picture) {
-      const { data, nFreqs, nFrames, fMax, tStart, tStep } = picture;
+      const { data, nFreqs, nWindows, fMax, tStart, tStep } = picture;
       const bins = Int32Array.from({ length: h }, (_, py) => Math.round(((f_lo * 2 ** ((1 - (py + 0.5) / h) * span)) / fMax) * (nFreqs - 1)));
       for (let px = 0; px < w; px++) {
-        const frame = Math.round((((px + 0.5) / w) * duration - tStart) / tStep);
-        if (frame < 0 || frame >= nFrames) continue;
+        const timeWindow = Math.round((((px + 0.5) / w) * duration - tStart) / tStep);
+        if (timeWindow < 0 || timeWindow >= nWindows) continue;
         for (let py = 0; py < h; py++) {
           const bin = bins[py];
           if (bin < 0 || bin >= nFreqs) continue;
-          pixels.data.set(magma(data[bin * nFrames + frame] / 255), 4 * (py * w + px));
+          pixels.data.set(magma(data[bin * nWindows + timeWindow] / 255), 4 * (py * w + px));
         }
       }
     }
@@ -798,12 +798,12 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   // --- the bands, on the spectrogram ---------------------------------------------------
 
-  // A band's centre in pixels along the plot, every few pixels.
+  // A band's center in pixels along the plot, every few pixels.
   function bandPath(sg, b) {
     const path = [];
     for (let px = sg.x0; px <= sg.x1 + 0.5; px += 3) {
       const t = Math.min(state.duration, ((px - sg.x0) / (sg.x1 - sg.x0)) * sg.duration);
-      path.push([Math.min(px, sg.x1), bandCentre(b.points, t)]);
+      path.push([Math.min(px, sg.x1), bandCenter(b.points, t)]);
     }
     return path;
   }
@@ -849,7 +849,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   }
 
   // What is under the pointer on the spectrogram: a breakpoint (the
-  // selected band's first), a band's centre line, or the inside of a
+  // selected band's first), a band's center line, or the inside of a
   // band's strip (the narrowest).
   function pickBand(sg, [px, py]) {
     const list = bands();
@@ -860,11 +860,11 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     }
     const t = sg.t(px);
     for (const index of order) {
-      if (Math.abs(py - sg.y(bandCentre(list[index].points, t))) <= 5) return { kind: "line", index };
+      if (Math.abs(py - sg.y(bandCenter(list[index].points, t))) <= 5) return { kind: "line", index };
     }
     let inside = null;
     list.forEach((b, index) => {
-      const octaves = Math.abs(Math.log2(sg.f(py) / bandCentre(b.points, t)));
+      const octaves = Math.abs(Math.log2(sg.f(py) / bandCenter(b.points, t)));
       if (octaves <= b.width / 2 && (!inside || b.width < list[inside.index].width)) inside = { kind: "shift", index };
     });
     return inside;
@@ -916,7 +916,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
       const t = tidyTime(sg.t(at[0]));
       const points = list[hit.index].points;
       if (!points.some(([pt]) => pt === t)) {
-        const f = tidyHz(bandCentre(points, t));
+        const f = tidyHz(bandCenter(points, t));
         point = points.findIndex(([pt]) => pt > t);
         if (point < 0) point = points.length;
         points.splice(point, 0, [t, f]);

@@ -60,9 +60,9 @@ test("a stroke paints each cell once, toward the level and never past it", () =>
 });
 
 test("dabs along a stroke are a quarter of the radius apart", () => {
-  const centres = dabsAlong([0, 0], [0, 4], 1, 1);
-  assert.equal(centres.length, 16);
-  assert.deepEqual(centres.at(-1), [0, 4]);
+  const centers = dabsAlong([0, 0], [0, 4], 1, 1);
+  assert.equal(centers.length, 16);
+  assert.deepEqual(centers.at(-1), [0, 4]);
 });
 
 test("changing the range keeps what is painted inside it", () => {

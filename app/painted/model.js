@@ -101,7 +101,7 @@ export function isSilent(bytes, section) {
 
 // --- the brush -------------------------------------------------------------------
 
-// A brush's weight at normalized distance d from its centre (1 at the rim):
+// A brush's weight at normalized distance d from its center (1 at the rim):
 // 1 inside, falling to 0 at the rim over the outer `softness` of the radius.
 export function brushWeight(d, softness) {
   if (d >= 1) return 0;
@@ -128,7 +128,7 @@ export function dab(weights, nRows, nColumns, row, column, rRow, rColumn, softne
   }
 }
 
-// Dab centres from a to b ([row, column]), `spacing` apart in the brush's own
+// Dab centers from a to b ([row, column]), `spacing` apart in the brush's own
 // normalized units, not including a (already dabbed).
 export function dabsAlong(a, b, rRow, rColumn, spacing = 0.25) {
   const distance = Math.hypot((b[0] - a[0]) / rRow, (b[1] - a[1]) / rColumn);
@@ -164,7 +164,7 @@ export function applyCut(bytes, weights, target) {
 }
 
 // The painting on a new frequency range: each new row takes the level at its
-// centre frequency on the old grid (linear in dB between old row centres);
+// center frequency on the old grid (linear in dB between old row centers);
 // rows outside the old range are silent.
 export function resampleRows(bytes, from, to) {
   const oldRows = rows(from);

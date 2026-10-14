@@ -86,17 +86,17 @@ def encode(cut_db: np.ndarray) -> str:
 
 
 def row_frequencies(fs: float) -> np.ndarray:
-    """Each row's centre frequency [Hz]: equal steps from 0 Hz to Nyquist (F4)."""
+    """Each row's center frequency [Hz]: equal steps from 0 Hz to Nyquist (F4)."""
     return (np.arange(ROWS) + 0.5) / ROWS * fs / 2
 
 
-def _weights(x: np.ndarray, centres: np.ndarray) -> np.ndarray:
-    """Linear interpolation from values at ``centres`` to ``x`` as a matrix
-    (len(x), len(centres)), holding the ends beyond the outer centres."""
-    position = np.clip(np.interp(x, centres, np.arange(centres.size)), 0, centres.size - 1)
-    i0 = np.minimum(np.floor(position).astype(int), centres.size - 2)
+def _weights(x: np.ndarray, centers: np.ndarray) -> np.ndarray:
+    """Linear interpolation from values at ``centers`` to ``x`` as a matrix
+    (len(x), len(centers)), holding the ends beyond the outer centers."""
+    position = np.clip(np.interp(x, centers, np.arange(centers.size)), 0, centers.size - 1)
+    i0 = np.minimum(np.floor(position).astype(int), centers.size - 2)
     w = position - i0
-    out = np.zeros((x.size, centres.size))
+    out = np.zeros((x.size, centers.size))
     out[np.arange(x.size), i0] = 1 - w
     out[np.arange(x.size), i0 + 1] += w
     return out
@@ -104,7 +104,7 @@ def _weights(x: np.ndarray, centres: np.ndarray) -> np.ndarray:
 
 def gains(cut_db: np.ndarray, f: np.ndarray, t: np.ndarray, span: float, fs: float) -> np.ndarray:
     """The mask read bilinearly, in amplitude, at each STFT coefficient
-    (frequencies ``f`` x frames ``t``), its columns over ``span`` seconds,
+    (frequencies ``f`` x time windows ``t``), its columns over ``span`` seconds,
     held beyond the outer ones; a removed cell is a gain of 0."""
     amplitude = np.where(cut_db >= -FLOOR_DB, 0.0, 10 ** (-cut_db / 20))
     columns = (np.arange(COLUMNS) + 0.5) / COLUMNS * span
@@ -149,14 +149,14 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
             return done.value[0]
 
 
-def pictures(source: so.STFT, result: so.STFT, max_frames: int = 1200) -> tuple[dict[str, Any], dict[str, Any]]:
+def pictures(source: so.STFT, result: so.STFT, max_windows: int = 1200) -> tuple[dict[str, Any], dict[str, Any]]:
     """The source's and the result's spectrograms (the mask's own STFT, so a
     cut shows as it was made) as 8-bit levels, rows from 0 Hz to Nyquist, 0
     at ``PICTURE_FLOOR_DB`` below the loudest of the two and 255 at it:
     both on one scale, so what was taken out is darker in the result."""
     def magnitude(stft):
         m = np.abs(stft.data[0])
-        step = max(1, math.ceil(m.shape[1] / max_frames))
+        step = max(1, math.ceil(m.shape[1] / max_windows))
         return m[:, ::step], step
 
     (a, step), (b, _) = magnitude(source), magnitude(result)
@@ -168,7 +168,7 @@ def pictures(source: so.STFT, result: so.STFT, max_frames: int = 1200) -> tuple[
         return {
             "data": np.ascontiguousarray(scaled, dtype=np.uint8).tobytes(),
             "n_freqs": int(m.shape[0]),
-            "n_frames": int(m.shape[1]),
+            "n_windows": int(m.shape[1]),
             "f_max": float(stft.f[-1]),
             "t_start": float(stft.t[0]),
             "t_step": float(stft.t[step] - stft.t[0]) if stft.t.size > step else float(stft.t[1] - stft.t[0]),

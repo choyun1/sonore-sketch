@@ -1,6 +1,6 @@
 // Matplotlib's magma colormap, which sonore's plots use for levels
 // (sonore.plotting: plot_stft, plot_modulation_spectrum), so the page's
-// pictures look like sonore's. 256 RGB colours from dark to bright, sampled
+// pictures look like sonore's. 256 RGB colors from dark to bright, sampled
 // from matplotlib 3.11 (tests/test_page.py checks the table against it).
 
 const MAGMA_HEX =
@@ -23,7 +23,7 @@ const MAGMA_HEX =
 
 export const MAGMA = Array.from({ length: 256 }, (_, i) => [0, 2, 4].map((k) => parseInt(MAGMA_HEX.substr(6 * i + k, 2), 16)));
 
-// The colour for a level from 0 (dark, quiet) to 1 (bright, loud).
+// The color for a level from 0 (dark, quiet) to 1 (bright, loud).
 export function magma(level) {
   return MAGMA[Math.round(255 * Math.min(1, Math.max(0, level)))];
 }

@@ -130,7 +130,7 @@ const TIME_STEP = 10 ** -TIME_DIGITS;
 
 // Breakpoints as sonore takes them: sorted by time, rounded, and with one
 // value per time. Where several land on the same time (a line drawn with no
-// width in time, a point dragged onto its neighbour, a stretch that shrinks
+// width in time, a point dragged onto its neighbor, a stretch that shrinks
 // two times into one), the last of them wins, so the newest edit is kept.
 export function tidyPoints(pts) {
   const sorted = pts
@@ -263,7 +263,7 @@ export function insertPoint(pts, t, v) {
   return { pts: [...pts.slice(0, index), [t, v], ...pts.slice(index)], index };
 }
 
-// Move breakpoint i, kept strictly between its neighbours in time.
+// Move breakpoint i, kept strictly between its neighbors in time.
 export function movePoint(pts, i, t, v) {
   const lo = i > 0 ? pts[i - 1][0] + TIME_STEP : 0;
   const hi = i < pts.length - 1 ? pts[i + 1][0] - TIME_STEP : Infinity;

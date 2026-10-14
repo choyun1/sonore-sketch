@@ -81,9 +81,9 @@ def test_the_page_result_holds_both_spectrograms_on_one_scale():
     result = page.handle({"tab": "mask", "state": state})
     pictures = [result["source_stft"], result["result_stft"]]
     for picture in pictures:
-        assert len(picture["data"]) == picture["n_freqs"] * picture["n_frames"]
+        assert len(picture["data"]) == picture["n_freqs"] * picture["n_windows"]
         assert picture["f_max"] == FS / 2
-    n = pictures[0]["n_frames"]
+    n = pictures[0]["n_windows"]
     source, out = (np.frombuffer(p["data"], np.uint8).reshape(-1, n).astype(float) for p in pictures)
     band = slice(80, 112)  # 2.5-3.5 kHz bins
     assert out[band].mean() < source[band].mean() - 100  # far darker: more than 30 dB down

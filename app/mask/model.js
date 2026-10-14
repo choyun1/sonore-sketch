@@ -40,7 +40,7 @@ export function isBlank(bytes) {
   return bytes.every((b) => b === 0);
 }
 
-// A row's centre frequency [Hz] at sampling rate fs.
+// A row's center frequency [Hz] at sampling rate fs.
 export const rowFrequency = (r, fs) => ((r + 0.5) / ROWS) * (fs / 2);
 
 // Sources that keep their own time when the duration changes.

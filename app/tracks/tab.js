@@ -181,7 +181,7 @@ export function createTracksTab(root, { commit }) {
     if (TRACK_TITLES[name]) button.title = `${TRACK_TITLES[name]} (${TRACK_KEY_TITLES[name]})`;
     button.style.setProperty("--track", TRACKS[name].color);
     button.style.setProperty("--track-bright", TRACKS[name].bright ?? TRACKS[name].color);
-    // The selected button is dark, so its label needs a light colour: F0 and AV have none of their own.
+    // The selected button is dark, so its label needs a light color: F0 and AV have none of their own.
     button.style.setProperty("--track-active", TRACKS[name].bright ?? "#fff");
     button.addEventListener("click", () => select(name));
     trackGroup.appendChild(button);

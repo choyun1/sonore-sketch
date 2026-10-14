@@ -196,17 +196,17 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
     for (let px = 0; px < width; px++) {
       const t = ((px + 0.5) / width) * g.duration;
       const column = Math.min(COLUMNS - 1, Math.floor(((px + 0.5) / width) * COLUMNS));
-      const frame = shown ? Math.round((t - shown.tStart) / shown.tStep) : -1;
-      const inside = shown && frame >= 0 && frame < shown.nFrames;
+      const timeWindow = shown ? Math.round((t - shown.tStart) / shown.tStep) : -1;
+      const inside = shown && timeWindow >= 0 && timeWindow < shown.nWindows;
       for (let py = 0; py < height; py++) {
         const bin = binOf[py];
-        const colour = inside && bin >= 0 && bin < shown.nFreqs ? magma(shown.data[bin * shown.nFrames + frame] / 255) : floor;
+        const color = inside && bin >= 0 && bin < shown.nFreqs ? magma(shown.data[bin * shown.nWindows + timeWindow] / 255) : floor;
         const cut = mask ? Math.min(mask[rowOf[py] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
         const keep = 1 - 0.6 * cut; // erased cells stay readable underneath
         const i = 4 * (py * width + px);
-        pixels.data[i] = colour[0] * keep;
-        pixels.data[i + 1] = colour[1] * keep;
-        pixels.data[i + 2] = colour[2] * keep;
+        pixels.data[i] = color[0] * keep;
+        pixels.data[i + 1] = color[1] * keep;
+        pixels.data[i + 2] = color[2] * keep;
         pixels.data[i + 3] = 255;
       }
     }
@@ -406,7 +406,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
       const moves = event.getCoalescedEvents?.() ?? [event];
       for (const move of moves.length ? moves : [event]) {
         const at = geometry().cell(...local(move));
-        for (const centre of dabsAlong(stroke.last, at, rRow, rColumn)) dabAt(centre);
+        for (const center of dabsAlong(stroke.last, at, rRow, rColumn)) dabAt(center);
         stroke.last = at;
       }
       stroke.preview = applyCut(bytes, stroke.weights, stroke.target);

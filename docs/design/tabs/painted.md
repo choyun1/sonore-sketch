@@ -112,9 +112,9 @@ links, so a big painting is better saved as a file (`../app.md`, D8).
 └───────────────────────────────────────────────────┴────────────────┘
 ```
 
-- The canvas shows the painting in a grey or colour scale of dB, on the
+- The canvas shows the painting in a gray or color scale of dB, on the
   same axes as the result spectrogram below it, so the two can be compared
-  by eye. Frequency is logarithmic, labelled in Hz.
+  by eye. Frequency is logarithmic, labeled in Hz.
 - Dragging paints; the brush's outline follows the pointer. Right-drag or
   the erase mode paints silence. Undo and redo take whole strokes, as
   Tracks does now.
