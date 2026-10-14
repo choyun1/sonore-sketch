@@ -70,10 +70,13 @@ async function load() {
     mark = performance.now();
   };
   progress("Loading Python (Pyodide)…");
-  // sonore_sketch's own files, fetched while Pyodide loads.
+  // sonore_sketch's own files, fetched while Pyodide loads. "no-cache" asks the
+  // server whether each file changed (a 304 when not) rather than using a copy
+  // the browser kept: GitHub Pages lets browsers keep files for 10 minutes, so
+  // just after a deploy the page's new JavaScript could run old Python.
   const sources = Promise.all(
     PYTHON_FILES.map(async (name) => {
-      const response = await fetch(new URL(`../src/sonore_sketch/${name}`, self.location));
+      const response = await fetch(new URL(`../src/sonore_sketch/${name}`, self.location), { cache: "no-cache" });
       if (!response.ok) throw new Error(`could not fetch sonore_sketch/${name}: HTTP ${response.status}`);
       return [name, await response.text()];
     }),
