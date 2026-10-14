@@ -12,6 +12,7 @@ import { encodeState, stateFromHash, tabFromHash } from "./share.js";
 import { clearTab, defaultPage, forLink, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
 import { createBlobsTab } from "./blobs/tab.js";
 import { createEditTab } from "./edit/tab.js";
+import { createEventsTab } from "./events/tab.js";
 import { createMaskTab } from "./mask/tab.js";
 import { createPaintedTab } from "./painted/tab.js";
 import { createPathsTab } from "./paths/tab.js";
@@ -135,6 +136,7 @@ const tabs = {
     log,
   }),
   paths: createPathsTab(byId("tab-paths"), { commit: commitFrom("paths"), hasRecording }),
+  events: createEventsTab(byId("tab-events"), { commit: commitFrom("events") }),
 };
 // The tab shown is not an edit (undo does not switch tabs); it is saved with
 // the document, so a link opens on the tab it was made on.

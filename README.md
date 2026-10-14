@@ -2,17 +2,18 @@
 
 [![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.7](https://img.shields.io/badge/sonore-0.7-blue)](https://pypi.org/project/sonore/) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
 
-**Draw on a picture of sound and hear the result.**
+**A visual front end for sonore's sound synthesis.**
 
 sonore-sketch gives each of [sonore](https://github.com/choyun1/sonore)'s
 routes back to sound a point-and-click surface: draw speech as formant and
 pitch tracks, draw a spectrogram with a brush or a modulation spectrum with blobs, and hear
 what sonore makes of it; or open a recording and erase parts of its
-spectrogram or its modulation spectrum. sonore does the synthesis, in your
+spectrogram or its modulation spectrum; or copy one short event at a drawn
+rate and hear separate events pile up into a texture. sonore does the synthesis, in your
 browser (Python under Pyodide); this project is only the interface.
 
-**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: six tabs, each a different
-picture of sound to draw on, with nothing to install.
+**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: seven tabs, each a different
+route to sound, with nothing to install.
 
 **[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
 that makes every sound here, can do, each sound playable next to its plots.
@@ -57,6 +58,7 @@ different sound from it.
 | **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 | **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
+| **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and how sparse each band's envelope is (sonore's texture statistics; McDermott & Simoncelli, 2011) | built |
 
 ## Using the page
 
@@ -153,6 +155,20 @@ sound that came out: its own modulation spectrum, measured, with what was
 erased outlined over it, its spectrogram and its waveform. When an edit needs
 envelopes below zero, sonore clips them and a note under the plane says how
 much. A recording is kept in saved files but never in links.
+
+**Scatter events.** Choose the **event** and its knobs: a chirp (its first
+and last frequency), a tone pip (its frequency) or a noise burst, each 10
+to 100 ms long, or an impact, a noise burst that dies away (its **Decay**)
+through a lowpass (its **Cutoff**: low for a knock, higher for a clap).
+Drag on the rate track to draw how many copies come each second, from 1
+to 1000 on a log axis; **Rate back to 10/s** makes it flat again, as does
+Clear. **Regularity** goes from random (Poisson) timing at 1 to nearly
+regular at 64, and **Level spread** and **Pitch spread** draw each copy's
+level and pitch from a normal distribution. The sliders apply when you
+let go; **New draw** hears another draw with the same settings. Under the
+spectrogram, the envelope sparsity of each band, and the same statistic
+against the rate for this event, with the sound's own value as a red dot
+while its rate is flat.
 
 ## The same sound in Python
 
@@ -328,6 +344,30 @@ share each band beat at F0 and pull the search away (K-M5b).
    cues that change most with elevation lie above 8 kHz (W-M4). It is
    played and saved in stereo, both ears at one gain.
 
+### Scatter events
+
+1. The event is made with sonore's own functions (`exponential_chirp`,
+   `pure_tone`, `gaussian_noise` under a Hann window; the impact is
+   `gaussian_noise` under an exponential decay, through a causal
+   4th-order Butterworth lowpass, `butter_filter`, so its onset stays
+   sharp). It lasts eight time constants, and at least 50 ms.
+2. sonore's `event_train` copies it. The intervals are drawn from a gamma
+   distribution with mean 1 s and shape set by Regularity, and the drawn
+   rate is `event_train`'s `rate_scale`, so the track is the rate in
+   events per second at each moment. Each copy's level (dB) and pitch
+   (cents) are drawn from normal distributions; a higher copy is also
+   shorter, as a tape played fast is. The sound is brought to one RMS, since its
+   power grows with the rate.
+3. The plots measure the sound with sonore's texture model
+   (`sonore.texture.TextureStats`) and read one of its statistics, each
+   band's envelope variance over its squared mean (McDermott & Simoncelli,
+   2011). The dashed line is Gaussian noise filtered by the event, the
+   limit as the rate grows. The curve against rate is made once for each
+   event, from 3 s renders at 1 to 1000 per second with random timing and
+   nothing spread, and averaged over the event's own bands (those within
+   10 dB of its strongest). It keeps how peaky the envelopes are and drops
+   the events' timing.
+
 ### What the Result panels measure
 
 The Result panels analyze the sound that came out the same way as the
@@ -437,7 +477,7 @@ Every tab is designed before it is built, in `docs/design/`: `app.md` for
 the page as a whole, and `tabs/` for each tab (`tracks.md` for Draw speech,
 `painted.md` for Draw spectrogram, `blobs.md` and `bands.md` for Draw modulation,
 `mask.md` for Erase spectrogram, `edit.md` for Erase modulation, `paths.md`
-for Draw path).
+for Draw path, `events.md` for Scatter events).
 Each records the measurements behind it, made by the scripts in `tools/`,
 and the decisions Cho made.
 

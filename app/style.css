@@ -314,3 +314,29 @@ canvas.measured {
 .panel svg.over-point { cursor: grab; }
 .panel.formants-hidden svg { cursor: default; }
 .panel svg.over-point:active { cursor: grabbing; }
+
+/* the Scatter events tab */
+.events-body { display: flex; gap: 12px; align-items: flex-start; }
+.events-body .side { width: 200px; }
+.events-area { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; gap: 8px; }
+.events-area canvas.stft { margin-top: 0; height: 190px; }
+canvas.rate {
+  display: block; width: 100%; height: 140px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  cursor: crosshair; touch-action: none;
+}
+.events-plots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+canvas.sparsity-bands, canvas.sparsity-rate {
+  display: block; width: 100%; height: 190px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.side .knob .knob-name { flex: 1; }
+.side .knob output { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.side .knob input[type=range] { flex-basis: 100%; }
+.side .draw, .side .flat { display: block; width: 100%; margin-top: 4px; }
+.side select.event { width: 100%; }
+@media (max-width: 720px) {
+  .events-body { flex-direction: column-reverse; }
+  .events-body .side { width: 100%; }
+  .events-plots { grid-template-columns: 1fr; }
+}

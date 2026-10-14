@@ -11,6 +11,7 @@
 //    "edit": {"source": "syllables", ..., "levels": "..."},
 //    "mask": {"source": "syllables", ..., "levels": "..."},
 //    "paths": {"source": "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0, "speed": null},
+//    "events": {"event": "chirp", ..., "rate": 10, "regularity": 1, "seed": 0},
 //    "recording": {"name": "talk.wav", "fs": 16000, "pcm16": "..."}}
 //
 // A recording opened on the Erase modulation or Erase spectrogram tab belongs
@@ -26,6 +27,7 @@
 
 import * as blobs from "./blobs/model.js";
 import * as edit from "./edit/model.js";
+import * as events from "./events/model.js";
 import * as mask from "./mask/model.js";
 import * as painted from "./painted/model.js";
 import * as paths from "./paths/model.js";
@@ -34,14 +36,14 @@ import * as tracks from "./tracks/model.js";
 
 export const APP = "sonore-sketch";
 export const VERSION = 2;
-export const TABS = ["tracks", "painted", "mask", "blobs", "edit", "paths"];
+export const TABS = ["tracks", "painted", "mask", "blobs", "edit", "paths", "events"];
 
 export function defaultPage() {
   const { sonore, duration, fs, mode, params } = tracks.defaultDocument();
   return {
     app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
     tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-    mask: mask.defaultSection(), paths: paths.defaultSection(),
+    mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(),
   };
 }
 
@@ -53,7 +55,7 @@ export function upgrade(opened) {
     return {
       app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
       tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-      mask: mask.defaultSection(), paths: paths.defaultSection(),
+      mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(),
     };
   }
   if (opened?.app !== APP || opened.version !== VERSION) {
@@ -67,6 +69,7 @@ export function upgrade(opened) {
     edit: opened.edit ?? edit.defaultSection(),
     mask: opened.mask ?? mask.defaultSection(),
     paths: opened.paths ?? paths.defaultSection(),
+    events: opened.events ?? events.defaultSection(),
   };
 }
 
@@ -83,6 +86,10 @@ export function tabState(page, tab) {
   if (tab === "blobs") {
     const { sonore, duration, fs } = page;
     return { blobs: blobs.FORMAT, sonore, duration, fs, ...page.blobs };
+  }
+  if (tab === "events") {
+    const { sonore, duration, fs } = page;
+    return { events: events.FORMAT, sonore, duration, fs, ...page.events };
   }
   if (tab === "edit" || tab === "mask" || tab === "paths") {
     // the source's own drawing goes with the state, so a change to it is heard
@@ -109,6 +116,10 @@ export function withTabState(page, tab, state) {
   if (tab === "blobs") {
     const { blobs: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
     return { ...page, blobs: section };
+  }
+  if (tab === "events") {
+    const { events: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
+    return { ...page, events: section };
   }
   if (tab === "edit" || tab === "mask" || tab === "paths") {
     const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, speech: _speech, recording: _recording, ...section } = state;
@@ -141,6 +152,7 @@ export function openDocument(opened) {
   edit.check(tabState(page, "edit"));
   mask.check(tabState(page, "mask"));
   paths.check(tabState(page, "paths"));
+  events.check(tabState(page, "events"));
   if (page.recording !== undefined) checkRecording(page.recording);
   return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "tracks" }, "tracks", state);
 }
@@ -153,7 +165,8 @@ export function stretchPage(page, duration) {
   const state = tracks.stretch(tabState(page, "tracks"), duration);
   const stretched = withTabState({ ...page, duration }, "tracks", state);
   const masked = page.mask ? { ...stretched, mask: mask.stretchSection(page.mask, page.duration, duration) } : stretched;
-  const out = page.paths ? { ...masked, paths: paths.stretchSection(page.paths, page.duration, duration) } : masked;
+  const moved = page.paths ? { ...masked, paths: paths.stretchSection(page.paths, page.duration, duration) } : masked;
+  const out = page.events ? { ...moved, events: events.stretchSection(page.events, page.duration, duration) } : moved;
   if (!page.blobs?.bands?.length) return out;
   return { ...out, blobs: { ...page.blobs, bands: blobs.stretchBands(page.blobs.bands, page.duration, duration) } };
 }
@@ -172,6 +185,7 @@ export function resetTab(page, tab, start = defaultPage()) {
 // (tracks.DEFAULTS), a schwa on 100 Hz (F1-F5 at 500, 1500, 2500, 3500 and
 // 4500 Hz, a uniform tube's resonances), voiced, no noise. The sampling rate
 // goes back to its default, which nothing on the page sets but a file or link.
+// Scatter events has no drawing but its rate track, which goes flat at its default.
 export async function clearTab(page, tab) {
   const fresh = defaultPage();
   const cleared = { ...page, fs: fresh.fs, sonore: fresh.sonore };
@@ -180,6 +194,7 @@ export async function clearTab(page, tab) {
   if (tab === "blobs") return { ...cleared, blobs: { ...page.blobs, items: [], bands: [] } };
   if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };
   if (tab === "paths") return { ...cleared, paths: { ...page.paths, stroke: [], elevation: 0, speed: null } };
+  if (tab === "events") return { ...cleared, events: { ...page.events, rate: events.DEFAULT_RATE } };
   if (tab === "mask") {
     const { span: _span, ...section } = page.mask;
     return { ...cleared, mask: { ...section, levels: mask.BLANK_LEVELS } };
