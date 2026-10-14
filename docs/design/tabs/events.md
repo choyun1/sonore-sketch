@@ -8,7 +8,7 @@ as they pile up. The sound comes from sonore's `so.event_train`, and the tab
 follows the "From single events to a texture" section of sonore's
 [Sound textures](https://choyun1.github.io/sonore/gallery/textures.html)
 gallery page, with the reader moving the knobs. Its internal tab id is
-`events`; its name on the page is still open (E1).
+`events`; its name on the page is **Scatter events** (E1).
 
 Status: proposal, for Cho to decide. Cho has already answered three
 questions (2026-10-14): add lowpass-filtered impacts such as claps to the
@@ -118,6 +118,8 @@ the rate is now drawn; (f) Draw a texture, which promises the most and is
 only true at high rates.
 *Recommended:* (a). It says what the tab does (copies scattered in time)
 and fits the verb-first names.
+
+*Decided (2026-10-14):* (a), Scatter events.
 
 **E2. The events.** (a) chirp 2 to 6 kHz (the gallery's), tone pip,
 noise burst, and an impact; (b) only the chirp and the impact.
