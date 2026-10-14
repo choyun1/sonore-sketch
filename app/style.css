@@ -9,6 +9,8 @@
   --accent: #2e86ab;
   --error: #b42318;
   --wave: #2e86ab;
+  --speed: #b8620f; /* Draw path: the speed track, apart from the path's blue */
+  --elevation: #2f8545; /* Draw path: the elevation track */
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -23,6 +25,8 @@
     --accent: #5fb3d6;
     --error: #f97066;
     --wave: #5fb3d6;
+    --speed: #f0a04b;
+    --elevation: #6cc77f;
   }
 }
 
