@@ -19,7 +19,7 @@ const SONORE_VERSION = "0.7.0"; // keep in step with pyproject.toml (app.md, D5)
 // header that lets a page fetch it. Change it with SONORE_VERSION (tests/test_page.py checks).
 const SONORE_WHEEL =
   "https://files.pythonhosted.org/packages/ff/ce/3035d3609ca822be92e2ed8d4871cc83edb8569aba4424d1b374aa93d2ab/sonore-0.7.0-py3-none-any.whl";
-const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "paths.py", "shared.py", "sources.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
+const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "events.py", "mask.py", "page.py", "painted.py", "paths.py", "shared.py", "sources.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
 
 let steps = null;
 let python = null; // the Pyodide instance, once loaded
@@ -148,6 +148,17 @@ function readPicture(result, key, make) {
   }
 }
 
+// Plain data in `result` under `key` (numbers and lists), as JavaScript, or null.
+function readPlain(result, key) {
+  if (!result.has(key)) return null;
+  const proxy = result.get(key);
+  try {
+    return proxy.toJs({ dict_converter: Object.fromEntries });
+  } finally {
+    proxy.destroy();
+  }
+}
+
 function convert(result) {
   try {
     return {
@@ -161,6 +172,7 @@ function convert(result) {
       modulation: readPicture(result, "modulation", modulationPicture),
       sourceModulation: readPicture(result, "source_modulation", modulationPicture),
       clipped: result.has("clipped") ? result.get("clipped") : null,
+      sparsity: readPlain(result, "sparsity"),
     };
   } finally {
     result.destroy();

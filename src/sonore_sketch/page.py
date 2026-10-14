@@ -16,11 +16,12 @@ from typing import Any
 import numpy as np
 import sonore as so
 
-from . import blobs, edit, mask, painted, paths, shared, tracks
+from . import blobs, edit, events, mask, painted, paths, shared, tracks
 
 TABS = {
     "tracks": tracks.synthesize, "painted": painted.synthesize, "mask": mask.synthesize,
     "blobs": blobs.synthesize, "edit": edit.synthesize, "paths": paths.synthesize,
+    "events": events.synthesize,
 }
 
 # The page's document (docs/design/tabs/painted.md, "Data model"), as
@@ -54,6 +55,8 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         return {"painted": painted.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["painted"]}
     if tab == "blobs" and "blobs" in page:
         return {"blobs": blobs.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["blobs"]}
+    if tab == "events" and "events" in page:
+        return {"events": events.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["events"]}
     if tab == "paths" and "paths" in page:
         # the source's own drawing goes with the state, as on the Erase tabs
         state = {"paths": paths.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["paths"]}
@@ -122,7 +125,8 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     modulation tab the source's and the result's (``edit.plane_picture``)
     and the fraction of envelope values sonore clipped; on the Erase
     spectrogram tab the source's and the result's spectrograms in the mask's
-    own STFT (``mask.pictures``).
+    own STFT (``mask.pictures``); on the Scatter events tab the result's
+    envelope sparsity by band and against rate (``events.sparsity``).
     """
     return shared.finish(handle_steps(request))
 
@@ -142,6 +146,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
         sound, source_stft, result_stft = yield from shared.scaled(mask.steps(request["state"]), 0.9)
     elif tab == "edit":
         sound, original, clipped = yield from shared.scaled(edit.steps(request["state"]), 0.9)
+    elif tab == "events":
+        sound, sparsity = yield from shared.scaled(events.steps(request["state"]), 0.9)
     else:
         sound = TABS[tab](request["state"])
         yield 0.9
@@ -160,6 +166,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
         result["source_modulation"] = edit.plane_picture(original)
         result["modulation"] = edit.plane_picture(edit.analyze(sound, request["state"]))
         result["clipped"] = clipped
+    if tab == "events":  # the result's envelope sparsity, by band and against rate (events.md, E7)
+        result["sparsity"] = sparsity
     if tab == "mask":  # the source's and the result's spectrograms in the mask's own STFT (mask.md)
         result["source_stft"], result["result_stft"] = mask.pictures(source_stft, result_stft)
     return result

@@ -32,6 +32,9 @@
       <button role="tab" id="tab-button-paths" aria-selected="false" aria-controls="tab-paths" tabindex="-1" data-tab="paths"
         data-caption="Draw where a sound goes around you, seen from above, and how high it is over time, and hear it move. Use headphones."
         title="A path around the listener, heard through sonore's move_sound and the MIT KEMAR head-related impulse responses (Gardner &amp; Martin, 1995)">Draw path</button>
+      <button role="tab" id="tab-button-events" aria-selected="false" aria-controls="tab-events" tabindex="-1" data-tab="events"
+        data-caption="Copy one short event at random times, draw how many come each second, and hear single events pile up into a texture."
+        title="One event copied at random times, levels and pitches, heard through sonore's event_train and measured with its texture statistics">Scatter events</button>
     </nav>
     <div class="controls">
       <button type="button" id="play" class="primary" title="Play or stop (Space)" disabled>Loading…</button>
@@ -67,6 +70,7 @@
     <section class="tab-body" id="tab-blobs" role="tabpanel" aria-labelledby="tab-button-blobs" hidden></section>
     <section class="tab-body" id="tab-edit" role="tabpanel" aria-labelledby="tab-button-edit" hidden></section>
     <section class="tab-body" id="tab-paths" role="tabpanel" aria-labelledby="tab-button-paths" hidden></section>
+    <section class="tab-body" id="tab-events" role="tabpanel" aria-labelledby="tab-button-events" hidden></section>
     <section class="result">
       <div class="result-row">
         <span class="result-label">Result</span>
