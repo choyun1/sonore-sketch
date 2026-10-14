@@ -190,7 +190,7 @@ not stretch with it (rate is in Hz), but the grid they are drawn on does.
 ### Python side
 
 `src/sonore_sketch/blobs.py` with `synthesize(state) -> so.Sound`,
-registered in `page.TABS` and listed in the worker's `PYTHON_FILES`. It
+registered in `page.TABS` and listed in `files.json`, the worker's module list. It
 checks the state, builds the `ModulationBlob`s and calls `from_blobs` then
 `to_sound`. The worker's answer gains the result's measured modulation
 spectrum for this tab only. Tests: a blob's energy lands near it (B-M2, as
