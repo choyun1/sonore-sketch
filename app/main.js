@@ -228,15 +228,41 @@ progress.innerHTML = `<div class="bar"></div><span class="label"></span>`;
 let requests = 0; // counts synthesize() calls: only the newest shows its progress
 let running = null; // {play, key, made} while a synthesis is under way
 
-// fraction from 0 to 1, undefined while it is not known yet, null to hide
-function showProgress(fraction) {
+let progressStarted = 0; // when the shown synthesis started (performance.now())
+let progressStep = { fraction: undefined, text: "Synthesizing" };
+let progressClock = null; // updates the seconds while it runs
+
+// Like "Iteration 2 of 5… 40% · 35 s so far, about 50 s left": the step
+// (from page.handle_steps), and once a few seconds have gone by, the time
+// so far and, once a fifth is done, the time left at that pace.
+function progressText({ fraction, text }) {
+  const known = typeof fraction === "number";
+  const seconds = (performance.now() - progressStarted) / 1000;
+  let line = known ? `${text}… ${Math.round(100 * fraction)}%` : `${text}…`;
+  if (seconds >= 2) line += ` · ${Math.round(seconds)} s so far`;
+  if (seconds >= 2 && known && fraction >= 0.2 && fraction < 1) line += `, about ${Math.max(1, Math.round((seconds * (1 - fraction)) / fraction))} s left`;
+  return line;
+}
+
+// fraction from 0 to 1 with what is being done, undefined while it is not
+// known yet (a new synthesis), null to hide
+function showProgress(fraction, text) {
   const figure = tab.figure;
-  if (fraction === null || !figure) return progress.remove();
+  if (fraction === null || !figure) {
+    clearInterval(progressClock);
+    progressClock = null;
+    return progress.remove();
+  }
+  if (fraction === undefined) {
+    progressStarted = performance.now();
+    progressStep = { fraction, text: "Synthesizing" };
+  } else progressStep = { fraction, text: text ?? progressStep.text };
   if (progress.parentNode !== figure) figure.appendChild(progress);
   const known = typeof fraction === "number";
   progress.classList.toggle("unknown", !known);
   progress.querySelector(".bar").style.width = known ? `${Math.round(100 * fraction)}%` : "";
-  progress.querySelector(".label").textContent = known ? `Synthesizing… ${Math.round(100 * fraction)}%` : "Synthesizing…";
+  progress.querySelector(".label").textContent = progressText(progressStep);
+  progressClock ??= setInterval(() => (progress.querySelector(".label").textContent = progressText(progressStep)), 1000);
 }
 
 // --- synthesis and playback ----------------------------------------------------
@@ -306,7 +332,8 @@ async function synthesize({ play }) {
     return null;
   }
   status(page.duration > 1 ? `Synthesizing ${page.duration} s…` : "Synthesizing…");
-  const made = engine.synthesize({ tab: tab.id, state }, (fraction) => mine === requests && showProgress(fraction));
+  const askedAt = performance.now();
+  const made = engine.synthesize({ tab: tab.id, state }, (fraction, text) => mine === requests && showProgress(fraction, text));
   const asking = (running = { play, key, made });
   showProgress(undefined);
   let sound;
@@ -331,8 +358,10 @@ async function synthesize({ play }) {
   if (tab !== asked || history.present !== page) return null;
   result = { key, page, sound };
   showResult();
-  status(`Made ${page.duration} s in ${sound.synthesisSeconds.toFixed(2)} s.`);
-  log.info(`made ${page.duration} s in ${sound.synthesisSeconds.toFixed(2)} s`);
+  // the whole wait, pictures of the result included; the log also has synthesis alone
+  const waited = (performance.now() - askedAt) / 1000;
+  status(`Made ${page.duration} s in ${waited.toFixed(2)} s.`);
+  log.info(`made ${page.duration} s in ${waited.toFixed(2)} s (synthesis ${sound.synthesisSeconds.toFixed(2)} s)`);
   if (asking.play && history.present === page) start(sound);
   return sound;
 }

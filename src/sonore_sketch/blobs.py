@@ -184,9 +184,10 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     return shared.finish(steps(state))
 
 
-def steps(state: Mapping[str, Any]) -> Iterator[float]:
+def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
     """``synthesize`` one step at a time: a generator that yields the
-    fraction done after the first synthesis and after each iteration, and
+    fraction done (with what comes next, ``shared.Step``) at the start,
+    after the first synthesis and after each iteration, and
     returns the sound. The page runs it step by step to show its progress
     and to drop it between steps when the drawing changes."""
     check(state)
@@ -197,6 +198,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
         raise ValueError("on the harmonic carrier, iterations need bands")
     iterations = int(state.get("iterations", 0))
     carried = {**state, "iterations": 0}  # iterations are taken below, one at a time
+    yield 0.0, "Synthesizing"
     try:
         sound = _carried(carried)
     except ValueError as refusal:
@@ -215,12 +217,12 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     bands = state.get("bands")
     if bands:
         sound = band_limit(sound, bands)
-    yield 1 / (iterations + 1)
+    yield 1 / (iterations + 1), shared.iteration_text(0, iterations)
     drawn = target(carried) if iterations else None
     for i in range(iterations):
         # with bands, back and forth between the blobs and the bands; without, to_sound's own iterations
         sound = band_limit(_toward_blobs(sound, drawn, bands), bands) if bands else drawn.iterate(sound)
-        yield (i + 2) / (iterations + 1)
+        yield (i + 2) / (iterations + 1), shared.iteration_text(i + 1, iterations)
     return sound.normalize() if sound.rms > 0 else sound
 
 

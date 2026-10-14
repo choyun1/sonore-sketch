@@ -22,18 +22,29 @@ def number(value: Any) -> bool:
 # --- a tab's steps ---------------------------------------------------------------------
 
 
-def scaled(steps: Iterator[float], factor: float) -> Iterator[float]:
+# A tab's steps yield ``(fraction done, what it does next)``, such as
+# ``(0.4, "Iteration 2 of 5")``; the page shows both while it waits.
+Step = tuple[float, str]
+
+
+def scaled(steps: Iterator[Step], factor: float) -> Iterator[Step]:
     """Run ``steps`` (a tab's ``steps``, or ``page.handle_steps``) through,
-    yielding each fraction done times ``factor``, and return what it returns."""
+    yielding each fraction done times ``factor`` with its text, and return
+    what it returns."""
     while True:
         try:
-            fraction = next(steps)
+            fraction, text = next(steps)
         except StopIteration as done:
             return done.value
-        yield factor * fraction
+        yield factor * fraction, text
 
 
-def finish(steps: Iterator[float]) -> Any:
+def iteration_text(done: int, iterations: int) -> str:
+    """What comes after ``done`` of ``iterations``: the next one, or measuring the result."""
+    return f"Iteration {done + 1} of {iterations}" if done < iterations else "Measuring the result"
+
+
+def finish(steps: Iterator[Step]) -> Any:
     """Run ``steps`` through and return what it returns."""
     while True:
         try:

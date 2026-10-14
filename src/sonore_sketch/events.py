@@ -46,6 +46,7 @@ import numpy as np
 import sonore as so
 from scipy import stats
 
+from . import shared
 from .shared import number
 
 FORMAT = 1
@@ -255,9 +256,10 @@ def modulation(sound: so.Sound) -> dict[str, Any]:
     }
 
 
-def steps(state: Mapping[str, Any]) -> Iterator[float]:
+def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
     """Synthesize ``state`` and make its modulation spectrogram, yielding
-    the fraction done."""
+    the fraction done with what comes next (``shared.Step``)."""
+    yield 0.0, "Scattering the events"
     sound = synthesize(state)
-    yield 0.3
+    yield 0.1, "Measuring the result"  # the modulation spectrogram takes most of the time
     return sound, modulation(sound)

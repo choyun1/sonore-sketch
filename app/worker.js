@@ -6,7 +6,8 @@
 // Messages in:  {id, request: {tab, state}}
 // Messages out: {type: "progress", text} while loading,
 //               {type: "ready", versions},
-//               {id, type: "step", fraction} as synthesis goes (page.handle_steps),
+//               {id, type: "step", fraction, text} as synthesis goes (page.handle_steps:
+//               the fraction done and what it does next),
 //               {id, type: "result", result} or {id, type: "error", message, detail},
 //               or {id, type: "dropped"} when a newer request arrived first.
 
@@ -198,7 +199,9 @@ onmessage = async ({ data: { id, request } }) => {
         result = convert(step.value); // destroys the Python result
         break;
       }
-      postMessage({ id, type: "step", fraction: step.value });
+      const [fraction, text] = step.value.toJs(); // a Python (fraction, text) tuple
+      step.value.destroy();
+      postMessage({ id, type: "step", fraction, text });
       await between();
       if (id !== latest) return postMessage({ id, type: "dropped" });
     }

@@ -85,11 +85,11 @@ def test_steps_report_progress_and_give_the_same_sound(bands):
     work, fractions = blobs.steps(drawing), []
     while True:
         try:
-            fractions.append(next(work))
+            fractions.append(next(work)[0])
         except StopIteration as done:
             sound = done.value
             break
-    assert fractions == pytest.approx([0.25, 0.5, 0.75, 1.0])
+    assert fractions == pytest.approx([0.0, 0.25, 0.5, 0.75, 1.0])
     assert np.array_equal(sound.data, blobs.synthesize(drawing).data)
 
 

@@ -138,7 +138,7 @@ def _run(state):
     fractions = []
     while True:
         try:
-            fractions.append(next(work))
+            fractions.append(next(work)[0])
         except StopIteration as done:
             assert fractions == sorted(fractions) and fractions[-1] == 1
             return done.value[:2]

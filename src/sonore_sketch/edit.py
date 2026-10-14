@@ -160,8 +160,9 @@ def analyze(sound: so.Sound, state: Mapping[str, Any]) -> so.ModulationSpectrum:
     )
 
 
-def steps(state: Mapping[str, Any]) -> Iterator[float]:
-    """``synthesize`` one step at a time: yields the fraction done after the
+def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
+    """``synthesize`` one step at a time: yields the fraction done (with
+    what comes next, ``shared.Step``) before the source and after the
     source, its analysis, the first synthesis and each iteration, and returns
     ``(sound, the source's modulation spectrum, the fraction of envelope
     values sonore clipped)``. An edit that would need envelopes below zero
@@ -170,10 +171,11 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     check(state)
     iterations = int(state["iterations"])
     total = iterations + 3
+    yield 0.0, "Making the source"
     original = source(state)
-    yield 1 / total
+    yield 1 / total, "Measuring the source's modulation"
     spectrum = analyze(original, state)
-    yield 2 / total
+    yield 2 / total, "Synthesizing the edited sound"
     edited = spectrum.with_gain(gain(state))
     carrier = state["carrier"]
     with warnings.catch_warnings(record=True) as caught:
@@ -183,10 +185,10 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
         else:
             sound = edited.to_sound(carrier=carrier, fs=float(state["fs"]), rng=int(state.get("seed", 1)))
     clipped = clipped_fraction(caught)
-    yield 3 / total
+    yield 3 / total, shared.iteration_text(0, iterations)
     for i in range(iterations):  # to_sound's own iterations, one at a time (as on the Draw modulation tab)
         sound = edited.iterate(sound)
-        yield (i + 4) / total
+        yield (i + 4) / total, shared.iteration_text(i + 1, iterations)
     return (sound.normalize() if sound.rms > 0 else sound), spectrum, clipped
 
 

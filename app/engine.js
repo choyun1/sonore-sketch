@@ -54,7 +54,7 @@ class PyodideEngine {
       }
       const waiting = this.waiting.get(data.id);
       if (!waiting) return; // a request already settled, as when a failure cleared them all
-      if (data.type === "step") return waiting.onStep?.(data.fraction);
+      if (data.type === "step") return waiting.onStep?.(data.fraction, data.text);
       const { resolve, reject } = waiting;
       this.waiting.delete(data.id);
       if (data.type === "result") resolve(data.result);
@@ -71,7 +71,8 @@ class PyodideEngine {
   }
 
   // A newer request stops this one at its next step (it resolves to null),
-  // and onStep(fraction) follows its progress.
+  // and onStep(fraction, text) follows its progress: the fraction done and
+  // what it does next.
   synthesize(request, onStep) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {

@@ -299,8 +299,8 @@ The limit is one constant, so it can change after measuring in the browser.
 Cho, 2026-10-14: raised to **30 s on every tab**, and said on the page
 ("(max 30)" beside the duration) and in the README. Measured in headless
 Chromium with Pyodide 314.0.7 and sonore 0.7.0, each tab's starting
-drawing, from Play to the sound made ("Made … in" counts synthesis only;
-the gap is the pictures measured from the result):
+drawing: synthesis alone, and from Play to the sound made (the gap is the
+pictures measured from the result):
 
 | Tab | 10 s, synthesis | 30 s, synthesis | 30 s, Play to sound |
 |---|---|---|---|
@@ -315,6 +315,12 @@ the gap is the pictures measured from the result):
 Time grows about linearly with duration. Erase modulation is the outlier:
 its iterations make it about 3 minutes at 30 s; fewer iterations make it
 faster.
+
+So that a long wait is not a mystery (Cho, 2026-10-14): the progress bar
+over the tab's figure says which step is running ("Iteration 2 of 5… 45% ·
+31 s so far, about 38 s left"; each tab's `steps` yields the fraction done
+with what comes next), "Made … in" counts the whole wait, and the Erase
+modulation tab opens with a "Be advised" note that it is slow.
 
 The Tracks tab's own decisions (scope, track model, file format, sine-wave
 speech upstream, drawing interaction) are in `tabs/tracks.md`.

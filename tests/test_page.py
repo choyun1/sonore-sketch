@@ -103,13 +103,22 @@ def test_handle_steps_reports_progress_and_returns_handles_result():
     work, fractions = page.handle_steps({"tab": "blobs", "state": state}), []
     while True:
         try:
-            fractions.append(next(work))
+            fractions.append(next(work)[0])
         except StopIteration as done:
             result = done.value
             break
-    assert fractions == sorted(fractions) and 0 < fractions[0] and fractions[-1] < 1
+    assert fractions == sorted(fractions) and fractions[0] == 0 and fractions[-1] < 1
     expected = page.handle({"tab": "blobs", "state": state})
     assert result["samples"] == expected["samples"] and "modulation" in result
+
+
+def test_handle_steps_says_what_it_does_next():
+    from sonore_sketch import blobs
+
+    state = {"blobs": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+             "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": blobs.EXAMPLE_ITEMS}
+    texts = [text for _, text in page.handle_steps({"tab": "blobs", "state": state})]
+    assert texts == ["Synthesizing", "Iteration 1 of 2", "Iteration 2 of 2", "Measuring the result"]
 
 
 def test_a_document_without_its_tabs_section_says_so():
