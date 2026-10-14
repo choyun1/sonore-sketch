@@ -1,0 +1,13 @@
+# Caddy in front of the synthesis server (server/README.md, step 4): HTTPS
+# with a free certificate, compression, and nothing but the two endpoints.
+# Replace the address with your server's name, e.g. 203-0-113-7.sslip.io.
+SERVER_NAME {
+	encode gzip
+	@api path /api/version /api/synthesize
+	handle @api {
+		reverse_proxy 127.0.0.1:8100
+	}
+	handle {
+		respond 404
+	}
+}

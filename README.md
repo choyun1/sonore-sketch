@@ -59,11 +59,12 @@ different sound from it.
 
 ## Using the page
 
-Every visit starts Python, NumPy, SciPy and sonore in the browser, which
-takes several seconds even when the browser has them cached (about 3 s of it
-is `import sonore`); the first visit also downloads them. You can draw while
-it loads. After that, a sound is
-made each time you finish a change.
+Each tab's starting drawing plays at once: its sound is made ahead of time.
+Your own drawings are made by Python, NumPy, SciPy and sonore in the browser,
+which take several seconds to start on every visit even when the browser has
+them cached (about 3 s of it is `import sonore`); the first visit also
+downloads them. You can draw while they load. After that, a sound is made
+each time you finish a change.
 
 **On every tab**
 
@@ -377,7 +378,7 @@ The screenshots above are of each tab's example; retake them with
 `tools/make_screenshots.py` when the header, the toolbar or an example
 changes.
 
-Three things to keep in step:
+Five things to keep in step:
 
 - The sonore version is pinned twice, in `pyproject.toml` and as
   `SONORE_VERSION` in `app/worker.js`.
@@ -386,6 +387,13 @@ Three things to keep in step:
   new sonore version needs `SONORE_WHEEL` in `app/worker.js` updated too,
   and any new dependency of sonore added to its `loadPackage` call
   (`tests/test_page.py` checks both).
+- The synthesis server (`server/README.md`), once `SYNTH_SERVER` in
+  `app/engine.js` names one, runs this repository's Python: update it
+  whenever `src/sonore_sketch/` or the sonore version changes on `main`.
+- Each tab's starting sound is made ahead of time in `app/examples/`, by
+  `python tools/make_examples.py`. Run it again when a tab's starting
+  drawing, its synthesis or the sonore version changes
+  (`tests/test_examples.py` fails until then).
 - `PYTHON_FILES` in `app/worker.js` lists every module in
   `src/sonore_sketch/`. A new module must be added there, or the page fails
   in the browser while the local engine still works.

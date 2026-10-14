@@ -26,6 +26,16 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 
+def encode(result: dict) -> dict:
+    """``page.handle``'s result as JSON, its bytes in base64, as the page's
+    local engine reads it (also the made-ahead sounds, tools/make_examples.py)."""
+    result = dict(result, samples=base64.b64encode(result["samples"]).decode())
+    for key in ("spectrogram", "modulation", "source_modulation", "source_stft", "result_stft"):
+        if key in result:
+            result[key] = dict(result[key], data=base64.b64encode(result[key]["data"]).decode())
+    return result
+
+
 class Handler(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):  # quieter than the default
         if self.server.verbose:
@@ -59,11 +69,7 @@ class Handler(SimpleHTTPRequestHandler):
             status = 400 if isinstance(error, (ValueError, KeyError, TypeError)) else 500
             detail = "".join(traceback.format_exception(error)).strip()
             return self.send_json(status, {"error": f"{type(error).__name__}: {error}", "detail": detail})
-        result["samples"] = base64.b64encode(result["samples"]).decode()
-        for key in ("spectrogram", "modulation", "source_modulation", "source_stft", "result_stft"):
-            if key in result:
-                result[key]["data"] = base64.b64encode(result[key]["data"]).decode()
-        return self.send_json(200, result)
+        return self.send_json(200, encode(result))
 
 
 def main() -> None:
