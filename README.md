@@ -464,9 +464,10 @@ Six things to keep in step:
   `python tools/make_examples.py`. Run it again when a tab's starting
   drawing, its synthesis or the sonore version changes
   (`tests/test_examples.py` fails until then).
-- `PYTHON_FILES` in `app/worker.js` lists every module in
-  `src/sonore_sketch/`. A new module must be added there, or the page fails
-  in the browser while the local engine still works.
+- `src/sonore_sketch/files.json` lists every module in
+  `src/sonore_sketch/`, for the browser worker. A new module must be added
+  there, or the page fails in the browser while the local engine still works
+  (`tests/test_page.py` checks).
 - The Draw path tab's HRIRs, `src/sonore_sketch/data/mit_kemar.npz`, are
   made by `tools/make_hrirs.py` from MIT's SOFA file; the worker fetches
   that file the first time the tab makes a sound.

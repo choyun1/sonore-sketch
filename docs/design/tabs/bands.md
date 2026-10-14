@@ -171,7 +171,7 @@ Times stretch with the page's duration, as the Speech tab's tracks do.
 `blobs.synthesize` applies the bands last, after the carrier and any
 iterations, through `so.STFT` and `so.Mask`, then normalizes to RMS 1 as
 now. The gain function and the track interpolation live in `blobs.py`, so no
-new module needs adding to the worker's `PYTHON_FILES`. The page draws the strips from the same formula
+new module needs adding to `files.json`, the worker's module list. The page draws the strips from the same formula
 in JavaScript. Tests: rejection of a static band (K-M1, as a test), no
 bands gives today's samples exactly, a saved state gives the same samples
 in Python and from the page.
