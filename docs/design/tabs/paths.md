@@ -5,9 +5,9 @@ or a pen, on a picture of the room seen from above, and hear it move, in
 headphones, through sonore's `move_sound`.
 
 Status: W1 decided (2026-10-14): Cho chose (b), the top view with an
-elevation track. W2–W6 stand at their recommendations, which Cho was told
-would be followed unless he said otherwise; he has not confirmed them one
-by one. Nothing is built.
+elevation track. W2–W6 stand at their recommendations, which the thread said
+would be followed unless Cho chose otherwise; Cho has not confirmed them
+one by one. Nothing is built.
 
 This project is AI-assisted: the document and `tools/measure_paths.py`
 were drafted by Claude (Claude Code), for Cho to review.
