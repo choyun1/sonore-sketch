@@ -185,7 +185,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     clipped = clipped_fraction(caught)
     yield 3 / total
     for i in range(iterations):  # to_sound's own iterations, one at a time (as on the Draw modulation tab)
-        sound = shared.toward(sound, edited)
+        sound = edited.iterate(sound)
         yield (i + 4) / total
     return (sound.normalize() if sound.rms > 0 else sound), spectrum, clipped
 

@@ -36,7 +36,6 @@ import time
 
 import numpy as np
 import sonore as so
-from sonore.views.envelopes import Envelopes
 
 from sonore_sketch import blobs as tab
 
@@ -61,25 +60,13 @@ def state(bands, carrier="tones", iterations=0):
 
 
 def step_whole(sound, drawn):
-    """One of ``to_sound``'s iterations, written out."""
+    """One of ``to_sound``'s iterations (sonore's public ``iterate``)."""
     return drawn.iterate(sound)
 
 
 def step_within(sound, drawn, bands):
-    """The same step on the envelopes relative to the bands' gain."""
-    bank = drawn.filterbank
-    subbands = bank.analyze(sound)
-    env = subbands.envelopes(fs=tab.ENV_FS).data.mean(axis=2)[:, 1:-1]  # (time, band)
-    t = np.arange(env.shape[0]) / tab.ENV_FS
-    gain = tab.band_gain(bands, bank.cfs[1:-1], t)
-    weight = gain / gain.max()
-    relative = env / np.maximum(gain, 10 ** (tab.BAND_FLOOR_DB / 20))
-    relative = relative / (np.sum(weight * relative) / np.sum(weight))  # mean 1 within the bands
-    phase = np.angle(np.fft.fft2((weight * (relative - 1)).T))
-    values = drawn.to_envelopes(phase=phase, quiet=True).data[:, :, 0].copy()  # (time, band), edge bands zero
-    values[:, 1:-1] *= gain
-    out = (Envelopes(values, tab.ENV_FS, bank) * subbands.tfs()).to_sound()
-    return so.Sound(out.data[: sound.n_samples], sound.fs)
+    """The same step on the envelopes relative to the bands' gain (the tab's own)."""
+    return tab._toward_blobs(sound, drawn, bands)
 
 
 def run(method, s, n):

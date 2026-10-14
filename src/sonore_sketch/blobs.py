@@ -3,7 +3,7 @@
 A drawing is a list of Gaussian blobs on a modulation spectrum, rate [Hz,
 signed] by density [cycles/octave] (docs/design/tabs/blobs.md)::
 
-    {"blobs": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000,
+    {"blobs": 1, "sonore": "0.6.0", "duration": 3.0, "fs": 16000,
      "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
      "carrier": "tones", "f0": 100, "iterations": 0, "rms_depth": 0.2, "seed": 1,
      "items": [{"rate": 4, "density": 0, "rate_width": 0.5,
@@ -219,7 +219,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     drawn = target(carried) if iterations else None
     for i in range(iterations):
         # with bands, back and forth between the blobs and the bands; without, to_sound's own iterations
-        sound = band_limit(_toward_blobs(sound, drawn, bands), bands) if bands else shared.toward(sound, drawn)
+        sound = band_limit(_toward_blobs(sound, drawn, bands), bands) if bands else drawn.iterate(sound)
         yield (i + 2) / (iterations + 1)
     return sound.normalize() if sound.rms > 0 else sound
 
@@ -231,7 +231,8 @@ def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) ->
     ``measured`` reads them, then given the gain back. The bands' own shape
     and motion stay out of what the blobs are imposed on, so the two
     constraints pull on different things (tools/measure_loop.py, ``within``).
-    sonore rebuilds the drawn envelopes from this phase (``to_envelopes``)."""
+    The search is an experiment of sonore-sketch's, not sonore's: it is
+    built on sonore's public hooks (``filterbank``, ``to_envelopes(phase=)``)."""
     bank = drawn.filterbank
     subbands = bank.analyze(sound)
     envelopes = subbands.envelopes(fs=ENV_FS).data.mean(axis=2)[:, 1:-1]  # (time, band), edges dropped
@@ -240,9 +241,9 @@ def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) ->
     relative = envelopes / np.maximum(gain, 10 ** (BAND_FLOOR_DB / 20))
     relative = relative / (np.sum(weight * relative) / np.sum(weight))  # mean 1 within the bands
     phase = np.angle(np.fft.fft2((weight * (relative - 1)).T))
-    rebuilt = drawn.to_envelopes(phase=phase, quiet=True)  # edge bands zero
-    values = rebuilt.data[:, :, 0].copy()  # (time, band)
-    values[:, 1:-1] *= gain
+    rebuilt = drawn.to_envelopes(phase=phase, quiet=True).data[:, 1:-1, 0]  # clipped at 0, edges dropped
+    values = np.zeros((envelopes.shape[0], bank.n_filters))
+    values[:, 1:-1] = gain * rebuilt
     out = (so.Envelopes(values, ENV_FS, bank) * subbands.tfs()).to_sound()
     return so.Sound(out.data[: sound.n_samples], sound.fs)
 
@@ -266,18 +267,14 @@ def _carried(state: Mapping[str, Any]) -> so.Sound:
 
 def _on_harmonics(state: Mapping[str, Any]) -> so.Sound:
     """The drawing's envelopes, drawn with the seed, on the fine structure of
-    a harmonic complex in each band: ``to_sound``'s route for a recording
-    carrier, which would otherwise take the modulation phase from the
+    a harmonic complex in each band: ``to_sound`` with a Sound carrier and
+    ``rng``, which draws the modulation phase rather than taking it from the
     (unmodulated) complex itself."""
     if state.get("iterations", 0):
         raise ValueError("iterations work on the tones and noise carriers only")
     fs, duration = float(state["fs"]), float(state["duration"])
-    envelopes = target(state).to_envelopes(rng=int(state.get("seed", 1)))
     complex_tone = so.harmonic_complex(duration, fs, float(state.get("f0", 100)))
-    fine = envelopes.filterbank.analyze(complex_tone).tfs()
-    sound = (envelopes * fine).to_sound()
-    sound = so.Sound(sound.data[: complex_tone.data.shape[0]], fs)
-    return sound.normalize()
+    return target(state).to_sound(carrier=complex_tone, rng=int(state.get("seed", 1)))
 
 
 # The measured result under the plane (blobs.md, B7): the plane's own range.

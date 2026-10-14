@@ -1,5 +1,5 @@
 """What more than one tab's module needs: checking a number, running a tab's
-steps, one of ``to_sound``'s iterations, and a mask of cuts stored as text.
+steps, and a mask of cuts stored as text.
 """
 
 from __future__ import annotations
@@ -12,7 +12,6 @@ from collections.abc import Iterator, Mapping
 from typing import Any
 
 import numpy as np
-import sonore as so
 
 
 def number(value: Any) -> bool:
@@ -41,17 +40,6 @@ def finish(steps: Iterator[float]) -> Any:
             next(steps)
         except StopIteration as done:
             return done.value
-
-
-# --- to_sound's iterations ---------------------------------------------------------------
-
-
-def toward(sound: so.Sound, target: so.ModulationSpectrum) -> so.Sound:
-    """One of ``to_sound``'s own iterations (sonore, ``iterations``): keep the
-    sound's fine structure and modulation phase, impose the target's
-    magnitudes again. The tabs take them here one at a time so the page can
-    show its progress; the result is the same as ``to_sound(iterations=n)``."""
-    return target.iterate(sound)
 
 
 # --- a mask of cuts --------------------------------------------------------------------
