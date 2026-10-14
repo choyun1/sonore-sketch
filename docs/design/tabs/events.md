@@ -10,10 +10,11 @@ follows the "From single events to a texture" section of sonore's
 gallery page, with the reader moving the knobs. Its internal tab id is
 `events`; its name on the page is **Scatter events** (E1).
 
-Status: proposal, for Cho to decide. Cho has already answered three
-questions (2026-10-14): add lowpass-filtered impacts such as claps to the
-events (E2), build the rate sweep in as a drawn track (E3), and reword the
-README tagline (E9). Nothing is built.
+Status: built (see "As built" at the end). Cho answered four questions
+on 2026-10-14: add lowpass-filtered impacts such as claps to the events
+(E2), build the rate sweep in as a drawn track (E3), the name (E1) and the
+README tagline (E9); the rest was built as recommended, except E5 (see
+"As built").
 
 This project is AI-assisted: the document and `tools/measure_events.py` were
 drafted by Claude (Claude Code), for Cho to review.
@@ -193,6 +194,43 @@ change also needs those tabs moved to the public hooks.
 2. This project: the tab (`src/sonore_sketch/events.py`, its page section,
    tests), the pin, and the README (E9, E10).
 3. A screenshot and an example drawing, as for the other tabs.
+
+## As built
+
+Built on sonore 0.7.0, which carries PR #195 and the public modulation
+hooks; this project's pin moved to it before the tab was built (PRs #65
+and #67), so E10 needed nothing more here.
+
+- **E5 changed: the tab follows the page's duration.** Every other tab and
+  the page around it (the duration box, the waveform, the status line)
+  work on the page's duration, so a fixed 5 s render would have left the
+  duration box doing nothing on this tab and the waveform at the wrong
+  length. The cost of following it: at the page's starting 0.6 s, a few
+  events and a noisier statistic. Sounds up to 3 s play on each change, as
+  on the other tabs. The sampling rate is the page's, 16 kHz.
+- **The sparsity curve uses 3 s renders,** not the gallery's 10 s or the
+  5 s measured in V2: on its own, so it does not change with the duration.
+  [measure, native, one run each] the first sound for an event, its curve
+  included, took 1.9 to 2.1 s; a later one at 1000/s with 12 dB and 300
+  cents, 0.7 to 1.2 s, for a 3 s sound. The curve is kept for the last
+  eight events (`events._reference`, an LRU cache), so moving a copies
+  slider never remakes it; moving an event knob does.
+- **What the plots average over.** The curve and the red dot are the mean
+  of the band sparsity over the event's own bands, those where Gaussian
+  noise filtered by the event comes within 10 dB of its strongest band
+  [estimate: a threshold chosen to pick the chirp's 2 to 6 kHz; it gave
+  6 of 28 bands for the chirp, 2 for the 1 kHz pip, 20 for the noise burst
+  and 16 for the impact]. Only bands under 0.45 times the sampling rate are
+  plotted: the texture model runs at 20 kHz, and above the page's 8 kHz
+  there is nothing to measure.
+- **The impact's noise is always seed 0,** so New draw (a new seed) moves
+  the copies without changing their shape, and the curve stays valid.
+- Clear puts the rate back to a flat 10 per second, the tab's only
+  drawing; the event and the sliders stay, as other tabs keep their
+  settings.
+- Tested in `tests/test_events.py` and `tests/js/events.test.mjs`, and in
+  the page check (`tools/check_page.py`: a rate stroke, a slider, New draw,
+  Clear and the impact, each made and heard).
 
 ## References
 

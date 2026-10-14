@@ -368,12 +368,12 @@ def main() -> None:
             # The arrow keys, Home and End move between the tabs (the WAI-ARIA tabs
             # pattern), and only the tab shown is in the Tab order.
             page.keyboard.press("ArrowLeft")  # from the first tab round to the last
-            expect(page.locator("#tab-paths")).to_be_visible()
-            assert page.evaluate("document.activeElement.dataset.tab") == "paths"
+            expect(page.locator("#tab-events")).to_be_visible()
+            assert page.evaluate("document.activeElement.dataset.tab") == "events"
             page.keyboard.press("Home")
             expect(page.locator("#tab-tracks")).to_be_visible()
             assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "tracks"
-            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 5
+            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 6
             expect(status).to_contain_text("Made", timeout=60_000)
             print("tabs: the arrow keys and Home move between the tabs")
 
@@ -417,6 +417,40 @@ def main() -> None:
             page.click(".tabs [data-tab=tracks]")
             expect(status).to_contain_text("Made", timeout=60_000)
             print("paths: a stroke and an elevation are drawn and heard in two ears; Clear and Undo work")
+
+            # The Scatter events tab: the example plays; a stroke on the rate
+            # track makes the rate rise, and is heard; a slider applies when
+            # let go; New draw changes the seed; Clear makes the rate flat.
+            page.click(".tabs [data-tab=events]")
+            expect(page.locator("#tab-events")).to_be_visible()
+            expect(status).to_contain_text("Made", timeout=60_000)
+            rate_box = page.locator("canvas.rate").bounding_box()
+            page.mouse.move(rate_box["x"] + 60, rate_box["y"] + rate_box["height"] - 30)
+            page.mouse.down()
+            page.mouse.move(rate_box["x"] + rate_box["width"] - 20, rate_box["y"] + 15, steps=20)
+            page.mouse.up()
+            rate = page_document_in(page)["events"]["rate"]
+            drawn_rate = rate[1][1:-1]  # the ends outside the stroke keep the starting 10 per second
+            assert isinstance(rate, list) and max(drawn_rate) > 100 and drawn_rate[-1] > 10 * drawn_rate[0], rate
+            expect(status).to_contain_text("Made", timeout=120_000)
+            regularity = page.locator("#tab-events .knob[data-knob=regularity] input")
+            regularity.fill("1000")
+            regularity.dispatch_event("change")
+            assert page_document_in(page)["events"]["regularity"] == 64
+            expect(status).to_contain_text("Made", timeout=120_000)
+            page.click("#tab-events .draw")
+            assert page_document_in(page)["events"]["seed"] == 1
+            expect(status).to_contain_text("Made", timeout=120_000)
+            page.click("#clear")
+            assert page_document_in(page)["events"]["rate"] == 10
+            expect(status).to_contain_text("Made", timeout=120_000)
+            page.select_option("#tab-events select.event", "impact")
+            assert page.locator("#tab-events .knob[data-knob=cutoff]").is_visible()
+            assert not page.locator("#tab-events .knob[data-knob=length]").is_visible()
+            expect(status).to_contain_text("Made", timeout=120_000)
+            page.click(".tabs [data-tab=tracks]")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("events: a rate track, a slider, New draw, Clear and the impact are made and heard")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore

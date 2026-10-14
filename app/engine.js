@@ -11,7 +11,8 @@
 // the Draw path tab, when samples is the left), synthesisSeconds, spectrogram: {...}}, on the
 // Draw modulation tab modulation: {...}, and on the Erase modulation tab
 // modulation, sourceModulation: {...} (modulationPicture) and clipped (a
-// fraction), and on the Erase spectrogram tab sourceStft, resultStft: {...}
+// fraction), on the Scatter events tab sparsity: {...} (sonore_sketch.events.sparsity),
+// and on the Erase spectrogram tab sourceStft, resultStft: {...}
 // (spectrogramPicture; both in pictures.js).
 
 import { modulationPicture, spectrogramPicture } from "./pictures.js";
@@ -176,6 +177,7 @@ export function readResult(body) {
     modulation: body.modulation && readPicture(body.modulation, modulationPicture),
     sourceModulation: body.source_modulation && readPicture(body.source_modulation, modulationPicture),
     clipped: body.clipped ?? null,
+    sparsity: body.sparsity ?? null,
   };
 }
 

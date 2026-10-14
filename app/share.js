@@ -30,6 +30,7 @@ export const TAB_NAMES = {
   "draw-modulation": "blobs",
   "erase-modulation": "edit",
   "draw-path": "paths",
+  "scatter-events": "events",
 };
 
 // The tab id a location hash names, or null if it names none.
