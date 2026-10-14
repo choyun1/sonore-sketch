@@ -9,7 +9,7 @@ import { History } from "./history.js";
 import { Log } from "./log.js";
 import { drawWaveform } from "./plot.js";
 import { encodeState, stateFromHash, tabFromHash } from "./share.js";
-import { clearTab, defaultPage, forLink, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
+import { clearTab, defaultPage, forLink, isStartingPage, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
 import { createBlobsTab } from "./blobs/tab.js";
 import { createEditTab } from "./edit/tab.js";
 import { createEventsTab } from "./events/tab.js";
@@ -106,16 +106,18 @@ function status(text, error = false) {
 // --- the document and its history ----------------------------------------------
 
 let initial = defaultPage();
+let fromLink = false;
 try {
   const linked = stateFromHash(location.hash);
-  if (linked) initial = openDocument(linked);
-  else initial = { ...initial, tab: tabFromHash(location.hash) ?? initial.tab };
+  if (linked) [initial, fromLink] = [openDocument(linked), true];
+  else initial = defaultPage(tabFromHash(location.hash) ?? initial.tab);
 } catch (error) {
   log.error(`ignored the drawing in the link: ${error.message}`);
 }
 const history = new History(initial);
-// What Reset goes back to: the page as it opened, or as a file or link last opened it.
-let opened = initial;
+// What Reset goes back to: the page as a file or link last opened it, or
+// else the tab's starting page (null).
+let opened = fromLink ? initial : null;
 const hasRecording = () => Boolean(history.present.recording);
 // `play`: hear this edit whatever its length and Auto-play (New draw asks to hear another draw)
 const commitFrom = (id) => (state, { play = false } = {}) => change(withTabState(history.present, id, state), { play });
@@ -161,6 +163,10 @@ function switchTab(id, { synthesizes = true } = {}) {
   if (!tabs[id] || tabs[id] === tab) return;
   player.stop();
   tab.setPlayhead(null);
+  // Until something is drawn, set or opened, the page starts over at the new
+  // tab's starting duration (0.6 s on Draw speech, 2 s elsewhere). Showing a
+  // tab is not an edit, so this is not one either.
+  if (isStartingPage(history.present, tab.id)) history.present = defaultPage(id);
   tab = tabs[id];
   showTab();
   show();
@@ -439,7 +445,7 @@ ui.clear.addEventListener("click", async () => {
   if (!ready) status("Cleared.");
 });
 ui.reset.addEventListener("click", () => {
-  change(resetTab(history.present, tab.id, opened));
+  change(resetTab(history.present, tab.id, opened ?? defaultPage(tab.id)));
   log.info(`reset the ${tab.id} tab to the drawing it opened with`);
   if (!ready) status("Reset to the drawing the page opened with.");
 });

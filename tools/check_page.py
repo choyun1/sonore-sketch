@@ -101,6 +101,17 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=180_000)
             print(f"ready and first sound made in {time.perf_counter() - start:.1f} s: {page.locator('#versions').inner_text()}")
 
+            # Draw speech starts at its word's 0.6 s, the other tabs at 2 s,
+            # while nothing is drawn yet (app.md, "Starting duration").
+            expect(page.locator("#duration")).to_have_value("0.6")
+            page.click(".tabs [data-tab=painted]")
+            expect(page.locator("#duration")).to_have_value("2")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.click(".tabs [data-tab=tracks]")
+            expect(page.locator("#duration")).to_have_value("0.6")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("starting duration: 0.6 s on Draw speech, 2 s on Draw spectrogram")
+
             # The page starts by saying "sonore"; the drawing checks below are
             # written for the earlier /aɪ/ example, so they start from it.
             default = document_in(page)
@@ -495,7 +506,7 @@ def main() -> None:
             example = page_document_in(page)["blobs"]
             start = example["items"]
             assert len(start) == 1 and start[0]["rate"] > 0 and start[0]["density"] > 0, start  # one blob, upper right
-            expect(page.locator("#tab-blobs .coarse")).to_be_visible()  # 0.6 s is under 2 s
+            expect(page.locator("#tab-blobs .coarse")).to_be_visible()  # 0.6 s (the duration the page was left at) is under 2 s
             # The example keeps to one band round 500 Hz; the steps below start
             # from the same blob with no bands.
             assert example["bands"] == [{"points": [[0, 500]], "width": 2, "level": 0}], example["bands"]
@@ -629,26 +640,27 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=60_000)
             page.click("#tab-blobs .add-band")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert bands_now() == [{"points": [[0, 500], [0.6, 500]], "width": 1, "level": 0}], bands_now()
+            span = page_document_in(page)["duration"]  # the page's starting duration
+            assert bands_now() == [{"points": [[0, 500], [span, 500]], "width": 1, "level": 0}], bands_now()
             stft = page.locator("#tab-blobs canvas.stft").bounding_box()
             s_left, s_right = stft["x"] + 52, stft["x"] + stft["width"] - 10
             s_top, s_bottom = stft["y"] + 6, stft["y"] + stft["height"] - 20
 
             def sx(t):
-                return s_left + t / 0.6 * (s_right - s_left)
+                return s_left + t / span * (s_right - s_left)
 
             def sy(hz):
                 return s_bottom - math.log2(hz / 100) / 6 * (s_bottom - s_top)
 
-            gesture([(sx(0.6), sy(500)), (sx(0.6), sy(2000))])
+            gesture([(sx(span), sy(500)), (sx(span), sy(2000))])
             end = bands_now()[0]["points"][-1]
-            assert end[0] == 0.6 and abs(math.log2(end[1] / 2000)) < 0.1, bands_now()
+            assert end[0] == span and abs(math.log2(end[1] / 2000)) < 0.1, bands_now()
             expect(page.locator("#tab-blobs .band-motion")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
-            gesture([(sx(0.3), sy(1000))])
+            gesture([(sx(span / 2), sy(1000))])
             assert len(bands_now()[0]["points"]) == 3, bands_now()
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.mouse.move(sx(0.3), stft["y"] - 30)
+            page.mouse.move(sx(span / 2), stft["y"] - 30)
             page.keyboard.press("Delete")
             assert len(bands_now()[0]["points"]) == 2, bands_now()
             expect(status).to_contain_text("Made", timeout=60_000)

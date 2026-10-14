@@ -322,6 +322,15 @@ over the tab's figure says which step is running ("Iteration 2 of 5… 45% ·
 with what comes next), "Made … in" counts the whole wait, and the Erase
 modulation tab opens with a "Be advised" note that it is slow.
 
+**Starting duration** (Cho, 2026-10-14): Draw speech starts at 0.6 s, the
+length of its spoken "sonore"; every other tab starts at 2 s
+(`START_DURATION`, app/document.js). The duration is the page's, shared by
+the tabs, so it follows the tab shown only while the page is untouched:
+once anything is drawn or set, switching tabs keeps it. Reset goes back to
+the tab's own starting duration. On the other tabs the Draw speech word is
+stretched to 2 s, as any change of duration stretches every tab's drawing,
+so 0.6 s gives it back as it was spoken.
+
 The Tracks tab's own decisions (scope, track model, file format, sine-wave
 speech upstream, drawing interaction) are in `tabs/tracks.md`.
 The Painted tab's and the Paint primitive's decisions are in

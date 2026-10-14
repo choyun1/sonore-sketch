@@ -30,13 +30,12 @@ TABS = ["tracks", "painted", "blobs", "edit", "mask", "paths", "events"]
 
 DUMP = """
 import { defaultPage, tabState } from "./app/document.js";
-const page = defaultPage();
-console.log(JSON.stringify(Object.fromEntries(%s.map((tab) => [tab, tabState(page, tab)]))));
+console.log(JSON.stringify(Object.fromEntries(%s.map((tab) => [tab, tabState(defaultPage(tab), tab)]))));
 """
 
 
 def starting_states() -> dict[str, dict]:
-    """Each tab's state for the page's starting drawing, from the page's own code."""
+    """Each tab's state for the page's starting drawing on that tab, from the page's own code."""
     out = subprocess.run(["node", "--input-type=module", "-e", DUMP % json.dumps(TABS)], cwd=ROOT, check=True, capture_output=True, text=True)
     return json.loads(out.stdout)
 

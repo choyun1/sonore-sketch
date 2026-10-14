@@ -66,7 +66,9 @@ export const DEFAULTS = {
 
 // A first drawing to hear at once: sonore saying its name, /sɔnɔʁ/, with the
 // tracks of "sonore says its name" in sonore's gallery
-// (docs/gallery/voice/formants.py), read off a recording of the word. Only
+// (docs/gallery/voice/formants.py), read off a recording of the word. The
+// word takes 0.6 s, so the page starts at 0.6 s on this tab (and at 2 s on
+// the others: document.js, defaultPage). Only
 // The /s/ is frication (AF) through the high parallel formants, the
 // voiceless /ʁ/ aspiration (AH), and the /n/ opens the nasal zero (FNZ); all
 // of these can be drawn. The parallel formants' levels (A4-A6, F6, B6) and the

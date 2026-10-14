@@ -181,7 +181,7 @@ the page's duration to its length, up to 30 s.
 (b) the Edit tab's three sources (syllable train, Speech tab, file) with
 the syllable train as the default;
 (c) (b) with the Speech tab as the default.
-*Recommended:* (b). The Speech tab's default is a single 0.6 s vowel, so
+*Recommended:* (b). The Speech tab's default is a single 0.6 s word, so
 there is little to erase on it; the syllable train has formants moving,
 gaps and harmonics to take out, and the two recording tabs then work the
 same way.
