@@ -10,7 +10,7 @@
 //    "blobs": {"carrier": "tones", ..., "items": [{"rate": 4, ...}]},
 //    "edit": {"source": "syllables", ..., "levels": "..."},
 //    "mask": {"source": "syllables", ..., "levels": "..."},
-//    "paths": {"source": "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0},
+//    "paths": {"source": "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0, "speed": null},
 //    "events": {"event": "chirp", ..., "rate": 10, "regularity": 1, "seed": 0},
 //    "recording": {"name": "talk.wav", "fs": 16000, "pcm16": "..."}}
 //
@@ -193,7 +193,7 @@ export async function clearTab(page, tab) {
   if (tab === "painted") return { ...cleared, painted: { ...page.painted, levels: await painted.encodeLevels(painted.blank(page.painted)) } };
   if (tab === "blobs") return { ...cleared, blobs: { ...page.blobs, items: [], bands: [] } };
   if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };
-  if (tab === "paths") return { ...cleared, paths: { ...page.paths, stroke: [], elevation: 0 } };
+  if (tab === "paths") return { ...cleared, paths: { ...page.paths, stroke: [], elevation: 0, speed: null } };
   if (tab === "events") return { ...cleared, events: { ...page.events, rate: events.DEFAULT_RATE } };
   if (tab === "mask") {
     const { span: _span, ...section } = page.mask;
