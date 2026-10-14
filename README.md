@@ -382,16 +382,18 @@ without it: removing every rate above 4 Hz leaves 2.5 dB less power at
    shorter, as a tape played fast is. The sound is brought to one RMS, since its
    power grows with the rate.
 3. The pictures under it are sonore's `ModulationSpectrogram` of the
-   sound: 24 cosine bands from 100 Hz, envelopes at 1 kHz, and one
+   sound: 16 cosine bands from 100 Hz, envelopes at 1 kHz, and one
    window for every modulation rate (an STFT of each envelope), every
    20 ms. The window is a third of the sound, at most 1 s; the rates go
    from two cycles per window (2 Hz from a 3 s sound on) to 64 Hz. One
    window keeps the gray edges the same at every rate; windows of three
    cycles of each rate, as on sonore's gallery page, leave the slow
    rates of a short sound almost all gray. Depth is the modulation's amplitude over the envelope's
-   local mean (0 dB is 100% modulation), shown over its top 30 dB; cells
-   where the rate exceeds the band's width, or the window runs off the
-   sound, cannot be trusted and are gray. Pooled depth weights the bands
+   local mean (0 dB is 100% modulation), shown over its top 30 dB. With
+   16 bands the lowest is 72 Hz wide, so no rate is faster than a band
+   is wide; only the ends, where the window runs off the sound, cannot be
+   measured. They are gray in the pooled picture, and there the band
+   picture shows the nearest moment that was measured. Pooled depth weights the bands
    by their level. It is a one-way view: it drops the fine structure, the
    modulation phase and rates above 64 Hz.
 
