@@ -4,10 +4,8 @@ A proposed tab: draw where a sound goes around the listener with the mouse
 or a pen, on a picture of the room seen from above, and hear it move, in
 headphones, through sonore's `move_sound`.
 
-Status: W1 decided (2026-10-14): Cho chose (b), the top view with an
-elevation track. W2–W6 stand at their recommendations, which the thread said
-would be followed unless Cho chose otherwise; Cho has not confirmed them
-one by one. Nothing is built.
+Status: decided (2026-10-14). Cho chose W1 (b), the top view with an
+elevation track, and accepted W2–W6 as recommended. Nothing is built.
 
 This project is AI-assisted: the document and `tools/measure_paths.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -240,20 +238,25 @@ hold the rest of the tab back, but a track is cheap once the tab exists.
 **W2. Which HRIRs.** MIT KEMAR served with the page, SADIE II, PKU-IOA
 from the server only, or a spherical head. *Recommended:* MIT KEMAR, for
 the reasons above. SADIE II if more directions turn out to matter.
+*Decided (2026-10-14):* as recommended.
 
 **W3. Smoothing.** *Recommended:* resample every 10 ms and smooth with a
 30 ms Gaussian (W-M2), applied in Python so a saved stroke is smoothed the
 same way everywhere.
+*Decided (2026-10-14):* as recommended.
 
 **W4. Travel time.** *Recommended:* put the 1.4 m travel time back in the
 loader (W-M1), not in sonore.
+*Decided (2026-10-14):* as recommended.
 
 **W5. Sampling rate.** *Recommended:* 32 kHz for this tab (W-M4, W-M5),
 unlike the others' 16 kHz.
+*Decided (2026-10-14):* as recommended.
 
 **W6. Timing.** The stroke's own timing stretched to the page's duration,
 or a constant speed along the drawn shape. *Recommended:* the stroke's own
 timing; speed is half of what a moving sound is.
+*Decided (2026-10-14):* as recommended.
 
 ## Order of work
 
