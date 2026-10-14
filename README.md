@@ -378,7 +378,7 @@ The screenshots above are of each tab's example; retake them with
 `tools/make_screenshots.py` when the header, the toolbar or an example
 changes.
 
-Four things to keep in step:
+Five things to keep in step:
 
 - The sonore version is pinned twice, in `pyproject.toml` and as
   `SONORE_VERSION` in `app/worker.js`.
@@ -387,6 +387,9 @@ Four things to keep in step:
   new sonore version needs `SONORE_WHEEL` in `app/worker.js` updated too,
   and any new dependency of sonore added to its `loadPackage` call
   (`tests/test_page.py` checks both).
+- The synthesis server (`server/README.md`), once `SYNTH_SERVER` in
+  `app/engine.js` names one, runs this repository's Python: update it
+  whenever `src/sonore_sketch/` or the sonore version changes on `main`.
 - Each tab's starting sound is made ahead of time in `app/examples/`, by
   `python tools/make_examples.py`. Run it again when a tab's starting
   drawing, its synthesis or the sonore version changes

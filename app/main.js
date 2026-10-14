@@ -62,7 +62,7 @@ function loading(text, failed = false) {
   }
 }
 
-const engineKind = new URLSearchParams(location.search).get("engine") ?? "pyodide";
+const engineKind = new URLSearchParams(location.search).get("engine") ?? "auto"; // "auto": the synthesis server, else Pyodide (engine.js)
 log.info(`page opened, engine: ${engineKind}`, navigator.userAgent);
 let ready = false;
 let failed = null; // why the synthesizer could not start, if it could not

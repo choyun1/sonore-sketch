@@ -1,0 +1,21 @@
+# systemd unit for the synthesis server (server/README.md, step 3).
+[Unit]
+Description=sonore-sketch synthesis server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=synth
+WorkingDirectory=/opt/sonore-sketch
+ExecStart=/opt/sonore-sketch/.venv/bin/python server/synth_server.py --port 8100
+Restart=always
+RestartSec=2
+# a plain worker: no new privileges, read-only system, nothing to write but /tmp
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+MemoryMax=800M
+
+[Install]
+WantedBy=multi-user.target
