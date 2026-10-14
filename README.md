@@ -116,16 +116,6 @@ shapes: log-spaced tones, harmonics of an F0, or noise. The harmonic
 carrier sounds only at multiples of F0, which show as faint dashed lines;
 paint between them is silent.
 
-**Draw modulation.** It starts with one blob and one band, two octaves
-wide round 500 Hz. The **Design** panels are what you draw: click the plane to
-add a blob, drag it to move it, and drag its squares to change its width
-and height (up to 8 blobs). **Add band** confines the sound to a band of
-frequencies that you reshape on the spectrogram with Point, Line or
-Freehand (P, L, F); Delete removes the selected blob, band or breakpoint. The **Result** panels are measured from the sound that came out:
-its own modulation spectrum and its waveform, beside what you drew. The
-carrier (tones, harmonic or noise), the modulation depth, and the seed
-(**New draw** hears another random draw with the same spectrum) are below.
-
 **Erase spectrogram.** Choose a **source**, as on Erase modulation: a
 syllable train, the Draw speech tab's sound, or a recording (**Open audio
 file…**); a recording opened on either tab can be the other's source too.
@@ -139,6 +129,16 @@ window and on the same scale, with what you erased outlined, and its
 waveform. When the duration changes, erasures on a recording or the
 syllable train stay at their seconds (those sounds are not stretched),
 while on the Draw speech sound they stretch with it.
+
+**Draw modulation.** It starts with one blob and one band, two octaves
+wide round 500 Hz. The **Design** panels are what you draw: click the plane to
+add a blob, drag it to move it, and drag its squares to change its width
+and height (up to 8 blobs). **Add band** confines the sound to a band of
+frequencies that you reshape on the spectrogram with Point, Line or
+Freehand (P, L, F); Delete removes the selected blob, band or breakpoint. The **Result** panels are measured from the sound that came out:
+its own modulation spectrum and its waveform, beside what you drew. The
+carrier (tones, harmonic or noise), the modulation depth, and the seed
+(**New draw** hears another random draw with the same spectrum) are below.
 
 **Erase modulation.** Choose a **source**: a syllable train made at the
 page's duration, the Draw speech tab's sound, or a recording (**Open audio
@@ -155,6 +155,21 @@ sound that came out: its own modulation spectrum, measured, with what was
 erased outlined over it, its spectrogram and its waveform. When an edit needs
 envelopes below zero, sonore clips them and a note under the plane says how
 much. A recording is kept in saved files but never in links.
+
+**Draw path.** Use headphones. It starts with noise passing in front of
+you from left to right. Drag on the top view, seen from above with you at
+its center, to draw where the sound goes: how fast you draw is how fast it
+moves, stretched to the duration. Drag on the **speed** track below it to
+change how fast it goes along the path (the duration sets the average);
+**Even speed** makes it one speed from start to end, and **Speed as
+drawn** goes back to the speed you drew. Drag on the **elevation** track to
+raise or lower it over time, from −40° to 90°; **Elevation back to 0°**
+puts the whole path at ear height. The **source** is noise, a syllable
+train, the Draw speech tab's sound or a recording, and the **room** is dry
+or a room's reverberation. The head is MIT's KEMAR mannequin, measured at
+1.4 m (the dashed ring): nearer and farther change only the level and the
+delay, and height comes through weakly, since it is heard through the
+shape of your own ears, and these are the mannequin's.
 
 **Scatter events.** Choose the **event** and its knobs: a chirp (its first
 and last frequency), a tone pip (a pure tone at one frequency, or a
@@ -189,33 +204,7 @@ sound = page.synthesize(json.load(open("sketch.json")))
 
 Every sound is made by sonore 0.7, in `src/sonore_sketch/` (one module per
 tab). The design documents in `docs/design/` hold the measurements behind
-each choice; this section is the method in one place.
-
-### The common picture: envelopes and their modulation spectrum
-
-The Draw modulation and Erase modulation tabs share one description of a sound.
-A cosine filterbank (McDermott & Simoncelli, 2011) splits it into bands
-1/12 octave wide from 100 to 6400 Hz. Each band is a slow **envelope** (its loudness over time, sampled
-at 1 kHz) times a fast **fine structure** (what is under the envelope).
-The envelopes form an array, band by time, and its 2-D Fourier transform
-is the **modulation spectrum** (Chi et al., 1999; Singh & Theunissen, 2003): **rate** (Hz) along time and **density**
-(cycles/octave) along frequency. A positive rate with a positive density
-is a downward sweep, a negative rate an upward one, and density 0 is
-modulation shared by every band.
-
-The spectrum the plane shows is only the transform's magnitude. Two
-phases are missing from it, and something has to supply them before
-there is a sound again:
-
-- the **modulation phase**: when each event happens and how the bands
-  line up;
-- the **fine structure** under each band's envelope.
-
-The **carrier** is what supplies them. Every route back to sound below is
-the same three steps: magnitudes (drawn or edited) and a modulation phase
-make envelopes by the inverse 2-D transform; the envelopes multiply each
-band's fine structure; the bands are summed. The result is normalized to
-RMS 1.
+each choice; this section is the method in one place, one tab at a time.
 
 ### Draw speech
 
@@ -247,6 +236,30 @@ long (`docs/design/tabs/mask.md`, F-M2). There is no iteration.
 
 ### Draw modulation
 
+This tab and Erase modulation share one description of a sound.
+A cosine filterbank (McDermott & Simoncelli, 2011) splits it into bands
+1/12 octave wide from 100 to 6400 Hz. Each band is a slow **envelope** (its loudness over time, sampled
+at 1 kHz) times a fast **fine structure** (what is under the envelope).
+The envelopes form an array, band by time, and its 2-D Fourier transform
+is the **modulation spectrum** (Chi et al., 1999; Singh & Theunissen, 2003): **rate** (Hz) along time and **density**
+(cycles/octave) along frequency. A positive rate with a positive density
+is a downward sweep, a negative rate an upward one, and density 0 is
+modulation shared by every band.
+
+The spectrum the plane shows is only the transform's magnitude. Two
+phases are missing from it, and something has to supply them before
+there is a sound again:
+
+- the **modulation phase**: when each event happens and how the bands
+  line up;
+- the **fine structure** under each band's envelope.
+
+The **carrier** is what supplies them. Both tabs go back to sound by
+the same three steps: magnitudes (drawn or edited) and a modulation phase
+make envelopes by the inverse 2-D transform; the envelopes multiply each
+band's fine structure; the bands are summed. The result is normalized to
+RMS 1.
+
 1. **Magnitudes from the blobs.** Each blob is a Gaussian patch of power
    over log rate and density; the patches add, are mirrored so that
    (rate, density) and (−rate, −density) match (as every real envelope's
@@ -268,27 +281,10 @@ long (`docs/design/tabs/mask.md`, F-M2). There is no iteration.
    its center, a raised-cosine skirt of 1/6 octave on each side, and
    −60 dB outside every band.
 
-### Erase modulation
-
-1. The source is analyzed as above, which keeps both the magnitudes and
-   the source's own modulation phase.
-2. The mask is a gain on the magnitudes: 0 dB keeps a cell, −60 dB removes
-   it. It is read at each cell of the analysis (the center column covers
-   rates under 1 Hz) and averaged with its mirror image
-   (`ModulationSpectrum.with_gain`).
-3. Envelopes are rebuilt from the edited magnitudes and the **source's own
-   modulation phase**, so the sound keeps its timing wherever nothing was
-   cut. Envelopes that come out below zero are clipped, and the note under
-   the plane says how many; this is why boosting barely works and cutting
-   does (`docs/design/tabs/edit.md`, E-M5).
-4. The fine structure is the source's own, or tones, or noise, as chosen.
-
-### Iterations
-
-Putting envelopes on a fine structure is not the end of the story: a fine
-structure that fluctuates within a band (noise, or a recording's own) adds
+**Iterations.** Putting envelopes on a fine structure is not the end of
+the story: a fine structure that fluctuates within a band (noise, or a recording's own) adds
 modulation of its own, so the sound, analyzed again, has a modulation
-spectrum that differs from the target. **Iterations** search for a sound
+spectrum that differs from the target. Iterations search for a sound
 that comes closer, as Griffin and Lim (1984) do for a spectrogram. Each
 round:
 
@@ -301,13 +297,7 @@ round:
 Each round costs one analysis and one synthesis, so the page shows a
 progress bar and drops a search when the drawing changes.
 
-**On Erase modulation** (0–20, default 5) this is sonore's own
-`to_sound(iterations=n)`, taken one round at a time. On the source's own
-fine structure an edit is barely heard without it: removing every rate
-above 4 Hz leaves 2.5 dB less power at 6–40 Hz with no iterations, 11.6 dB
-with 5 and 14.7 dB with 20 (`edit.md`, E-M3).
-
-**On Draw modulation** (0–10, default 0), without bands it is the same search.
+On this tab (0–10, default 0), without bands that is the whole search.
 With bands it goes back and forth between the two constraints
 (`blobs._toward_blobs`): each round divides the envelopes by the gain the
 bands gave them, so the bands' own shape and motion are not what the
@@ -316,11 +306,37 @@ the gain back; and puts the bands on again. The blobs then shape the
 modulation *inside* the bands. Ten rounds give back most of what the bands
 cost the blobs (+3–7.5 dB on tones and +11–15 dB on noise, in how far the
 measured result stands out where the blobs are drawn over where they
-are not) and get 85–95% of
-what 50 do, at a ceiling set by the bands' width
-(`docs/design/tabs/bands.md`, K-M5 and K-M5a). On the harmonic carrier
+are not) and get 85–95% of what 50 do, at a ceiling set by the bands'
+width (`docs/design/tabs/bands.md`, K-M5 and K-M5a). On the harmonic carrier
 iterations are offered only with bands: without them the harmonics that
 share each band beat at F0 and pull the search away (K-M5b).
+
+**The Result panels** of both modulation tabs analyze the sound that came
+out the same way as the plane: the same filterbank, envelopes at 1 kHz and the 2-D transform.
+With bands, each band's envelope is first divided by the bands' gain and
+weighted by it, so what is shown is the modulation inside the bands, the
+same quantity the blobs draw, and the two can be compared directly.
+
+### Erase modulation
+
+1. The source is analyzed as above, which keeps both the magnitudes and
+   the source's own modulation phase.
+2. The mask is a gain on the magnitudes: 0 dB keeps a cell, −60 dB removes
+   it. It is read at each cell of the analysis (the center column covers
+   rates under 1 Hz) and averaged with its mirror image
+   (`ModulationSpectrum.with_gain`).
+3. Envelopes are rebuilt from the edited magnitudes and the **source's own
+   modulation phase**, so the sound keeps its timing wherever nothing was
+   erased. Envelopes that come out below zero are clipped, and the note
+   under the plane says how many; this is why boosting barely works and
+   erasing does (`docs/design/tabs/edit.md`, E-M5).
+4. The fine structure is the source's own, or tones, or noise, as chosen.
+
+**Iterations** (0–20, default 5) are the search described under Draw
+modulation, here sonore's own `to_sound(iterations=n)`, taken one round at
+a time. On the source's own fine structure an erasure is barely heard
+without it: removing every rate above 4 Hz leaves 2.5 dB less power at
+6–40 Hz with no iterations, 11.6 dB with 5 and 14.7 dB with 20 (`edit.md`, E-M3).
 
 ### Draw path
 
@@ -343,7 +359,9 @@ share each band beat at F0 and pull the search away (K-M5b).
    the HRIRs interpolated between measured directions. They were measured
    at 1.4 m only, so nearer and farther change only the level (1/r) and
    the delay, and their files leave out the travel time from 1.4 m, which
-   the tab puts back so nearer paths render (W-M1).
+   the tab puts back so nearer paths render (W-M1). With **Room**, a
+   synthetic stereo room response (`so.synth_ir`, RT60 0.6 s) is added,
+   and it stays put while the source moves.
 4. The sound is made at 32 kHz rather than the page's 16 kHz, since the
    cues that change most with elevation lie above 8 kHz (W-M4). It is
    played and saved in stereo, both ears at one gain.
@@ -373,14 +391,6 @@ share each band beat at F0 and pull the search away (K-M5b).
    sound, cannot be trusted and are gray. Pooled depth weights the bands
    by their level. It is a one-way view: it drops the fine structure, the
    modulation phase and rates above 64 Hz.
-
-### What the Result panels measure
-
-The Result panels analyze the sound that came out the same way as the
-plane: the same filterbank, envelopes at 1 kHz and the 2-D transform.
-With bands, each band's envelope is first divided by the bands' gain and
-weighted by it, so what is shown is the modulation inside the bands, the
-same quantity the blobs draw, and the two can be compared directly.
 
 ## References
 
