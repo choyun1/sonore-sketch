@@ -8,7 +8,7 @@ import * as mask from "../../app/mask/model.js";
 import { NEUTRAL } from "../../app/tracks/model.js";
 import { defaultDocument } from "../../app/tracks/model.js";
 
-test("the default page holds the Tracks tab's default drawing", () => {
+test("the default page holds the Draw speech tab's default drawing", () => {
   assert.deepEqual(tabState(defaultPage(), "tracks"), defaultDocument());
 });
 
@@ -38,7 +38,7 @@ test("opening refuses what is not a document, and tidies what is", () => {
   assert.deepEqual(openDocument(repeated).tracks.params.F0, [[0, 0.3, 0.6], [125, 140, 95]]);
 });
 
-test("stretching the page stretches what the Tracks tab drew", () => {
+test("stretching the page stretches what the Draw speech tab drew", () => {
   const page = stretchPage(defaultPage(), 1.2);
   assert.equal(page.duration, 1.2);
   assert.deepEqual(page.tracks.params.F3[0], defaultPage().tracks.params.F3[0].map((t) => t * 2));

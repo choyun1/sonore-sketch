@@ -1,4 +1,4 @@
-// The Tracks tab: draw F1-F5, FNZ, F0, AV, AF, AH and B1-B5 over time and hear the
+// The Draw speech tab: draw F1-F5, FNZ, F0, AV, AF, AH and B1-B5 over time and hear the
 // Klatt speech they describe (docs/design/tabs/tracks.md).
 //
 // One panel per kind of track, all on the same time axis. The selected track

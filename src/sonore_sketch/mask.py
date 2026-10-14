@@ -124,7 +124,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     STFT, the result's STFT)``, both with the mask's window and on one
     scale (the result's before it is normalized to RMS 1)."""
     check(state)
-    original = edit.source(state, silent="there is nothing to filter")
+    original = edit.source(state, silent="there is nothing to erase")
     yield 1 / 3
     analysis = frame().analyze(original)
     duration, fs = float(state["duration"]), float(state["fs"])

@@ -419,7 +419,7 @@ heard on the page.
 
 ## Credits
 
-sonore-sketch grew out of TrackDraw (2016), by Adrian Y. Cho and Daniel R
+sonore-sketch grew out of TrackDraw (2016), by Adrian Y. Cho and Daniel R.
 Guest, whose history this repository keeps; the Draw speech tab is after
 Assmann et al.'s (1994) Track-Draw. Every sound is made by
 [sonore](https://github.com/choyun1/sonore), by Adrian Y. Cho, running in

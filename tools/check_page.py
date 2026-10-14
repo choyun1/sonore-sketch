@@ -55,7 +55,7 @@ def page_document_in(page) -> dict:
 
 
 def document_in(page) -> dict:
-    """The Tracks tab's drawing, as a TrackDraw document (sonore_sketch.page.tab_state)."""
+    """The Draw speech tab's drawing, as a TrackDraw document (sonore_sketch.page.tab_state)."""
     document = page_document_in(page)
     assert document.get("app") == "sonore-sketch" and document.get("version") == 2, document
     return {"trackdraw": 1, "sonore": document["sonore"], "duration": document["duration"], "fs": document["fs"], **document["tracks"]}
@@ -322,7 +322,7 @@ def main() -> None:
             open_link(default)
             expect(status).to_contain_text("Made", timeout=180_000)
 
-            # The Painted tab: the example plays; a stroke changes the painting
+            # The Draw spectrogram tab: the example plays; a stroke changes the painting
             # and is heard; Clear leaves nothing to hear; Undo brings it back.
             page.click(".tabs [data-tab=painted]")
             expect(page.locator("#tab-painted")).to_be_visible()

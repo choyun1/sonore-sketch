@@ -78,10 +78,10 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       </div>
       <aside class="side">
         <fieldset><legend>Source</legend>
-          <select class="source" title="The sound whose modulation you edit">
+          <select class="source" title="The sound whose modulation you erase">
             ${Object.entries(SOURCE_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
           </select>
-          <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to edit; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
+          <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to erase from; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
           <input type="file" class="audio-file" accept="audio/*" hidden>
           <p class="hint recording-note"></p>
         </fieldset>
@@ -101,9 +101,9 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
           <button type="button" class="no-up" title="Erase the left side above density 0: the sweeps whose frequency rises">No ↑ sweeps</button>
         </fieldset>
         <fieldset><legend>Sound</legend>
-          <label class="field" title="What carries the edited modulation: the source's own fine structure (keeps its voice), log-spaced tones (shows an edit most clearly), or noise">Carrier
+          <label class="field" title="What carries the modulation that is left: the source's own fine structure (keeps its voice), log-spaced tones (shows what was erased most clearly), or noise">Carrier
             <select class="carrier">${CARRIERS.map((c) => `<option value="${c}">${CARRIER_LABELS[c]}</option>`).join("")}</select></label>
-          <label class="field" title="How many times to search for a sound whose own modulation comes closer to the edit (each one an analysis and a synthesis; slower). On the source's own fine structure, an edit needs a few to be heard">Iterations <input type="number" class="iterations" min="0" max="${MAX_ITERATIONS}" step="1"></label>
+          <label class="field" title="How many times to search for a sound whose own modulation comes closer to what is left (each one an analysis and a synthesis; slower). On the source's own fine structure, an erasure needs a few to be heard">Iterations <input type="number" class="iterations" min="0" max="${MAX_ITERATIONS}" step="1"></label>
         </fieldset>
         <p class="hint coarse" hidden></p>
         <p class="hint">Paint on the plane to erase that modulation; right-drag restores it. Space plays.</p>
@@ -403,7 +403,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     context.textAlign = "left";
     context.textBaseline = "top";
     context.fillStyle = "rgba(255, 255, 255, 0.85)";
-    const title = source ? "The source's modulation spectrum; what is erased is darkened and outlined" : "The source's modulation spectrum: Play to analyse it";
+    const title = source ? "The source's modulation spectrum; what is erased is darkened and outlined" : "The source's modulation spectrum: Play to analyze it";
     context.fillText(title, g.x0 + 6, g.y0 + 4);
 
     if (pointer) {
@@ -498,10 +498,11 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     if (!state || !bytes || event.button > 2 || event.button === 1) return;
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
-    const erase = mode === "erase" || event.button === 2;
+    // the brush's modes are the Draw spectrogram tab's: "paint" erases modulation, "erase" restores it
+    const restore = mode === "erase" || event.button === 2;
     const cut = Math.min(-1, Math.max(FLOOR_DB, typedNumber(ui.cut.value, FLOOR_DB)));
     const at = local(event);
-    stroke = { weights: new Float32Array(bytes.length), last: at, target: erase ? 0 : -cut, preview: null };
+    stroke = { weights: new Float32Array(bytes.length), last: at, target: restore ? 0 : -cut, preview: null };
     dabAt(at);
     stroke.preview = applyCut(bytes, stroke.weights, stroke.target);
     render();
@@ -646,7 +647,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       renderStft();
     },
     blocked() {
-      if (state.source === "file" && !state.recording) return "No recording: open an audio file (Source) to edit one.";
+      if (state.source === "file" && !state.recording) return "No recording: open an audio file (Source) to erase from.";
       return null;
     },
     key(event) {

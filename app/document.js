@@ -18,7 +18,7 @@
 //
 // A tab works on its own state, the shape its Python function takes
 // (sonore_sketch.page.tab_state does the same in Python). A version-1
-// document, the Tracks tab's own format from before there were other tabs,
+// document, the Draw speech tab's own format from before there were other tabs,
 // opens as version 2, so old files and links keep working.
 //
 // No DOM here, so this file runs under `node --test`.

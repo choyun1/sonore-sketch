@@ -101,7 +101,7 @@ test("bands are checked", () => {
   assert.throws(() => check({ ...ok, bands: Array(6).fill(ok.bands[0]) }), /at most 5/);
   assert.throws(() => check({ ...ok, bands: [{ ...ok.bands[0], width: 0.1 }] }), /width/);
   assert.throws(() => check({ ...ok, bands: [{ ...ok.bands[0], points: [[0.3, 500], [0.3, 600]] }] }), /times must increase/);
-  assert.throws(() => check({ ...ok, bands: [{ ...ok.bands[0], points: [[0, 50]] }] }), /centre/);
+  assert.throws(() => check({ ...ok, bands: [{ ...ok.bands[0], points: [[0, 50]] }] }), /center/);
 });
 
 test("stretching the page stretches the bands with it", () => {

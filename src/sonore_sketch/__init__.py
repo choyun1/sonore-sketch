@@ -6,7 +6,7 @@ the Python half: one function per tab that turns the tab's state into a
 saved drawing gives the same sound in both.
 """
 
-from . import blobs, painted, tracks
+from . import blobs, edit, mask, page, painted, tracks
 
 __version__ = "0.1.0.dev0"
-__all__ = ["blobs", "painted", "tracks"]
+__all__ = ["blobs", "edit", "mask", "page", "painted", "tracks"]

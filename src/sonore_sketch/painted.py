@@ -1,4 +1,4 @@
-"""The Painted tab's state, and the sound it describes.
+"""The Draw spectrogram tab's state, and the sound it describes.
 
 A painting is a grid of levels over time and log-frequency
 (docs/design/tabs/painted.md)::

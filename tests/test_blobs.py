@@ -253,7 +253,7 @@ def test_with_bands_iterations_work_on_the_harmonic_carrier_too():
         ([band([])], "points"),
         ([band([(0.5, 1000), (0.5, 2000)])], "times must increase"),
         ([band([(0, 1000), (2, 2000)])], "times must increase"),
-        ([band([(0, 50)])], "centre"),
+        ([band([(0, 50)])], "center"),
     ],
 )
 def test_bad_bands_are_refused(bands, message):

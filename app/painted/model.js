@@ -1,4 +1,4 @@
-// The Painted tab's state and the brush that edits it
+// The Draw spectrogram tab's state and the brush that edits it
 // (docs/design/tabs/painted.md; sonore_sketch.painted is the Python half).
 //
 // The painting is a grid of bytes, rows from f_lo up and columns from time 0,

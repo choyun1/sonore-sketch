@@ -1,4 +1,4 @@
-// The Tracks tab's document and the edits drawing makes to it.
+// The Draw speech tab's document and the edits drawing makes to it.
 //
 // A document is the file format of docs/design/tabs/tracks.md (D5), kept as
 // is in memory: each parameter is a number or [times, values], which is what

@@ -31,7 +31,7 @@ VERSION = 2
 
 def upgrade(document: Mapping[str, Any]) -> dict[str, Any]:
     """``document`` as a version-2 page document. A TrackDraw document
-    (format 1, the Tracks tab's own) becomes its ``tracks`` section."""
+    (format 1, the Draw speech tab's own) becomes its ``tracks`` section."""
     if document.get("trackdraw") == tracks.FORMAT:
         return {
             "app": APP, "version": VERSION, "sonore": document.get("sonore"),
@@ -108,10 +108,10 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     Returns the sampling rate, the samples as little-endian float32 bytes
     (sonore's level: RMS 1), a spectrogram (:func:`spectrogram`), and the
     seconds synthesis took; on the Draw modulation tab also the result's measured
-    modulation spectrum (``blobs.measured_picture``), and on the Edit
+    modulation spectrum (``blobs.measured_picture``), and on the Erase
     modulation tab the source's and the result's (``edit.plane_picture``)
-    and the fraction of envelope values sonore clipped; on the Filter
-    recording tab the source's and the result's spectrograms in the mask's
+    and the fraction of envelope values sonore clipped; on the Erase
+    spectrogram tab the source's and the result's spectrograms in the mask's
     own STFT (``mask.pictures``).
     """
     work = handle_steps(request)
