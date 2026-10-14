@@ -142,6 +142,7 @@ function showTab() {
     const active = button.dataset.tab === tab.id;
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1; // Tab reaches the tab shown; the arrow keys reach the others
   }
   for (const id of Object.keys(tabs)) byId(`tab-${id}`).hidden = id !== tab.id;
   // a tab that draws the result's waveform itself (the Draw modulation tab, in its Result box)
@@ -161,6 +162,19 @@ function switchTab(id, { synthesizes = true } = {}) {
   if (ready && synthesizes) synthesize({ play: false });
 }
 for (const button of tabButtons) button.addEventListener("click", () => switchTab(button.dataset.tab));
+// The arrow keys, Home and End move between the tabs, as in the WAI-ARIA
+// tabs pattern: the tab focused is the tab shown.
+document.querySelector(".tabs").addEventListener("keydown", (event) => {
+  const index = tabButtons.indexOf(event.target);
+  if (index < 0 || event.ctrlKey || event.metaKey || event.altKey) return;
+  const last = tabButtons.length - 1;
+  const moves = { ArrowLeft: index ? index - 1 : last, ArrowRight: index < last ? index + 1 : 0, Home: 0, End: last };
+  if (!(event.key in moves)) return;
+  event.preventDefault();
+  const button = tabButtons[moves[event.key]];
+  button.focus();
+  switchTab(button.dataset.tab);
+});
 
 // The document as saved and linked: with the tab shown (a link without the recording).
 // stamped with the sonore that makes its sound now, not the one of the file it was opened from

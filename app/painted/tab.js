@@ -60,7 +60,7 @@ export function createPaintedTab(root, { commit, log }) {
             <select class="carrier">${CARRIERS.map((c) => `<option value="${c}">${c}</option>`).join("")}</select></label>
           <label class="field f0-field" title="The harmonic carrier's fundamental">F0 <input type="number" class="f0" min="20" max="1000" step="1"> Hz</label>
           <label class="field" title="The painted frequency range; changing it keeps what is painted inside the new range">Range
-            <input type="number" class="f-lo" min="20" step="1"> – <input type="number" class="f-hi" step="1"> Hz</label>
+            <input type="number" class="f-lo" min="20" step="1" aria-label="Range from, Hz"> – <input type="number" class="f-hi" step="1" aria-label="Range to, Hz"> Hz</label>
         </fieldset>
         <p class="hint">Drag to paint; right-drag erases. Space plays. Ctrl+Z undoes.</p>
       </aside>
