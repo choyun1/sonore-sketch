@@ -2,7 +2,7 @@
 // the drawing (docs/design/tabs/blobs.md; sonore_sketch.blobs is the Python
 // half).
 //
-// A blob is sonore's ModulationBlob: a Gaussian bump of power centred on a
+// A blob is sonore's ModulationBlob: a Gaussian bump of power centered on a
 // rate [Hz, signed: positive sweeps down, negative up] and a density
 // [cycles/octave], with a standard deviation in octaves of rate and one in
 // cycles/octave, and a peak level [dB] relative to the other blobs.
@@ -122,7 +122,7 @@ export function depthThatFits(message) {
 
 // --- bands (docs/design/tabs/bands.md) ---------------------------------------------
 
-// A band confines the sound to a region of the spectrogram: a centre track
+// A band confines the sound to a region of the spectrogram: a center track
 // of [time s, Hz] points (interpolated in log frequency, held past its ends),
 // a width in octaves and a level in dB. sonore_sketch.blobs.band_gain is the
 // filter itself; the page only draws where the bands are.
@@ -132,9 +132,9 @@ export const BAND_WIDTH_MAX = 4;
 export const BAND_LEVEL_MIN = -40;
 export const BAND_SKIRT = 1 / 6; // octaves of raised-cosine edge on each side
 // Where "Add band" puts a new, flat band: the first of these not already inside one.
-const NEW_BAND_CENTRES = [500, 2000, 1000, 4000, 250, 3000, 700, 1400];
+const NEW_BAND_CENTERS = [500, 2000, 1000, 4000, 250, 3000, 700, 1400];
 
-export function bandCentre(points, t) {
+export function bandCenter(points, t) {
   if (t <= points[0][0]) return points[0][1];
   for (let i = 1; i < points.length; i++) {
     const [t1, f1] = points[i];
@@ -147,14 +147,14 @@ export function bandCentre(points, t) {
 }
 
 export function newBand(bands, duration) {
-  const inside = (f) => bands.some((b) => [0, duration / 2, duration].some((t) => Math.abs(Math.log2(f / bandCentre(b.points, t))) <= b.width / 2));
-  const centre = NEW_BAND_CENTRES.find((f) => !inside(f)) ?? 1000;
-  return { points: [[0, centre], [Math.min(duration, tidyTime(duration)), centre]], width: 1, level: 0 };
+  const inside = (f) => bands.some((b) => [0, duration / 2, duration].some((t) => Math.abs(Math.log2(f / bandCenter(b.points, t))) <= b.width / 2));
+  const center = NEW_BAND_CENTERS.find((f) => !inside(f)) ?? 1000;
+  return { points: [[0, center], [Math.min(duration, tidyTime(duration)), center]], width: 1, level: 0 };
 }
 
 export const clampBandWidth = (w) => Math.min(BAND_WIDTH_MAX, Math.max(BAND_WIDTH_MIN, w));
 export const clampBandLevel = (l) => Math.min(0, Math.max(BAND_LEVEL_MIN, l));
-// Times to the millisecond, centres to the hertz, as saved.
+// Times to the millisecond, centers to the hertz, as saved.
 export const tidyTime = (t) => Math.round(t * 1000) / 1000;
 export const tidyHz = (f) => Math.round(f);
 

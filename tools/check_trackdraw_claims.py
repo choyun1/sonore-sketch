@@ -58,21 +58,21 @@ for f_res, bw in ((500, 60), (1500, 90), (2500, 150)):
     report("C2", f"fs {fs}: resonator gain at its own F = {f_res} Hz, BW = {bw} Hz [dB]",
            db(resonator_response(f_res, bw, f_res, fs)))
 
-# --- C3: time-stretching a drawn track. The paper resampled 5 ms frames with
+# --- C3: time-stretching a drawn track. The paper resampled 5 ms time windows with
 # a cubic spline; with breakpoints, stretching scales the times, exactly.
-frame_hop = 0.005
-frame_times = np.arange(0, 0.2 + frame_hop / 2, frame_hop)
+window_hop = 0.005
+window_times = np.arange(0, 0.2 + window_hop / 2, window_hop)
 # A line-drawn F2 transition: 1200 Hz held, then 1700 Hz over 40 ms, then held.
 breakpoint_times = np.array([0.0, 0.05, 0.09, 0.2])
 breakpoint_values = np.array([1200.0, 1200.0, 1700.0, 1700.0])
-frames = np.interp(frame_times, breakpoint_times, breakpoint_values)
+window_values = np.interp(window_times, breakpoint_times, breakpoint_values)
 stretch = 1.5
 fine_times = np.linspace(0, 0.2 * stretch, 3001)
-splined = CubicSpline(frame_times * stretch, frames)(fine_times)  # not-a-knot ends, as MATLAB's spline
+splined = CubicSpline(window_times * stretch, window_values)(fine_times)  # not-a-knot ends, as MATLAB's spline
 target = np.interp(fine_times, breakpoint_times * stretch, breakpoint_values)
-report("C3", "spline-stretched 5 ms frames (x1.5): overshoot above 1700 Hz [Hz]", splined.max() - 1700)
-report("C3", "spline-stretched 5 ms frames (x1.5): undershoot below 1200 Hz [Hz]", 1200 - splined.min())
-report("C3", "spline-stretched frames vs the stretched line: max |difference| [Hz]", np.max(np.abs(splined - target)))
+report("C3", "spline-stretched 5 ms time windows (x1.5): overshoot above 1700 Hz [Hz]", splined.max() - 1700)
+report("C3", "spline-stretched 5 ms time windows (x1.5): undershoot below 1200 Hz [Hz]", 1200 - splined.min())
+report("C3", "spline-stretched time windows vs the stretched line: max |difference| [Hz]", np.max(np.abs(splined - target)))
 # Breakpoints: scale the times and interpolate. The same piecewise-linear
 # function as stretching the original in time, to rounding.
 direct = np.interp(fine_times / stretch, breakpoint_times, breakpoint_values)

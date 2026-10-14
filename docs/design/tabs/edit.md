@@ -128,7 +128,7 @@ edit above was clipped by sonore by 15–31%. Its warning is worth showing.
 ```
 
 - The plane is the Modulation tab's: signed log rate from 1 to 64 Hz on
-  each side and density from 0 to 6 cyc/oct. It also has a narrow centre
+  each side and density from 0 to 6 cyc/oct. It also has a narrow center
   strip for |rate| < 1 Hz, the static spectral shape, which can be edited
   too (E-M5).
 - The painted gain is a Paint grid over that plane. It is shown by
@@ -151,7 +151,7 @@ A section in the version-2 page document:
 ```
 
 - **Columns:** 16 per octave on each side of the rate axis (96 per side)
-  plus the centre strip.
+  plus the center strip.
 - **Rows:** 0 to 6 cyc/oct in steps of 0.125.
 - **Cells:** one byte each, in dB of cut, as on the Spectrogram tab.
 - **Reading the grid:** Python reads it bilinearly in dB at each analysis
@@ -168,7 +168,7 @@ in the state, as `state["recording"]`),
 registered in `page.TABS` and the worker's file list. It:
 
 - makes or takes the source;
-- analyses it with `octave`;
+- analyzes it with `octave`;
 - applies the gain with `with_gain`;
 - synthesizes with `to_sound`;
 - passes sonore's clipping warning back with the result, so the page can
@@ -185,7 +185,7 @@ For the tab's own source (E1), it builds the syllable train with
 (c) a recording opened from a file (and from the microphone later).
 *Recommended:* all three, with (a) as the default. The Speech tab's
 default is a single 0.6 s vowel, which has little modulation to edit, so
-(a) makes the first Play worth hearing. It also needs no licence and
+(a) makes the first Play worth hearing. It also needs no license and
 follows the page's duration, so no other tab is stretched.
 
 For recordings, this takes the parked Filter recording design's
@@ -196,7 +196,7 @@ recommendations, so the two tabs share them:
 
 **E2. The plane.**
 *Recommended:* the Modulation tab's axes (signed log rate 1–64 Hz, density
-0–6 cyc/oct), plus a centre strip for |rate| < 1 Hz. Edits made on
+0–6 cyc/oct), plus a center strip for |rate| < 1 Hz. Edits made on
 Modulation and here then read the same way.
 
 **E3. Cut only, or cut and boost.**

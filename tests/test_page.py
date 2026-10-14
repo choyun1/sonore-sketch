@@ -70,13 +70,13 @@ def test_the_sonore_version_is_the_same_everywhere():
     assert pin == f">={major}.{minor},<{major}.{minor + 1}"  # the minor version the page installs
 
 
-def test_the_page_colours_levels_with_matplotlibs_magma_as_sonore_does():
+def test_the_page_colors_levels_with_matplotlibs_magma_as_sonore_does():
     matplotlib = pytest.importorskip("matplotlib")
     root = Path(__file__).resolve().parents[1]
     table = "".join(re.findall(r'"([0-9a-f]+)"', (root / "app" / "colormap.js").read_text()))
-    colours = np.array([[int(table[6 * i + k : 6 * i + k + 2], 16) for k in (0, 2, 4)] for i in range(256)])
+    colors = np.array([[int(table[6 * i + k : 6 * i + k + 2], 16) for k in (0, 2, 4)] for i in range(256)])
     expected = np.round(np.array([matplotlib.colormaps["magma"].resampled(256)(i)[:3] for i in range(256)]) * 255)
-    np.testing.assert_array_equal(colours, expected)
+    np.testing.assert_array_equal(colors, expected)
 
 
 def test_handle_steps_reports_progress_and_returns_handles_result():

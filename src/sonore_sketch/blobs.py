@@ -19,7 +19,7 @@ gives the same samples. The harmonic carrier is a harmonic complex on
 the seed.
 
 ``bands`` (optional, docs/design/tabs/bands.md) confine the sound to drawn
-regions of the spectrogram: each is a centre-frequency track, a width in
+regions of the spectrogram: each is a center-frequency track, a width in
 octaves and a level, applied last as a time-varying filter on a 20 ms STFT
 (``so.Mask``). With no bands the sound is the whole range, as before.
 With bands, ``iterations`` go back and forth between the two: impose the
@@ -117,8 +117,8 @@ def _check_band(band: Any, i: int, duration: float, f_lo: float, f_hi: float) ->
         raise ValueError(f"{name}'s center must stay within {f_lo:g}-{f_hi:g} Hz")
 
 
-def band_centres(points: list, t: np.ndarray) -> np.ndarray:
-    """A band's centre [Hz] at times ``t``: its points interpolated in log
+def band_centers(points: list, t: np.ndarray) -> np.ndarray:
+    """A band's center [Hz] at times ``t``: its points interpolated in log
     frequency, held past the first and the last."""
     times = np.array([p[0] for p in points], float)
     hz = np.array([p[1] for p in points], float)
@@ -128,14 +128,14 @@ def band_centres(points: list, t: np.ndarray) -> np.ndarray:
 def band_gain(bands: list, freqs: np.ndarray, t: np.ndarray) -> np.ndarray:
     """Amplitude gain of ``bands`` at times ``t`` and frequencies ``freqs``,
     shape ``(len(t), len(freqs))``: 1 times a band's level within half its
-    width of its centre, a raised-cosine skirt of ``BAND_SKIRT`` octaves,
+    width of its center, a raised-cosine skirt of ``BAND_SKIRT`` octaves,
     ``BAND_FLOOR_DB`` outside, and the largest over the bands (K2, K5)."""
     floor = 10 ** (BAND_FLOOR_DB / 20)
     octaves = np.log2(np.maximum(np.asarray(freqs, float), 1e-3))[None, :]
     gain = np.full((len(t), octaves.shape[1]), floor)
     for band in bands:
-        centre = np.log2(band_centres(band["points"], np.asarray(t, float)))[:, None]
-        edge = np.clip((np.abs(octaves - centre) - band["width"] / 2) / BAND_SKIRT, 0, 1)
+        center = np.log2(band_centers(band["points"], np.asarray(t, float)))[:, None]
+        edge = np.clip((np.abs(octaves - center) - band["width"] / 2) / BAND_SKIRT, 0, 1)
         peak = 10 ** (band.get("level", 0) / 20)
         gain = np.maximum(gain, floor + (peak - floor) * 0.5 * (1 + np.cos(np.pi * edge)))
     return gain
@@ -303,7 +303,7 @@ ENV_FS = 1000.0  # sonore's envelope rate for octave() and from_blobs
 
 
 def measured(sound: so.Sound, state: Mapping[str, Any]) -> so.ModulationSpectrum:
-    """The modulation spectrum of ``sound``, analysed as ``octave`` does
+    """The modulation spectrum of ``sound``, analyzed as ``octave`` does
     (1/``bands_per_octave``-octave cosine filterbank over the tab's range,
     envelopes at 1 kHz).
 

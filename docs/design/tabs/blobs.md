@@ -142,12 +142,12 @@ drawing is clearest on tones. That is worth showing, not hiding (B7).
 ```
 
 - The plane shows the drawn target (`level`, in dB) in magma, as the other
-  tabs do, with each blob's outline (one standard deviation) and centre on
+  tabs do, with each blob's outline (one standard deviation) and center on
   top. Rate is signed and logarithmic (B1); density is linear, 0–6 cyc/oct.
-- Clicking empty space adds a blob there; dragging a centre moves it;
+- Clicking empty space adds a blob there; dragging a center moves it;
   dragging the outline's handles changes the two widths; the side panel
   edits the selected blob's numbers and level; Delete or Backspace removes
-  it. A drag that crosses the centre seam flips the rate's sign. Undo and
+  it. A drag that crosses the center seam flips the rate's sign. Undo and
   redo take whole gestures.
 - Below, the shell's waveform and spectrogram, and the result's measured
   modulation spectrum on the same axes as the plane, so drawn and heard can
@@ -155,9 +155,9 @@ drawing is clearest on tones. That is worth showing, not hiding (B7).
 
 ### The Blobs primitive
 
-- **Shapes on a plane.** Each shape is a centre, two widths and a level;
-  it is drawn as an ellipse in screen space, with a centre point and two
-  width handles. Picking prefers handles, then the nearest centre within a
+- **Shapes on a plane.** Each shape is a center, two widths and a level;
+  it is drawn as an ellipse in screen space, with a center point and two
+  width handles. Picking prefers handles, then the nearest center within a
   few pixels, then the inside of the smallest ellipse, so overlapping blobs
   stay reachable.
 - **The picture.** The page computes the target's power itself, with

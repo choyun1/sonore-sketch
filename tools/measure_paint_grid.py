@@ -38,8 +38,8 @@ WARM_REPEATS = 3
 def pattern_from_grid(grid_db, duration):
     """``pattern(t, x)`` reading ``grid_db`` (rows x columns) bilinearly, in dB.
 
-    Cell centres sit at ``(i + 0.5) / n`` of the axis; outside the outer
-    centres the edge value holds.
+    Cell centers sit at ``(i + 0.5) / n`` of the axis; outside the outer
+    centers the edge value holds.
     """
     n_rows, n_columns = grid_db.shape
     tc = (np.arange(n_columns) + 0.5) / n_columns * duration

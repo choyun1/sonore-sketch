@@ -276,12 +276,12 @@ def main() -> None:
                 """() => ['#waveform', '.panel-formants canvas.background'].map((selector) => {
                     const c = document.querySelector(selector);
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-                    const colours = new Set(); let n = 0;
-                    for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { n++; colours.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); }
-                    return [n, colours.size]; })"""
+                    const colors = new Set(); let n = 0;
+                    for (let i = 0; i < d.length; i += 4) if (d[i + 3]) { n++; colors.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); }
+                    return [n, colors.size]; })"""
             )
-            assert drawn[0][0] and drawn[1][1] > 50, f"result pictures are empty or not in colour: {drawn}"
-            print(f"waveform drawn ({drawn[0][0]} pixels); spectrogram under the formants in {drawn[1][1]} colours")
+            assert drawn[0][0] and drawn[1][1] > 50, f"result pictures are empty or not in color: {drawn}"
+            print(f"waveform drawn ({drawn[0][0]} pixels); spectrogram under the formants in {drawn[1][1]} colors")
 
             # A link from before breakpoint times were kept increasing (two F0
             # points at 0.3 s) is tidied on opening, and synthesizes.
@@ -386,11 +386,11 @@ def main() -> None:
             plane = page.locator("canvas.plane").bounding_box()
             left, right = plane["x"] + 52, plane["x"] + plane["width"] - 10
             top, bottom = plane["y"] + 8, plane["y"] + plane["height"] - 36
-            centre, half = (left + right) / 2, (right - left) / 2 - 7
+            center, half = (left + right) / 2, (right - left) / 2 - 7
 
             def bx(rate):
                 side = 1 if rate > 0 else -1
-                return centre + side * (7 + math.log2(abs(rate)) / 6 * half)
+                return center + side * (7 + math.log2(abs(rate)) / 6 * half)
 
             def by(density):
                 return bottom - density / 6 * (bottom - top)
@@ -446,7 +446,7 @@ def main() -> None:
             errors[before_failure:] = [e for e in errors[before_failure:] if "400 (Bad Request)" not in e]
             print(f"modulation: a depth of 0.95 was refused and {offered} offered and used")
 
-            page.mouse.move(centre, plane["y"] - 30)  # off the plane, so keys go to the page
+            page.mouse.move(center, plane["y"] - 30)  # off the plane, so keys go to the page
             page.keyboard.press("Delete")
             assert len(blobs_now()) == 1
             page.click("#clear")
@@ -469,22 +469,22 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=60_000)
             section = page_document_in(page)["blobs"]
             assert section["carrier"] == "harmonic" and section["f0"] == 150, section
-            colours = page.evaluate(
+            colors = page.evaluate(
                 """() => { const c = document.querySelector('canvas.stft');
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] * 65536 + d[i + 1] * 256 + d[i + 2]);
                     return seen.size; }"""
             )
-            assert colours > 50, f"the spectrogram under the plane looks empty ({colours} colours)"
-            measured_colours = page.evaluate(
+            assert colors > 50, f"the spectrogram under the plane looks empty ({colors} colors)"
+            measured_colors = page.evaluate(
                 """() => { const c = document.querySelector('canvas.measured');
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] * 65536 + d[i + 1] * 256 + d[i + 2]);
                     return seen.size; }"""
             )
-            assert measured_colours > 30, f"the measured plane looks empty ({measured_colours} colours)"
-            print(f"modulation: the measured modulation spectrum is drawn under the plane ({measured_colours} colours)")
-            print(f"modulation: the harmonic carrier on 150 Hz plays, and the spectrogram under the plane is drawn ({colours} colours)")
+            assert measured_colors > 30, f"the measured plane looks empty ({measured_colors} colors)"
+            print(f"modulation: the measured modulation spectrum is drawn under the plane ({measured_colors} colors)")
+            print(f"modulation: the harmonic carrier on 150 Hz plays, and the spectrogram under the plane is drawn ({colors} colors)")
 
             # Bands (bands.md): Add band puts a flat band at 500 Hz; dragging
             # its last breakpoint bends it up; a click on its line adds a
@@ -567,27 +567,27 @@ def main() -> None:
             section = page_document_in(page)["edit"]
             assert page_document_in(page)["tab"] == "edit" and section["source"] == "syllables" and section["iterations"] == 5, section
             assert page.locator("main > .result").is_hidden(), "the page's own waveform strip shows on the Erase modulation tab"
-            colours = page.evaluate(
+            colors = page.evaluate(
                 """() => { const c = document.querySelector('#tab-edit canvas.mask-plane');
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     const s = new Set(); for (let i = 0; i < d.length; i += 4) s.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); return s.size; }"""
             )
-            assert colours > 100, f"the source's spectrum is not drawn on the plane ({colours} colours)"
+            assert colors > 100, f"the source's spectrum is not drawn on the plane ({colors} colors)"
             measured = page.evaluate(
                 """() => { const c = document.querySelector('#tab-edit canvas.measured-plane');
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     const s = new Set(); for (let i = 0; i < d.length; i += 4) s.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); return s.size; }"""
             )
-            assert measured > 100, f"the result's measured spectrum is not drawn ({measured} colours)"
+            assert measured > 100, f"the result's measured spectrum is not drawn ({measured} colors)"
             # a hard cut clips envelopes, which a note says (E9)
             expect(page.locator("#tab-edit .clip-note")).to_contain_text("% of the envelopes were clipped")
-            print(f"edit: the source's spectrum ({colours} colours), the result's ({measured}) and the clipping note are shown")
+            print(f"edit: the source's spectrum ({colors} colors), the result's ({measured}) and the clipping note are shown")
             plane = page.locator("#tab-edit canvas.mask-plane").bounding_box()
             p_left, p_right = plane["x"] + 52, plane["x"] + plane["width"] - 10
             p_top, p_bottom = plane["y"] + 8, plane["y"] + plane["height"] - 36
-            p_centre = (p_left + p_right) / 2
+            p_center = (p_left + p_right) / 2
             # erase the cut at about -16 Hz, density 3, with a right-drag
-            ex = p_centre - 8 - (4 / 6) * ((p_right - p_left) / 2 - 8)
+            ex = p_center - 8 - (4 / 6) * ((p_right - p_left) / 2 - 8)
             ey = p_bottom - 0.5 * (p_bottom - p_top)
             before = page.evaluate("location.hash")
             page.mouse.move(ex, ey)
@@ -671,13 +671,13 @@ def main() -> None:
             assert section["source"] == "syllables" and not mask_tab.cuts(section).any(), section["source"]
             assert page.locator("main > .result").is_hidden(), "the page's own waveform strip shows on the Erase spectrogram tab"
             for name in ("filter-plane", "filter-result"):
-                colours = page.evaluate(
+                colors = page.evaluate(
                     """name => { const c = document.querySelector('#tab-mask canvas.' + name);
                         const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                         const s = new Set(); for (let i = 0; i < d.length; i += 4) s.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); return s.size; }""",
                     name,
                 )
-                assert colours > 100, f"the {name} spectrogram is not drawn ({colours} colours)"
+                assert colors > 100, f"the {name} spectrogram is not drawn ({colors} colors)"
             plane = page.locator("#tab-mask canvas.filter-plane").bounding_box()
             m_left, m_right = plane["x"] + 52, plane["x"] + plane["width"] - 10
             m_top, m_bottom = plane["y"] + 8, plane["y"] + plane["height"] - 22

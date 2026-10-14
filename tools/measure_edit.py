@@ -44,7 +44,7 @@ def syllables(duration: float) -> so.Sound:
     return edit.syllables(duration, FS)
 
 
-def analyse(sound):
+def analyze(sound):
     return so.ModulationSpectrum.octave(sound, f_lo=F_LO, f_hi=F_HI)
 
 
@@ -68,11 +68,11 @@ lowpass = lambda r, d: (np.abs(r) <= 4).astype(float)  # noqa: E731
 print("\n1. speed")
 print(f"  {'case':<34s} {'1 s':>8s} {'3 s':>8s} {'10 s':>8s}   (warm median of {WARM_REPEATS})")
 cases = {
-    "analysis (octave)": lambda d: analyse(sources[d]),
-    "gain + source, 0 iterations": lambda d: analyse(sources[d]).with_gain(lowpass).to_sound(carrier=sources[d]),
-    "gain + source, 5 iterations": lambda d: analyse(sources[d]).with_gain(lowpass).to_sound(carrier=sources[d], iterations=5),
-    "gain + tones, 0 iterations": lambda d: analyse(sources[d]).with_gain(lowpass).to_sound(carrier="tones", fs=FS, rng=1),
-    "gain + noise, 0 iterations": lambda d: analyse(sources[d]).with_gain(lowpass).to_sound(carrier="noise", fs=FS, rng=1),
+    "analysis (octave)": lambda d: analyze(sources[d]),
+    "gain + source, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier=sources[d]),
+    "gain + source, 5 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier=sources[d], iterations=5),
+    "gain + tones, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier="tones", fs=FS, rng=1),
+    "gain + noise, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier="noise", fs=FS, rng=1),
 }
 for name, function in cases.items():
     cells = []
@@ -82,7 +82,7 @@ for name, function in cases.items():
     print(f"  {name:<34s} " + " ".join(f"{c:7.3f}s" for c in cells))
 
 source = sources[3.0]
-original = analyse(source)
+original = analyze(source)
 
 print("\n2. doing nothing (3 s): the unedited spectrum on the source's own fine structure")
 again = original.to_sound(carrier=source)
@@ -102,7 +102,7 @@ for name, options in (
     ("noise, 0 iterations", dict(carrier="noise", fs=FS, rng=1)),
 ):
     result = original.with_gain(lowpass).to_sound(**options)
-    print(f"  {name:<24s} {before - band_power(analyse(result)):5.1f} dB less")
+    print(f"  {name:<24s} {before - band_power(analyze(result)):5.1f} dB less")
 
 print("\n4. remove downward sweeps (3 s): power at 2-16 Hz, density 0.5-4, down minus up")
 def sweeps(ms):
@@ -114,7 +114,7 @@ def sweeps(ms):
 print(f"  source {sweeps(original):5.1f} dB")
 for name, options in (("source, 0 iterations", dict(carrier=source)), ("source, 5 iterations", dict(carrier=source, iterations=5)), ("tones, 0 iterations", dict(carrier="tones", fs=FS, rng=1))):
     result = original.with_gain(lambda r, d: (r * d <= 0).astype(float)).to_sound(**options)
-    print(f"  {name:<24s} {sweeps(analyse(result)):5.1f} dB")
+    print(f"  {name:<24s} {sweeps(analyze(result)):5.1f} dB")
 
 print("\n5. boosting, and cutting the static strip (3 s, on the source)")
 for name, gain in (
@@ -124,7 +124,7 @@ for name, gain in (
 ):
     try:
         result = original.with_gain(gain).to_sound(carrier=source)
-        measured = analyse(result)
+        measured = analyze(result)
         print(f"  {name:<32s} runs; power at 2-8 Hz {band_power(measured, (2, 8)) - band_power(original, (2, 8)):+5.1f} dB, "
               f"static ripple (|rate| < 1, density 0.5-4) {band_power(measured, (0, 0.9), (0.5, 4)) - band_power(original, (0, 0.9), (0.5, 4)):+5.1f} dB")
     except ValueError as error:

@@ -7,7 +7,7 @@ band-limit it, perhaps as drawn tracks: a time-varying filter like a
 formant, with up to about five bands. This note designs that.
 
 Status: decided (2026-10-05). Cho accepted every recommendation (K1–K7),
-and, for K7, chose that the measured modulation spectrum be analysed within
+and, for K7, chose that the measured modulation spectrum be analyzed within
 the bands. Built: steps 1 and 2 of the order of work, and the measured
 plane (`blobs.md`, B7) with K7's analysis within the bands (K-M4).
 
@@ -34,10 +34,10 @@ independent check); **[read]** is read from sonore's source;
 
 ## What a band is
 
-A **band** is a centre-frequency track (breakpoints in time, as on the
+A **band** is a center-frequency track (breakpoints in time, as on the
 Speech tab, interpolated in log frequency and held past the ends), a
 width in octaves and a level in dB. Its gain is 1 (times its level)
-within half the width of the centre, falls along a raised-cosine skirt of
+within half the width of the center, falls along a raised-cosine skirt of
 1/6 octave on each side, and reaches a floor of −60 dB. Several bands
 combine by taking the largest gain at each time and frequency. With no
 bands the tab sounds as it does now.
@@ -45,12 +45,12 @@ bands the tab sounds as it does now.
 ## Three ways to put the gain on the sound
 
 - **envelopes**: multiply each carrier band's envelope by the gain at its
-  centre, before the fine structure goes under it. Exact, but it means
+  center, before the fine structure goes under it. Exact, but it means
   writing out `to_sound`'s tones and noise routes in the page's Python
   (`to_sound` takes no gain), and iterations would pull the result back
   toward the unbanded target, since they re-impose the stored magnitudes
   [read: `ModulationSpectrum.to_sound`].
-- **subbands**: synthesize as now, analyse the result with the same cosine
+- **subbands**: synthesize as now, analyze the result with the same cosine
   filterbank, multiply by a `so.Mask`, resynthesize.
 - **stft**: the same with a 20 ms `so.STFT` and a gain per bin.
 
@@ -79,7 +79,7 @@ The floor of −60 dB sets the limit; the routes differ by about 2 dB.
 own.** [measure] The B-M4 contrast of `blobs.md` (measured power where
 the drawing is within 6 dB of its peak over where it is 30 dB or more
 below), leaving out |rate| < 1 Hz, where a band's own spectral shape
-lands; tones, 3 s. "Band only" analyses just the band's own range.
+lands; tones, 3 s. "Band only" analyzes just the band's own range.
 
 | Case | whole range | band only |
 |---|---|---|
@@ -110,7 +110,7 @@ band, warm median of three:
 
 **K-M4. Measured within the bands, a moving band no longer hides the
 blobs.** [measure] The same contrast on the result's measured plane, tones,
-3 s, analysed over the whole range or within the bands
+3 s, analyzed over the whole range or within the bands
 (`sonore_sketch.blobs.measured`: each band's envelope divided by the gain
 the bands gave it, relative to its mean, weighted by that gain):
 
@@ -142,7 +142,7 @@ drops out, leaving the blobs blurred by the band's extent.
 ```
 
 - The bands are drawn on the spectrogram panel already under the plane
-  (time × log frequency, 100–6400 Hz), each as its centre line with
+  (time × log frequency, 100–6400 Hz), each as its center line with
   breakpoint circles and a translucent strip one width wide, so the
   drawing sits on what came out.
 - Gestures follow the Speech tab: drag a circle to move it, click on a
@@ -195,11 +195,11 @@ never silences what lies outside;
 (c) a Gaussian in log frequency.
 *Recommended:* (a), since the ask is to confine the sound: (b) leaves the
 whole range audible a few tens of dB down. A formant-like look comes from
-the drawing (moving centres, levels), not from the skirts.
+the drawing (moving centers, levels), not from the skirts.
 
 **K3. Width.**
 (a) one width per band, 1/6 to 4 octaves, default 1;
-(b) a width track as well as a centre track.
+(b) a width track as well as a center track.
 *Recommended:* (a) for now; (b) doubles the drawing for little gain, and
 a band whose width should change can be split into two.
 
@@ -229,7 +229,7 @@ leave the whole sound's modulation spectrum as drawn (a moving band is
 itself a sweep), so the blobs are read as the modulation *inside* the
 bands, and the bands' motion as a layer of its own, as formants carry a
 syllable rhythm. When the measured modulation spectrum is built (B7), it
-is analysed within the bands, following them, so it shows what the blobs
+is analyzed within the bands, following them, so it shows what the blobs
 drew. Searching for a sound that meets both whole-sound constraints at
 once (alternating between the bands and the blobs, as Griffin & Lim do)
 was considered and not chosen: it can only partly cancel a band's motion.

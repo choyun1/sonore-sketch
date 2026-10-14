@@ -109,10 +109,10 @@ def contrast(sound, s):
     return 10 * np.log10(power[inside].mean() / power[outside].mean())
 
 
-def rejection(sound, centre, width):
+def rejection(sound, center, width):
     stft = so.STFT(sound, 0.032)
     power = np.mean(np.abs(stft.data[0]) ** 2, axis=1)
-    octaves = np.abs(np.log2(np.maximum(stft.f, 1) / centre))
+    octaves = np.abs(np.log2(np.maximum(stft.f, 1) / center))
     return 10 * np.log10(power[octaves <= width / 2 - 1 / 12].mean() / power[octaves >= width / 2 + 0.5].mean())
 
 

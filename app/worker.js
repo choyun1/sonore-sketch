@@ -137,7 +137,7 @@ function spectrogramPicture(result, key) {
     return {
       data: toBytes(picture.get("data")),
       nFreqs: picture.get("n_freqs"),
-      nFrames: picture.get("n_frames"),
+      nWindows: picture.get("n_windows"),
       fMax: picture.get("f_max"),
       tStart: picture.get("t_start"),
       tStep: picture.get("t_step"),
