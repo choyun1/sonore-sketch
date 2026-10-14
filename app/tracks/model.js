@@ -9,7 +9,7 @@
 
 export const FORMAT = 1;
 export const SONORE_VERSION = "0.7.0";
-export const MAX_DURATION = 10; // seconds (docs/design/app.md, D10)
+export const MAX_DURATION = 30; // seconds (docs/design/app.md, D10)
 export const MIN_DURATION = 0.05;
 
 // The drawable tracks (tracks.md, D1: the paper's voiced set). The formants

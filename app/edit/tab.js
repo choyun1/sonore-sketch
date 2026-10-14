@@ -68,6 +68,9 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   const cache = new LevelCache(CACHE);
 
   root.innerHTML = `
+    <p class="advisory"><strong>Be advised:</strong> this tab is slow. Each iteration analyzes and resynthesizes the whole
+      sound, so with 5 iterations a 10 s sound takes about a minute in the browser and a 30 s one about 3 minutes.
+      Fewer iterations or a shorter duration are faster.</p>
     <div class="edit-body">
       <div class="paint-area">
         <section class="panel-box design-box">

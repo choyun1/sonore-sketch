@@ -133,7 +133,7 @@ columns. On the Speech sound, which does stretch, the mask stretches too.
 
 Built in PR #33 for Edit modulation, and reused unchanged: the page keeps
 one `recording`, shared by the tabs that use one. The browser decodes the
-file at the page's sampling rate, mixed to mono and cut to 10 s, and
+file at the page's sampling rate, mixed to mono and cut to 30 s, and
 opening it sets the page's duration to its length (the other tabs'
 drawings stretch). It goes in saved files and never in links; a link whose
 source was a file opens with a note asking for it again. Opening a file
@@ -174,7 +174,7 @@ saved document gives the same samples in Python and from the page.
 which took this document's recommendations and built them in PR #33: open
 a file now, with the microphone and drag and drop in a later PR; keep a
 recording in memory and in saved files, never in links; a recording sets
-the page's duration to its length, up to 10 s.
+the page's duration to its length, up to 30 s.
 
 **F2. The source before a file is opened.**
 (a) the Speech tab's current sound, as first proposed;

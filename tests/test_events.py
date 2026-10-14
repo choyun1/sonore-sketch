@@ -148,7 +148,7 @@ def test_handle_returns_the_modulation_spectrogram():
     ({"rate": [[0, 1], [10, 2000]]}, "the rate must stay"),
     ({"rate": [[1, 0], [10, 20]]}, "must increase"),
     ({"rate": [[0], [10, 20]]}, "'rate'"),
-    ({"duration": 20}, "'duration'"),
+    ({"duration": 31}, "'duration'"),
 ])
 def test_bad_states_are_refused(changes, message):
     with pytest.raises(ValueError, match=message):

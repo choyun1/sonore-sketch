@@ -131,17 +131,17 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     return shared.finish(handle_steps(request))
 
 
-def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
-    """``handle`` one step at a time: yields the fraction done (synthesis
-    takes most of it, the pictures the rest) and returns ``handle``'s
-    result. The Pyodide worker runs it between messages, so the page can
+def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
+    """``handle`` one step at a time: yields the fraction done with what
+    comes next (``shared.Step``; synthesis takes most of it, the pictures
+    the rest) and returns ``handle``'s result. The Pyodide worker runs it between messages, so the page can
     show progress and drop a request the drawing has outgrown."""
     tab = request.get("tab")
     if tab not in TABS:
         raise ValueError(f"unknown tab {tab!r}; known: {sorted(TABS)}")
     start = time.perf_counter()
-    if tab == "blobs":
-        sound = yield from shared.scaled(blobs.steps(request["state"]), 0.9)
+    if tab == "blobs":  # its measured modulation spectrum takes about a third of the time
+        sound = yield from shared.scaled(blobs.steps(request["state"]), 0.65)
     elif tab == "mask":
         sound, source_stft, result_stft = yield from shared.scaled(mask.steps(request["state"]), 0.9)
     elif tab == "edit":
@@ -149,8 +149,9 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
     elif tab == "events":
         sound, modulation = yield from shared.scaled(events.steps(request["state"]), 0.9)
     else:
+        yield 0.0, "Synthesizing"
         sound = TABS[tab](request["state"])
-        yield 0.9
+        yield 0.9, "Drawing the result"
     elapsed = time.perf_counter() - start
     result = {
         "fs": float(sound.fs),

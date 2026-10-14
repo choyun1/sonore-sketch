@@ -103,6 +103,7 @@ kbd { font-size: 11px; color: var(--muted); }
 .tabs button.active { border-color: var(--accent); box-shadow: inset 0 -2px var(--accent); }
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
 .duration input { width: 5em; padding: 3px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.duration-max { color: var(--muted); }
 .check { display: inline-flex; align-items: center; gap: 4px; user-select: none; }
 
 main { flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
@@ -180,11 +181,11 @@ canvas.stft {
 
 /* Synthesis progress, over the top of the tab's main figure; it never takes the pointer */
 .synth-progress { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; z-index: 3; }
-.synth-progress .bar { height: 3px; width: 0; background: var(--accent); border-radius: 2px; transition: width 0.15s; }
+.synth-progress .bar { height: 4px; width: 0; background: var(--accent); border-radius: 2px; transition: width 0.15s; }
 .synth-progress.unknown .bar { width: 30%; animation: synth-slide 1.2s ease-in-out infinite alternate; }
 @keyframes synth-slide { from { margin-left: 0; } to { margin-left: 70%; } }
 .synth-progress .label {
-  position: absolute; right: 6px; top: 7px; font-size: 11px; color: var(--ink);
+  position: absolute; right: 6px; top: 8px; font-size: 12px; color: var(--ink); font-variant-numeric: tabular-nums;
   background: color-mix(in srgb, var(--panel) 85%, transparent); border: 1px solid var(--line);
   border-radius: 4px; padding: 1px 6px;
 }
@@ -265,6 +266,7 @@ canvas.measured {
 .track-group button kbd { font-size: 10px; font-weight: 400; margin-left: 2px; }
 .track-group button.active { background: #1b1b24; color: var(--track-active, #fff); font-weight: 600; }
 .hint { color: var(--muted); font-size: 12px; margin: 0; }
+.advisory { font-size: 13px; margin: 0 0 10px; padding: 6px 10px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; background: var(--panel); }
 
 .result {
   display: flex;

@@ -146,7 +146,7 @@ def test_handle_returns_both_ears():
     ({"speed": 1}, "'speed'"),
     ({"smoothing": 1}, "'smoothing'"),
     ({"smoothing": -0.1}, "'smoothing'"),
-    ({"duration": 20}, "'duration'"),
+    ({"duration": 31}, "'duration'"),
 ])
 def test_bad_states_are_refused(changes, message):
     with pytest.raises(ValueError, match=message):

@@ -38,8 +38,8 @@
     </nav>
     <div class="controls">
       <button type="button" id="play" class="primary" title="Play or stop (Space)" disabled>Loading…</button>
-      <label class="duration" title="Length of the sound, up to 10 s. Changing it stretches what is drawn.">
-        <input type="number" id="duration" min="0.05" max="10" step="0.05" value="0.6" aria-label="Duration in seconds"> s
+      <label class="duration" title="Length of the sound, up to 30 s. Changing it stretches what is drawn.">
+        <input type="number" id="duration" min="0.05" max="30" step="0.05" value="0.6" aria-label="Duration in seconds, up to 30"> s <span class="duration-max">(max 30)</span>
       </label>
       <label class="check" title="Hear each change as soon as it is drawn (sounds up to 3 s)"><input type="checkbox" id="autoplay"> Auto-play</label>
       <button type="button" id="clear" title="Blank this tab's drawing; Draw speech goes to a steady neutral vowel (Undo brings yours back)">Clear</button>

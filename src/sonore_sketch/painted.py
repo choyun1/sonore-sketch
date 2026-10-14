@@ -29,7 +29,7 @@ import numpy as np
 import sonore as so
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 CARRIERS = ("tones", "harmonic", "noise")  # painted.md, P4
 MAX_CELLS = 1 << 20  # the page's grid is 72 x 256; a file asking for more is refused (app/painted/model.js)
 

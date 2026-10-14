@@ -34,7 +34,7 @@ from . import shared, sources
 from .shared import number
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 SOURCES = sources.SOURCES  # F2: the Erase modulation tab's
 ROWS, COLUMNS = 256, 256
 FLOOR_DB = -60.0  # a cut this deep removes the cell
@@ -109,14 +109,16 @@ def frame() -> so.GaborFrame:
     return so.GaborFrame(WINDOW_S, WINDOW_S / 4)
 
 
-def steps(state: Mapping[str, Any]) -> Iterator[float]:
-    """``synthesize`` one step at a time: yields the fraction done after the
-    source and after the resynthesis, and returns ``(sound, the source's
+def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
+    """``synthesize`` one step at a time: yields the fraction done (with
+    what comes next, ``shared.Step``) at the start, after the source and
+    after the resynthesis, and returns ``(sound, the source's
     STFT, the result's STFT)``, both with the mask's window and on one
     scale (the result's before it is normalized to RMS 1)."""
     check(state)
+    yield 0.0, "Making the source"
     original = sources.source(state, silent="there is nothing to erase")
-    yield 1 / 3
+    yield 1 / 3, "Erasing and resynthesizing"
     analysis = frame().analyze(original)
     duration, fs = float(state["duration"]), float(state["fs"])
     span = float(state.get("span", duration))
@@ -125,7 +127,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
         gain[:, np.asarray(analysis.t) >= span] = 1.0
     out = (analysis * gain).to_sound()
     sound = so.Sound(out.data[: original.n_samples], original.fs)
-    yield 2 / 3
+    yield 2 / 3, "Measuring the result"
     # the result's STFT before it is normalized, so it is on the source's scale
     return (sound.normalize() if sound.rms > 0 else sound), analysis, frame().analyze(sound)
 

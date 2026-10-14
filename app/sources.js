@@ -10,7 +10,7 @@ import { absolutePeak } from "./audio.js";
 
 export const SOURCES = ["syllables", "speech", "file"];
 export const SOURCE_LABELS = { syllables: "Syllable train", speech: "The Draw speech tab's sound", file: "A recording" };
-export const MAX_RECORDING_S = 10; // F6: a recording sets the duration, up to the page's limit
+export const MAX_RECORDING_S = 30; // F6: a recording sets the duration, up to the page's limit
 
 // --- recordings --------------------------------------------------------------------
 

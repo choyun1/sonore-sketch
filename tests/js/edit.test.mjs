@@ -70,7 +70,7 @@ test("a recording sets the duration and the source, goes in saved files and neve
   const link = forLink(page);
   assert.equal(link.recording, undefined);
   assert.equal(tabState(openDocument(link), "edit").recording, undefined);
-  assert.equal(withRecording(defaultPage(), recording, 30).duration, 10);
+  assert.equal(withRecording(defaultPage(), recording, 40).duration, 30);
 });
 
 test("bad sections are refused", () => {
