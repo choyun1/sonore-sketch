@@ -173,6 +173,9 @@ paragraph under it gains one clause for this tab, and the tab count goes
 from five to six. *Recommended:* change it in the PR that builds the tab,
 so the README never describes a tab that is not there.
 
+*Decided (2026-10-14):* the tagline becomes "A visual front end for
+sonore's sound synthesis.", changed in the PR that builds the tab.
+
 **E10. The sonore release.** The tab needs a sonore release with PR #195
 (E3's track uses `rate_scale`, already in 0.6; the speed needs #195).
 *Recommended:* build the tab against sonore's main branch locally, and
