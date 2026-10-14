@@ -4,7 +4,7 @@
 // `commit` callback when an edit ends, and a picture of the last result.
 
 import { Player, wavBlob } from "./audio.js";
-import { LatestOnly, createEngine } from "./engine.js";
+import { LatestOnly, createEngine, readResult } from "./engine.js";
 import { History } from "./history.js";
 import { Log } from "./log.js";
 import { drawWaveform } from "./plot.js";
@@ -62,9 +62,10 @@ function loading(text, failed = false) {
   }
 }
 
-const engineKind = new URLSearchParams(location.search).get("engine") ?? "pyodide";
+const engineKind = new URLSearchParams(location.search).get("engine") ?? "auto"; // "auto": the synthesis server, else Pyodide (engine.js)
 log.info(`page opened, engine: ${engineKind}`, navigator.userAgent);
 let ready = false;
+let failed = null; // why the synthesizer could not start, if it could not
 const engine = new LatestOnly(
   createEngine(engineKind, {
     onProgress: (text) => {
@@ -84,6 +85,7 @@ const engine = new LatestOnly(
       synthesize({ play: false });
     },
     onFailed: (message) => {
+      failed = `Could not start the synthesizer: ${message} (see Log)`;
       loading(`Could not start the synthesizer: ${message} (see Log)`, true);
       status(`Could not start the synthesizer: ${message} (see Log)`, true);
       log.error(`could not start the synthesizer: ${message}`);
@@ -159,7 +161,7 @@ function switchTab(id, { synthesizes = true } = {}) {
   show();
   showResult();
   log.info(`switched to the ${id} tab`);
-  if (ready && synthesizes) synthesize({ play: false });
+  if (synthesizes) synthesize({ play: false });
 }
 for (const button of tabButtons) button.addEventListener("click", () => switchTab(button.dataset.tab));
 // The arrow keys, Home and End move between the tabs, as in the WAI-ARIA
@@ -208,7 +210,7 @@ function openOnItsTab(page) {
 
 function afterChange() {
   const short = history.present.duration <= AUTOPLAY_MAX_S;
-  if (ready && short) synthesize({ play: ui.autoplay.checked });
+  if (short) synthesize({ play: ui.autoplay.checked });
   // a synthesis under way for the old drawing starts again on the new one
   else if (ready && running) synthesize({ play: running.play });
   else if (ready) status("Press Play to hear the change.");
@@ -235,6 +237,22 @@ function showProgress(fraction) {
 
 // --- synthesis and playback ----------------------------------------------------
 
+// Each tab's starting drawing, synthesized ahead of time (tools/make_examples.py),
+// so it plays at once while Pyodide and sonore load; fetched when first asked for.
+const examples = new Map();
+async function madeAhead(id, key) {
+  if (!examples.has(id)) {
+    examples.set(
+      id,
+      fetch(new URL(`./examples/${id}.json`, import.meta.url))
+        .then((response) => (response.ok ? response.json() : null))
+        .catch(() => null),
+    );
+  }
+  const example = await examples.get(id);
+  return example && key === `${id} ${JSON.stringify(example.state)}` ? readResult(example.result) : null;
+}
+
 async function synthesize({ play }) {
   const page = history.present;
   const asked = tab;
@@ -260,6 +278,27 @@ async function synthesize({ play }) {
     result = null;
     showResult();
     status(blocked);
+    return null;
+  }
+  const ahead = await madeAhead(tab.id, key);
+  if (mine !== requests) return null;
+  if (ahead) {
+    running = null;
+    showProgress(null);
+    result = { key, page, sound: ahead };
+    showResult();
+    status(ready ? `Made ${page.duration} s ahead of time.` : "Made ahead of time: press Play. Your own drawings are made once sonore has loaded.");
+    if (!player.playing) {
+      ui.play.disabled = false;
+      ui.play.textContent = "▶ Play";
+    }
+    if (play) start(ahead);
+    return ahead;
+  }
+  if (!ready) {
+    running = null;
+    showProgress(null);
+    status(failed ?? "Still loading; this drawing will be made once sonore is ready.", Boolean(failed));
     return null;
   }
   status(page.duration > 1 ? `Synthesizing ${page.duration} s…` : "Synthesizing…");
@@ -326,7 +365,6 @@ player.onended = () => {
 
 async function togglePlay() {
   if (player.playing) return player.stop();
-  if (!ready) return status("Still loading; Play will work once sonore is ready.");
   await synthesize({ play: true });
 }
 
@@ -475,3 +513,4 @@ document.addEventListener("keydown", (event) => {
 new ResizeObserver(showResult).observe(ui.waveform);
 showTab();
 show();
+synthesize({ play: false }); // the starting drawing's sound is made ahead: no need to wait for sonore
