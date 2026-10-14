@@ -26,3 +26,18 @@ jobs:
         run: npm test
       - name: Page in headless Chromium (local engine)
         run: python tools/check_page.py
+
+  # The oldest Python that sonore-sketch supports (requires-python in
+  # pyproject.toml). The page runs Pyodide's own Python, so the Python tests
+  # are enough here.
+  oldest-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: python -m pip install -e ".[test]"
+      - name: Python tests
+        run: python -m pytest -q

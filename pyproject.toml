@@ -9,7 +9,7 @@ description = "Draw on a picture of sound and hear the result: a drawing front e
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Adrian Y. Cho" }, { name = "Daniel R. Guest" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 # The page installs exactly this sonore under Pyodide (app/worker.js,
 # SONORE_VERSION); keep the two in step (docs/design/app.md, D5).
 dependencies = ["sonore>=0.6,<0.7"]
