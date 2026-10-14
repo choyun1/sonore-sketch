@@ -108,7 +108,7 @@ def post_subbands(sound, bands):
 
 
 def post_stft(sound, bands):
-    stft = so.STFT(sound, 0.02)
+    stft = so.STFT(sound, win_dur=0.02)
     g = band_gain(bands, stft.f, np.clip(stft.t, 0, sound.duration))  # (windows, bins)
     out = (stft * so.Mask(g.T[None, :, :], stft)).to_sound()
     return so.Sound(out.data[: sound.n_samples], FS).normalize()

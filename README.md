@@ -1,6 +1,6 @@
 <h1><a href="https://choyun1.github.io/sonore/gallery/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-mark-dark.svg"><img alt="sonore" src="docs/logo/sonore-sketch-banner-mark-light.svg" height="56"></picture></a><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-name-dark.svg"><img alt="sonore-sketch" src="docs/logo/sonore-sketch-banner-name-light.svg" height="56"></picture></h1>
 
-[![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.6](https://img.shields.io/badge/sonore-0.6-blue)](https://pypi.org/project/sonore/) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
+[![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.7](https://img.shields.io/badge/sonore-0.7-blue)](https://pypi.org/project/sonore/) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
 
 **Draw on a picture of sound and hear the result.**
 
@@ -167,7 +167,7 @@ sound = page.synthesize(json.load(open("sketch.json")))
 
 ## How the sound is made
 
-Every sound is made by sonore 0.6, in `src/sonore_sketch/` (one module per
+Every sound is made by sonore 0.7, in `src/sonore_sketch/` (one module per
 tab). The design documents in `docs/design/` hold the measurements behind
 each choice; this section is the method in one place.
 
@@ -382,7 +382,7 @@ The page is static: `index.html` and the ES modules in `app/`, with no
 build step and no JavaScript dependencies. The Python half, which the page
 runs under Pyodide, is in `src/sonore_sketch/` (one module per tab,
 `sources.py` and `shared.py`, which the tabs share, and `page.py`, which
-the page calls). It needs sonore 0.6.
+the page calls). It needs sonore 0.7.
 
 ```
 pip install -e ".[test]" playwright

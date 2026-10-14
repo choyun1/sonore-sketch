@@ -45,11 +45,11 @@ a 4-core Linux cloud container, so it is not an independent check),
   (needs `h5py`); `so.HRIRSet(irs, positions, fs)` builds a set from plain
   arrays, which needs nothing beyond NumPy. `HRIRSet.at` interpolates over
   directions, elevation included.
-- Since sonore PR #194 (after 0.6.0, so in the next release), `HRIRSet.at`
+- Since sonore PR #194 (released in 0.7.0), `HRIRSet.at`
   and so `move_sound` refuse directions in a gap in the measurements, such
   as below the lowest measured elevation, instead of blending across it
   (sonore's `docs/design/spatial/elevation.md`). MIT KEMAR has the same
-  hole as PKU-IOA: on sonore's main branch every elevation from −40° to 90°
+  hole as PKU-IOA: in sonore 0.7.0 every elevation from −40° to 90°
   in 1° steps, at every azimuth in 1° steps, renders, and −41° and below
   is refused [measure: a sweep at 1.4 m]. So the tab keeps elevation
   within −40° to 90°.
@@ -195,7 +195,7 @@ stroke. The HRIR file is 1.2 MB, fetched once when the tab opens.
 
 ### Data model
 
-`{"paths": 1, "sonore": "0.6.0", "duration": 3.0, "fs": 16000, "source":
+`{"paths": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000, "source":
 "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0 or
 [times, degrees]}`. As built, the page's `fs` stays the page's, and the
 tab renders at 32 kHz whatever it says (W5). The raw stroke is stored (times in the stroke's own seconds, meters), not

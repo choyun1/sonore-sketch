@@ -38,7 +38,7 @@ These steps are for Ubuntu 24.04 (any Debian-like system is the same).
    ```sh
    sudo cp server/sonore-sketch-synth.service /etc/systemd/system/
    sudo systemctl enable --now sonore-sketch-synth
-   curl http://127.0.0.1:8100/api/version     # {"versions": "sonore 0.6.0, Python 3.12..."}
+   curl http://127.0.0.1:8100/api/version     # {"versions": "sonore 0.7.0, Python 3.12..."}
    ```
 
 4. **HTTPS with Caddy.** The page is served over HTTPS, so the server must be

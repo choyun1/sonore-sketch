@@ -50,15 +50,8 @@ def toward(sound: so.Sound, target: so.ModulationSpectrum) -> so.Sound:
     """One of ``to_sound``'s own iterations (sonore, ``iterations``): keep the
     sound's fine structure and modulation phase, impose the target's
     magnitudes again. The tabs take them here one at a time so the page can
-    show its progress; the result is the same as ``to_sound(iterations=n)``.
-
-    It reads sonore's private analysis, rebuild and modulation phase (0.5 and
-    0.6), which ``to_sound`` uses for its own iterations; they go once sonore
-    makes them public."""
-    subbands = target._analysis.filterbank.analyze(sound)
-    envelopes = target._rebuild(target._modulation_phase(subbands), quiet=True)
-    out = (envelopes * subbands.tfs()).to_sound()
-    return so.Sound(out.data[: sound.n_samples], sound.fs)
+    show its progress; the result is the same as ``to_sound(iterations=n)``."""
+    return target.iterate(sound)
 
 
 # --- a mask of cuts --------------------------------------------------------------------

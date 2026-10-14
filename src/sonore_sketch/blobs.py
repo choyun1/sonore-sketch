@@ -3,7 +3,7 @@
 A drawing is a list of Gaussian blobs on a modulation spectrum, rate [Hz,
 signed] by density [cycles/octave] (docs/design/tabs/blobs.md)::
 
-    {"blobs": 1, "sonore": "0.6.0", "duration": 3.0, "fs": 16000,
+    {"blobs": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000,
      "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
      "carrier": "tones", "f0": 100, "iterations": 0, "rms_depth": 0.2, "seed": 1,
      "items": [{"rate": 4, "density": 0, "rate_width": 0.5,
@@ -145,7 +145,7 @@ def band_gain(bands: list, freqs: np.ndarray, t: np.ndarray) -> np.ndarray:
 
 def band_limit(sound: so.Sound, bands: list) -> so.Sound:
     """``sound`` through the bands' time-varying filter, RMS 1 (K1)."""
-    stft = so.STFT(sound, BAND_WINDOW_S)
+    stft = so.STFT(sound, win_dur=BAND_WINDOW_S)
     gain = band_gain(bands, stft.f, np.clip(stft.t, 0, sound.duration))
     out = (stft * so.Mask(gain.T[None, :, :], stft)).to_sound()
     out = so.Sound(out.mono().data[: sound.n_samples], sound.fs)
@@ -231,9 +231,8 @@ def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) ->
     ``measured`` reads them, then given the gain back. The bands' own shape
     and motion stay out of what the blobs are imposed on, so the two
     constraints pull on different things (tools/measure_loop.py, ``within``).
-    It reads the drawn magnitudes and mean from sonore's private fields (0.5 and 0.6)
-    and its filterbank, which ``to_sound`` uses for its own iterations."""
-    bank = drawn._analysis.filterbank
+    sonore rebuilds the drawn envelopes from this phase (``to_envelopes``)."""
+    bank = drawn.filterbank
     subbands = bank.analyze(sound)
     envelopes = subbands.envelopes(fs=ENV_FS).data.mean(axis=2)[:, 1:-1]  # (time, band), edges dropped
     gain = band_gain(bands, bank.cfs[1:-1], np.arange(envelopes.shape[0]) / ENV_FS)
@@ -241,9 +240,9 @@ def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) ->
     relative = envelopes / np.maximum(gain, 10 ** (BAND_FLOOR_DB / 20))
     relative = relative / (np.sum(weight * relative) / np.sum(weight))  # mean 1 within the bands
     phase = np.angle(np.fft.fft2((weight * (relative - 1)).T))
-    rebuilt = drawn._mean + np.real(np.fft.ifft2(drawn._magnitude * np.exp(1j * phase)))
-    values = np.zeros((envelopes.shape[0], bank.n_filters))
-    values[:, 1:-1] = gain * np.maximum(rebuilt.T, 0)
+    rebuilt = drawn.to_envelopes(phase=phase, quiet=True)  # edge bands zero
+    values = rebuilt.data[:, :, 0].copy()  # (time, band)
+    values[:, 1:-1] *= gain
     out = (so.Envelopes(values, ENV_FS, bank) * subbands.tfs()).to_sound()
     return so.Sound(out.data[: sound.n_samples], sound.fs)
 
