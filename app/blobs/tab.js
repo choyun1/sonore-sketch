@@ -308,7 +308,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     if (iterations >= 0 && iterations <= 10 && iterations !== state.iterations) commit({ ...state, iterations });
     else showSettings();
   });
-  ui.newDraw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }));
+  ui.newDraw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
 
   function removeSelected() {
     if (selected === null || !state.items[selected]) return false;

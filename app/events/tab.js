@@ -85,7 +85,7 @@ export function createEventsTab(root, { commit }) {
         </fieldset>
         <fieldset><legend>Copies</legend>
           ${COPY_KNOBS.map(knobField).join("")}
-          <button type="button" class="draw" title="Draw new times, levels and pitches with the same settings">New draw</button>
+          <button type="button" class="draw" title="Draw new times, levels and pitches with the same settings, and hear them">New draw</button>
           <button type="button" class="flat" title="Set the rate back to ${DEFAULT_RATE} events per second throughout">Rate back to ${DEFAULT_RATE}/s</button>
         </fieldset>
         <p class="hint">Drag on the rate track to draw how many events come each second. The sliders apply when you let go. Space plays.</p>
@@ -132,7 +132,7 @@ export function createEventsTab(root, { commit }) {
       commit(changed);
     });
   }
-  ui.draw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }));
+  ui.draw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
   ui.flat.addEventListener("click", () => commit({ ...state, rate: DEFAULT_RATE }));
 
   // --- the rate track ------------------------------------------------------------------
