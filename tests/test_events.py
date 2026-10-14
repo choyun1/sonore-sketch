@@ -99,7 +99,24 @@ def test_the_modulation_pictures_have_their_stated_shapes():
     assert len(frames["data"]) == frames["n_windows"] * frames["n_bands"] * frames["n_rates"]
     assert len(pooled["data"]) == pooled["n_windows"] * pooled["n_rates"]
     assert len(frames["bands"]) == frames["n_bands"] == 24 and max(frames["bands"]) < 7200
-    assert frames["rates"][0] == pytest.approx(0.5) and frames["rates"][-1] == pytest.approx(64)
+    assert 60 <= frames["rates"][-1] <= 64
+
+
+@pytest.mark.parametrize(("duration", "slowest"), [(0.6, 10.0), (3.0, 2.0), (6.0, 2.0)])
+def test_the_modulation_window_is_a_third_of_the_sound_at_most_1_s(duration, slowest):
+    # the slowest rate shown holds two cycles in the window
+    pooled = events.modulation(events.synthesize(state(duration=duration)))["pooled"]
+    assert pooled["rates"][0] == pytest.approx(slowest)
+
+
+def test_the_modulation_pictures_gray_edges_are_the_same_at_every_rate():
+    # one window for every rate: half a second at each end cannot be measured, whatever the rate
+    pooled = events.modulation(events.synthesize(state(duration=3.0)))["pooled"]
+    levels = np.frombuffer(pooled["data"], dtype=np.uint8).reshape(pooled["n_rates"], pooled["n_windows"])
+    times = pooled["t_start"] + pooled["t_step"] * np.arange(pooled["n_windows"])
+    for row in levels:
+        measured = times[row > 0]
+        assert measured[0] == pytest.approx(0.5, abs=0.03) and measured[-1] == pytest.approx(2.5, abs=0.03)
 
 
 def test_handle_returns_the_modulation_spectrogram():
