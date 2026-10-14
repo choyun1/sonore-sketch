@@ -17,7 +17,7 @@ const SONORE_VERSION = "0.6.0"; // keep in step with pyproject.toml (app.md, D5)
 // header that lets a page fetch it. Change it with SONORE_VERSION (tests/test_page.py checks).
 const SONORE_WHEEL =
   "https://files.pythonhosted.org/packages/10/c5/6f56efcfc8e6b2b110c0d28e21c69e8722f820689f4e640c94faa9d339ed/sonore-0.6.0-py3-none-any.whl";
-const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
+const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "shared.py", "sources.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
 
 let steps = null;
 let latest = -1; // the newest request's id: an older one stops at its next step

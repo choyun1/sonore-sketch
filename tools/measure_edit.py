@@ -32,7 +32,7 @@ import numpy as np
 import sonore as so
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from sonore_sketch import edit  # noqa: E402
+from sonore_sketch import sources as tab_sources  # noqa: E402
 
 FS = 16000
 F_LO, F_HI = 100.0, 6400.0  # the other tabs' range
@@ -40,8 +40,8 @@ WARM_REPEATS = 3
 
 
 def syllables(duration: float) -> so.Sound:
-    """The tab's own syllable-train source (sonore_sketch.edit.syllables)."""
-    return edit.syllables(duration, FS)
+    """The tab's own syllable-train source (sonore_sketch.sources.syllables)."""
+    return tab_sources.syllables(duration, FS)
 
 
 def analyze(sound):

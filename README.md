@@ -353,8 +353,9 @@ https://doi.org/10.1121/1.1624067
 
 The page is static: `index.html` and the ES modules in `app/`, with no
 build step and no JavaScript dependencies. The Python half, which the page
-runs under Pyodide, is in `src/sonore_sketch/` (one module per tab, and
-`page.py`, which the page calls). It needs sonore 0.6.
+runs under Pyodide, is in `src/sonore_sketch/` (one module per tab,
+`sources.py` and `shared.py`, which the tabs share, and `page.py`, which
+the page calls). It needs sonore 0.6.
 
 ```
 pip install -e ".[test]" playwright

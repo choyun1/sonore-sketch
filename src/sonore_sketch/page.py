@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 import sonore as so
 
-from . import blobs, edit, mask, painted, tracks
+from . import blobs, edit, mask, painted, shared, tracks
 
 TABS = {
     "tracks": tracks.synthesize, "painted": painted.synthesize, "mask": mask.synthesize,
@@ -56,8 +56,8 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         return {"blobs": blobs.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["blobs"]}
     if tab in ("edit", "mask") and tab in page:
         # the source's own drawing goes with the state: the Draw speech tab's, or the page's recording
-        form = edit.FORMAT if tab == "edit" else mask.FORMAT
-        state = {tab: form, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page[tab]}
+        section_format = edit.FORMAT if tab == "edit" else mask.FORMAT
+        state = {tab: section_format, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page[tab]}
         if state.get("source") == "speech":
             state["speech"] = page["tracks"]
         if state.get("source") == "file" and "recording" in page:
@@ -114,12 +114,7 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     spectrogram tab the source's and the result's spectrograms in the mask's
     own STFT (``mask.pictures``).
     """
-    work = handle_steps(request)
-    while True:
-        try:
-            next(work)
-        except StopIteration as done:
-            return done.value
+    return shared.finish(handle_steps(request))
 
 
 def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
@@ -132,29 +127,11 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
         raise ValueError(f"unknown tab {tab!r}; known: {sorted(TABS)}")
     start = time.perf_counter()
     if tab == "blobs":
-        work = blobs.steps(request["state"])
-        while True:
-            try:
-                yield 0.9 * next(work)
-            except StopIteration as done:
-                sound = done.value
-                break
+        sound = yield from shared.scaled(blobs.steps(request["state"]), 0.9)
     elif tab == "mask":
-        work = mask.steps(request["state"])
-        while True:
-            try:
-                yield 0.9 * next(work)
-            except StopIteration as done:
-                sound, source_stft, result_stft = done.value
-                break
+        sound, source_stft, result_stft = yield from shared.scaled(mask.steps(request["state"]), 0.9)
     elif tab == "edit":
-        work = edit.steps(request["state"])
-        while True:
-            try:
-                yield 0.9 * next(work)
-            except StopIteration as done:
-                sound, original, clipped = done.value
-                break
+        sound, original, clipped = yield from shared.scaled(edit.steps(request["state"]), 0.9)
     else:
         sound = TABS[tab](request["state"])
         yield 0.9

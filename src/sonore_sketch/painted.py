@@ -57,9 +57,9 @@ def check(state: Mapping[str, Any]) -> None:
             raise ValueError(f"'{name}' must be a whole number of at least 2")
     if rows(state) * state["columns"] > MAX_CELLS:
         raise ValueError(f"the painting may hold at most {MAX_CELLS} cells")
-    floor = state.get("floor_db")
-    if not (isinstance(floor, (int, float)) and -255 <= floor < 0):
-        raise ValueError(f"'floor_db' must be a negative number of dB, at least -255, not {floor!r}")
+    floor_db = state.get("floor_db")
+    if not (isinstance(floor_db, (int, float)) and -255 <= floor_db < 0):
+        raise ValueError(f"'floor_db' must be a negative number of dB, at least -255, not {floor_db!r}")
     if state.get("carrier", "tones") not in CARRIERS:
         raise ValueError(f"'carrier' must be one of {CARRIERS}, not {state.get('carrier')!r}")
     f0 = state.get("f0", 100)
@@ -97,15 +97,15 @@ def pattern(state: Mapping[str, Any]):
     amplitude = 10 ** (levels(state) / 20)  # -inf dB -> 0
     n_rows, n_columns = amplitude.shape
     octaves = math.log2(state["f_hi"] / state["f_lo"])
-    tc = (np.arange(n_columns) + 0.5) / n_columns * float(state["duration"])
-    xc = (np.arange(n_rows) + 0.5) / n_rows * octaves
+    column_times = (np.arange(n_columns) + 0.5) / n_columns * float(state["duration"])
+    row_octaves = (np.arange(n_rows) + 0.5) / n_rows * octaves
 
     def envelope(t, x):
         t, x = np.ravel(t).astype(float), np.ravel(x).astype(float)
-        along_time = np.stack([np.interp(t, tc, row) for row in amplitude])
-        i = np.clip(np.searchsorted(xc, x) - 1, 0, n_rows - 2)
-        w = np.clip((x - xc[i]) / (xc[i + 1] - xc[i]), 0.0, 1.0)
-        return along_time[i] * (1 - w)[:, None] + along_time[i + 1] * w[:, None]
+        along_time = np.stack([np.interp(t, column_times, row) for row in amplitude])
+        row_below = np.clip(np.searchsorted(row_octaves, x) - 1, 0, n_rows - 2)
+        weight = np.clip((x - row_octaves[row_below]) / (row_octaves[row_below + 1] - row_octaves[row_below]), 0.0, 1.0)
+        return along_time[row_below] * (1 - weight)[:, None] + along_time[row_below + 1] * weight[:, None]
 
     return envelope
 
@@ -142,9 +142,9 @@ EXAMPLE_ROWS = (10, 46)  # the letters' bottom and top rows
 EXAMPLE_SLANT = 0.3  # of a letter's width, leaned over its height
 
 
-def _arc(cx, cy, rx, ry, start, stop, n=24):
-    angles = np.linspace(math.radians(start), math.radians(stop), n)
-    return [(cx + rx * math.cos(a), cy + ry * math.sin(a)) for a in angles]
+def _arc(center_x, center_y, radius_x, radius_y, start, stop, n_points=24):
+    angles = np.linspace(math.radians(start), math.radians(stop), n_points)
+    return [(center_x + radius_x * math.cos(angle), center_y + radius_y * math.sin(angle)) for angle in angles]
 
 
 EXAMPLE_STROKES = {
@@ -165,8 +165,8 @@ def example_levels(f_lo: float = 100, f_hi: float = 6400, rows_per_octave: int =
     word = "sonore"
     pitch = (columns - 16) / len(word)  # columns per letter, with a margin of 8 each side
     width = 0.72 * pitch  # the rest is the space between letters
-    rows = np.arange(n_rows)[:, None]
-    cols = np.arange(columns)[None, :]
+    row_index = np.arange(n_rows)[:, None]
+    column_index = np.arange(columns)[None, :]
     level = np.full((n_rows, columns), -np.inf)
     for i, letter in enumerate(word):
         left = 8 + i * pitch + (pitch - width) / 2 - EXAMPLE_SLANT * width / 2
@@ -174,13 +174,13 @@ def example_levels(f_lo: float = 100, f_hi: float = 6400, rows_per_octave: int =
             # points along the stroke about a quarter cell apart, in grid units
             points = []
             for (x0, y0), (x1, y1) in zip(stroke, stroke[1:]):
-                n = max(2, int(4 * math.hypot((x1 - x0) * width, (y1 - y0) * (high - low))))
-                for u in np.linspace(0, 1, n, endpoint=False):
-                    x, y = x0 + u * (x1 - x0), y0 + u * (y1 - y0)
+                n_points = max(2, int(4 * math.hypot((x1 - x0) * width, (y1 - y0) * (high - low))))
+                for fraction in np.linspace(0, 1, n_points, endpoint=False):
+                    x, y = x0 + fraction * (x1 - x0), y0 + fraction * (y1 - y0)
                     points.append((left + (x + EXAMPLE_SLANT * y) * width, low + y * (high - low)))
             points.append((left + (stroke[-1][0] + EXAMPLE_SLANT * stroke[-1][1]) * width, low + stroke[-1][1] * (high - low)))
-            for c, r in points:
+            for column, row in points:
                 # a soft round nib: -10 dB a column and a half or a row away
-                distance = ((cols - c) / 1.5) ** 2 + ((rows - r) / 1.0) ** 2
+                distance = ((column_index - column) / 1.5) ** 2 + ((row_index - row) / 1.0) ** 2
                 level = np.maximum(level, -10.0 * distance)
     return np.where(level < -60, -np.inf, np.round(level))
