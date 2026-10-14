@@ -71,7 +71,7 @@ export function createEventsTab(root, { commit }) {
         <canvas class="stft" aria-label="The result's spectrogram"></canvas>
         <canvas class="mod-pooled" aria-label="The modulation spectrogram: modulation depth by rate over time, pooled over frequency bands; click to choose a moment"></canvas>
         <canvas class="mod-frame" aria-label="Modulation depth by frequency band and rate at one moment"></canvas>
-        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, up to 64 times a second, over time. Every rate is measured over the same window, a third of the sound long and at most 1 s; the slowest rate shown holds two cycles in it (2 Hz from a 3 s sound on). Under the spectrogram, on the same time axis: pooled over frequency bands. Beside them: each band at one moment, which follows the sound as it plays; click the spectrogram or the pooled picture to choose the moment. Brighter is deeper, over the top 30 dB; gray cells cannot be measured (a rate faster than the band is wide, a rate too slow for the window, or half a window at each end, where the window runs off the sound). Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
+        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, up to 64 times a second, over time. Every rate is measured over the same window, a third of the sound long and at most 1 s; the slowest rate shown holds two cycles in it (2 Hz from a 3 s sound on). Under the spectrogram, on the same time axis: pooled over frequency bands. Beside them: each band at one moment, which follows the sound as it plays; click the spectrogram or the pooled picture to choose the moment. Brighter is deeper, over the top 30 dB. The gray ends of the pooled picture cannot be measured: there the window runs off the sound, so near the ends the band picture shows the nearest moment that was. Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
       </div>
       <aside class="side">
         <fieldset><legend>Event</legend>
@@ -245,6 +245,14 @@ export function createEventsTab(root, { commit }) {
     return (i) => at(i === 0 ? values[0] ** 1.5 / values[1] ** 0.5 : i === values.length ? values[i - 1] ** 1.5 / values[i - 2] ** 0.5 : middle(i));
   }
 
+  // The outer edges of cells centered on log-spaced values: an axis from one to the other has no empty strip.
+  function outerEdges(values) {
+    const n = values.length;
+    if (n < 2) return [values[0] / 2 ** 0.25, values[0] * 2 ** 0.25];
+    return [values[0] ** 1.5 / values[1] ** 0.5, values[n - 1] ** 1.5 / values[n - 2] ** 0.5];
+  }
+  const DEFAULT_RATES = [MOD_TICKS[0], MOD_TICKS[MOD_TICKS.length - 1]];
+
   const pooledImage = { canvas: document.createElement("canvas"), picture: null, key: "" };
 
   function pooledPlot() {
@@ -252,7 +260,7 @@ export function createEventsTab(root, { commit }) {
     const height = pooled.clientHeight || 190;
     const duration = sound ? soundSeconds(sound) : state.duration;
     const [x0, x1, y0, y1] = [STFT_MARGIN.left, width - STFT_MARGIN.right, FRAME_MARGIN.top, height - FRAME_MARGIN.bottom];
-    const [low, high] = [MOD_TICKS[0] / 2 ** 0.5, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
+    const [low, high] = outerEdges(sound?.modulationPooled?.rates ?? DEFAULT_RATES);
     return {
       width, height, x0, x1, y0, y1, duration, low, high,
       x: (t) => x0 + (t / duration) * (x1 - x0),
@@ -288,7 +296,7 @@ export function createEventsTab(root, { commit }) {
       context.drawImage(pooledImage.canvas, plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
     }
     drawBorder(context, pooled, plot);
-    drawValueTicks(context, plot, MOD_TICKS, plot.y, (rate) => `${rate}`, { gridColor: "rgba(255, 255, 255, 0.12)" });
+    drawValueTicks(context, plot, MOD_TICKS.filter((rate) => rate >= plot.low && rate <= plot.high), plot.y, (rate) => `${rate}`, { gridColor: "rgba(255, 255, 255, 0.12)" });
     drawAxisName(context, plot, "rate, Hz");
     drawTimeTicks(context, plot, plot.duration, 4);
     title(context, plot, "Modulation depth, pooled over bands");
@@ -296,37 +304,54 @@ export function createEventsTab(root, { commit }) {
     drawPlayhead(context, plot, plot.x(at), playhead !== null ? style("--error", "#d1495b") : style("--accent", "#2e86ab"));
   }
 
-  function framePlot(fTop) {
+  // The band x rate picture's axes run from its outer cells' edges to the other's.
+  function framePlot(picture) {
     const width = frame.clientWidth || 300;
     const height = frame.clientHeight || 190;
     const [x0, x1, y0, y1] = [FRAME_MARGIN.left, width - FRAME_MARGIN.right, FRAME_MARGIN.top, height - FRAME_MARGIN.bottom];
-    const [low, high] = [MOD_TICKS[0] / 2 ** 0.5, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
+    const [low, high] = outerEdges(picture?.rates ?? DEFAULT_RATES);
+    const [fLow, fTop] = picture ? outerEdges(picture.bands) : [F_LOW, 7000];
     return {
-      width, height, x0, x1, y0, y1, low, high, fTop,
+      width, height, x0, x1, y0, y1, low, high, fLow, fTop,
       x: (rate) => x0 + (Math.log(rate / low) / Math.log(high / low)) * (x1 - x0),
-      y: (f) => y1 - (Math.log(f / F_LOW) / Math.log(fTop / F_LOW)) * (y1 - y0),
+      y: (f) => y1 - (Math.log(f / fLow) / Math.log(fTop / fLow)) * (y1 - y0),
     };
+  }
+
+  // The time windows the modulation spectrogram measured, [first, last]:
+  // half a window at each end runs off the sound.
+  function measuredWindows(picture) {
+    const { data, nBands, nRates, nWindows } = picture;
+    const size = nBands * nRates;
+    const measured = (window) => data.subarray(window * size, (window + 1) * size).some((level) => level > 0);
+    let [first, last] = [0, nWindows - 1];
+    while (first < last && !measured(first)) first++;
+    while (last > first && !measured(last)) last--;
+    return [first, last];
   }
 
   function renderFrame() {
     const context = fitCanvasInCssPixels(frame);
     const picture = sound?.modulationFrames;
-    const plot = framePlot(picture ? picture.bands[picture.bands.length - 1] * 1.1 : 7000);
+    const plot = framePlot(picture);
     context.clearRect(0, 0, plot.width, plot.height);
-    const at = shownTime();
+    let at = shownTime();
     if (picture) {
-      const { data, nBands, nRates, nWindows, bands: centers, rates: rateCenters, tStart, tStep } = picture;
-      const window = Math.min(nWindows - 1, Math.max(0, Math.round((at - tStart) / tStep)));
+      const { data, nBands, nRates, bands: centers, rates: rateCenters, tStart, tStep } = picture;
+      // near the ends, the nearest window that was measured
+      const [first, last] = measuredWindows(picture);
+      const window = Math.min(last, Math.max(first, Math.round((at - tStart) / tStep)));
+      at = tStart + window * tStep;
       const offset = window * nBands * nRates;
-      const rowEdge = logEdges(centers, F_LOW, plot.fTop);
+      const rowEdge = logEdges(centers, plot.fLow, plot.fTop);
       paintCells(context, plot, nRates, nBands, (column, row) => data[offset + row * nRates + column], [logEdges(rateCenters, plot.low, plot.high), rowEdge]);
     }
     drawBorder(context, frame, plot);
-    drawValueTicks(context, plot, FREQUENCY_TICKS.filter((f) => f < plot.fTop), plot.y, frequencyLabel, { gridColor: "rgba(255, 255, 255, 0.12)" });
+    drawValueTicks(context, plot, FREQUENCY_TICKS.filter((f) => f >= plot.fLow && f <= plot.fTop), plot.y, frequencyLabel, { gridColor: "rgba(255, 255, 255, 0.12)" });
     drawAxisName(context, plot, "Hz");
     context.textAlign = "center";
     context.textBaseline = "top";
-    for (const rate of MOD_TICKS) context.fillText(`${rate}`, plot.x(rate), plot.y1 + 4);
+    for (const rate of MOD_TICKS.filter((rate) => rate >= plot.low && rate <= plot.high)) context.fillText(`${rate}`, plot.x(rate), plot.y1 + 4);
     context.fillText("rate, Hz", (plot.x0 + plot.x1) / 2, plot.y1 + 18);
     title(context, plot, `By band at ${at.toFixed(2)} s`);
   }

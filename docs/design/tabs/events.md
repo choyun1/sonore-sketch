@@ -286,6 +286,14 @@ it was narrower and its time axis did not line up. It now runs under the
 spectrogram at its full width, on the same time axis, and the band by rate
 picture stands in its own column beside the two.
 
+Cho then asked for no gray strips at the pictures' edges. The axes now run
+from the outer cells' edges, so there is no empty strip above 64 Hz or
+below the slowest rate. The tab uses 16 bands instead of 24: the lowest
+kept band, at 166 Hz, is 72 Hz wide, so no rate is faster than a band is
+wide [measure: every measured window is valid in every band and rate, 0.6
+and 3 s]. Near the ends, where the window runs off the sound, the band by
+rate picture shows the nearest window that was measured.
+
 ## References
 
 - Ding, N., Patel, A. D., Chen, L., Butler, H., Luo, C., & Poeppel, D.

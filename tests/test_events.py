@@ -98,7 +98,7 @@ def test_the_modulation_pictures_have_their_stated_shapes():
     frames, pooled = modulation["frames"], modulation["pooled"]
     assert len(frames["data"]) == frames["n_windows"] * frames["n_bands"] * frames["n_rates"]
     assert len(pooled["data"]) == pooled["n_windows"] * pooled["n_rates"]
-    assert len(frames["bands"]) == frames["n_bands"] == 24 and max(frames["bands"]) < 7200
+    assert len(frames["bands"]) == frames["n_bands"] == 16 and max(frames["bands"]) < 7200
     assert 60 <= frames["rates"][-1] <= 64
 
 
@@ -117,6 +117,14 @@ def test_the_modulation_pictures_gray_edges_are_the_same_at_every_rate():
     for row in levels:
         measured = times[row > 0]
         assert measured[0] == pytest.approx(0.5, abs=0.03) and measured[-1] == pytest.approx(2.5, abs=0.03)
+
+
+def test_every_measured_moment_is_measured_in_every_band_and_rate():
+    # the band x rate picture has no gray cells: no rate is faster than a band is wide
+    frames = events.modulation(events.synthesize(state(duration=3.0)))["frames"]
+    levels = np.frombuffer(frames["data"], dtype=np.uint8).reshape(frames["n_windows"], -1)
+    measured = levels.any(axis=1)
+    assert measured.sum() > 0 and np.all(levels[measured] > 0)
 
 
 def test_handle_returns_the_modulation_spectrogram():

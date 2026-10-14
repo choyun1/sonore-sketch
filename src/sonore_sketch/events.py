@@ -65,14 +65,14 @@ FREQUENCY_RANGE = (50.0, 7500.0)  # Hz, the chirp's, tone pip's and noise burst'
 HARMONICS_RANGE = (1, 30)  # the harmonic complex's number of harmonics
 MAX_BREAKPOINTS = 2000
 
-# The modulation spectrogram under the sound: 24 cosine bands from 100 Hz,
+# The modulation spectrogram under the sound: 16 cosine bands from 100 Hz,
 # envelopes at 1 kHz, every 20 ms, depth shown over its top 30 dB. One window
 # for every rate, as in an STFT, so the cells that cannot be measured are the
 # same half window at each end at every rate (a window of three cycles of each
 # rate leaves nothing below 1 Hz of a 3 s sound, and draws a U). The window is
 # a third of the sound, at most 1 s, and holds two cycles of its slowest rate:
 # 2 Hz, about the rate of a musical beat, from a 3 s sound on.
-MOD_BANDS = 24
+MOD_BANDS = 16  # the lowest kept band is 72 Hz wide, so no rate up to 64 Hz is faster than a band is wide
 MOD_F_LOW = 100.0
 MOD_F_HIGH = 7000.0
 MOD_ENV_FS = 1000.0
