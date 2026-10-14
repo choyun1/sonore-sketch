@@ -87,18 +87,24 @@ class LocalEngine {
     });
     const body = await response.json();
     if (!response.ok) throw Object.assign(new Error(body.error), { detail: body.detail });
-    return {
-      fs: body.fs,
-      samples: new Float32Array(bytesFromBase64(body.samples).buffer),
-      synthesisSeconds: body.synthesis_s,
-      spectrogram: readPicture(body.spectrogram, spectrogramPicture),
-      sourceStft: body.source_stft && readPicture(body.source_stft, spectrogramPicture),
-      resultStft: body.result_stft && readPicture(body.result_stft, spectrogramPicture),
-      modulation: body.modulation && readPicture(body.modulation, modulationPicture),
-      sourceModulation: body.source_modulation && readPicture(body.source_modulation, modulationPicture),
-      clipped: body.clipped ?? null,
-    };
+    return readResult(body);
   }
+}
+
+// page.handle's result as JSON (tools/serve.py, encode): from the local
+// server, or made ahead of time (tools/make_examples.py).
+export function readResult(body) {
+  return {
+    fs: body.fs,
+    samples: new Float32Array(bytesFromBase64(body.samples).buffer),
+    synthesisSeconds: body.synthesis_s,
+    spectrogram: readPicture(body.spectrogram, spectrogramPicture),
+    sourceStft: body.source_stft && readPicture(body.source_stft, spectrogramPicture),
+    resultStft: body.result_stft && readPicture(body.result_stft, spectrogramPicture),
+    modulation: body.modulation && readPicture(body.modulation, modulationPicture),
+    sourceModulation: body.source_modulation && readPicture(body.source_modulation, modulationPicture),
+    clipped: body.clipped ?? null,
+  };
 }
 
 // A picture from the local server, as `make` (pictures.js) reads it.
