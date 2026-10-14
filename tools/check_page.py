@@ -609,7 +609,7 @@ def main() -> None:
             erased = page_document_in(page)["edit"]["levels"]
             assert erased != section["levels"], "the stroke did not change the mask"
             expect(status).to_contain_text("Made", timeout=120_000)
-            from sonore_sketch import edit as edit_tab  # the Python half reads what the page wrote
+            from sonore_sketch import edit as edit_tab, sources  # the Python half reads what the page wrote
 
             cut = edit_tab.cuts({**section, "levels": erased})
             column = int(round(edit_tab.SIDE - 1 - (math.log2(16) * 16 - 0.5)))
@@ -661,7 +661,7 @@ def main() -> None:
                 page.click("#save")
             saved = json.loads(Path(download.value.path()).read_text())
             assert saved["recording"]["name"] == "pulse.wav" and saved["recording"]["fs"] == 16000, saved.get("recording", {}).keys()
-            heard = edit_tab.recording({**edit_tab_state(saved), "source": "file"})
+            heard = sources.recording({**edit_tab_state(saved), "source": "file"})
             assert heard.n_samples == 24000 and abs(np.corrcoef(heard.data[:, 0], np.interp(np.arange(24000) / 16000, t, tone))[0, 1]) > 0.99
             print("edit: a WAV file opened as the source, set the duration to 1.5 s, was heard, saved, and left out of the link")
             page.keyboard.press("Control+z")

@@ -17,7 +17,7 @@ import { magma } from "../colormap.js";
 import {
   drawAxisName,
   drawBrush,
-  drawFrame,
+  drawBorder,
   drawMaskOutline,
   drawPlayhead,
   drawRateAxisWords,
@@ -283,7 +283,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   // The plane's border, gridlines and labels, as on the Draw modulation tab
   // (`densities`: the ones labeled; `words`: the rate axis's name and directions).
   function axes(context, target, plot, densities, words) {
-    drawFrame(context, target, plot);
+    drawBorder(context, target, plot);
     drawValueTicks(context, plot, densities, plot.y, (density) => `${density}`);
     if (words) drawAxisName(context, plot, "cyc/oct");
     drawRateTicks(context, plot, plot.x, 2);

@@ -21,7 +21,7 @@
 import { magma } from "../colormap.js";
 import {
   drawAxisName,
-  drawFrame,
+  drawBorder,
   drawPlayhead,
   drawRateAxisWords,
   drawRateTicks,
@@ -414,7 +414,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     context.drawImage(picture(plot), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
 
     // axes and gridlines
-    drawFrame(context, canvas, plot);
+    drawBorder(context, canvas, plot);
     drawValueTicks(context, plot, Array.from({ length: DENSITY_MAX + 1 }, (_, density) => density), plot.y, (density) => `${density}`);
     drawAxisName(context, plot, "cyc/oct");
     drawRateTicks(context, plot, plot.x);
@@ -600,7 +600,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     context.drawImage(measuredImage, plane.x0, y0, plane.x1 - plane.x0, y1 - y0);
 
     const plot = { x0: plane.x0, x1: plane.x1, y0, y1 };
-    drawFrame(context, measuredCanvas, plot);
+    drawBorder(context, measuredCanvas, plot);
     drawValueTicks(context, plot, [0, 2, 4, 6], densityY, (density) => `${density}`);
     drawRateTicks(context, plot, plane.x);
     drawTitle(

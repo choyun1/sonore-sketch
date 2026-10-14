@@ -16,7 +16,7 @@ import { magma } from "../colormap.js";
 import {
   drawAxisName,
   drawBrush,
-  drawFrame,
+  drawBorder,
   drawMaskOutline,
   drawPlayhead,
   drawTimeTicks,
@@ -181,7 +181,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   }
 
   function axes(context, target, plot) {
-    drawFrame(context, target, plot);
+    drawBorder(context, target, plot);
     const frequencyStep = FREQUENCY_STEPS.find((step) => ((plot.y1 - plot.y0) * step) / plot.nyquist >= 28) ?? 5000;
     const frequencies = [];
     for (let f = 0; f <= plot.nyquist + 1e-9; f += frequencyStep) frequencies.push(f);

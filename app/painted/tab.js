@@ -10,7 +10,7 @@ import { magma } from "../colormap.js";
 import {
   drawAxisName,
   drawBrush,
-  drawFrame,
+  drawBorder,
   drawPlayhead,
   drawTimeTicks,
   drawValueTicks,
@@ -196,7 +196,7 @@ export function createPaintedTab(root, { commit, log }) {
     }
 
     // axes
-    drawFrame(context, canvas, plot);
+    drawBorder(context, canvas, plot);
     const ticks = FREQUENCY_TICKS.filter((f) => f >= state.f_lo && f <= state.f_hi);
     drawValueTicks(context, plot, ticks, plot.y, frequencyLabel, { gridColor: "rgba(255, 255, 255, 0.18)", clamp: false }); // over the dark picture
     drawAxisName(context, plot, "Hz");

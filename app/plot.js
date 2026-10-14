@@ -129,14 +129,14 @@ export function niceStep(duration, width) {
   return 5;
 }
 
-// --- a plot's frame, ticks and labels ------------------------------------------------
+// --- a plot's border, ticks and labels ------------------------------------------------
 
 // A frequency as a tick label: 500, 2k.
 export const frequencyLabel = (f) => (f >= 1000 ? `${f / 1000}k` : `${f}`);
 
 // The plot's border in the page's line color; labels drawn after it take
 // the muted color and the page's small font.
-export function drawFrame(context, canvas, plot) {
+export function drawBorder(context, canvas, plot) {
   const style = getComputedStyle(canvas);
   context.lineWidth = 1;
   context.font = "11px system-ui, sans-serif";
@@ -303,7 +303,7 @@ export function logSpectrogramPlot(canvas, margin) {
     return context;
   }
 
-  // `picture` (the shell's spectrogram, or none) on `plot`, with its frame,
+  // `picture` (the shell's spectrogram, or none) on `plot`, with its border,
   // frequency ticks ("Hz" beside them if `named`) and time ticks.
   function draw(context, plot, picture, { named }) {
     const { x0, x1, y0, y1, fLo, fHi, duration, span } = plot;
@@ -316,7 +316,7 @@ export function logSpectrogramPlot(canvas, margin) {
     }
     context.imageSmoothingEnabled = true;
     context.drawImage(image, x0, y0, x1 - x0, y1 - y0);
-    drawFrame(context, canvas, plot);
+    drawBorder(context, canvas, plot);
     drawValueTicks(context, plot, LOG_FREQUENCY_TICKS.filter((f) => f >= fLo && f <= fHi), plot.y, frequencyLabel);
     if (named) drawAxisName(context, plot, "Hz");
     drawTimeTicks(context, plot, duration, 4);
