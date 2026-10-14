@@ -249,7 +249,15 @@ the reasons above. SADIE II if more directions turn out to matter.
 **W3. Smoothing.** *Recommended:* resample every 10 ms and smooth with a
 30 ms Gaussian (W-M2), applied in Python so a saved stroke is smoothed the
 same way everywhere.
-*Decided (2026-10-14):* as recommended.
+*Decided (2026-10-14):* as recommended. Amended the same day at Cho's
+request ("smooth out the trajectory"): the 30 ms Gaussian takes out the
+pointer's steps but not the hand's wobble, so the shape is then smoothed
+along the path with a 15 cm Gaussian [estimate: 10 to 20 cm looked smooth
+on a wobbly test stroke without rounding its corners much], mirrored
+through each end so a straight end stays where it was drawn, and each
+point keeps its time. A Smoothing slider sets that width from 0 to 50 cm
+(`"smoothing"` in the section, 0.15 when absent). The top view shows this
+smoothed path, the one heard.
 
 **W4. Travel time.** *Recommended:* put the 1.4 m travel time back in the
 loader (W-M1), not in sonore.

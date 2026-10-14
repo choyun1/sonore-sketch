@@ -447,6 +447,18 @@ def main() -> None:
             drawn_rate = rate[1][1:-1]  # the ends outside the stroke keep the starting 10 per second
             assert isinstance(rate, list) and max(drawn_rate) > 100 and drawn_rate[-1] > 10 * drawn_rate[0], rate
             expect(status).to_contain_text("Made", timeout=120_000)
+            # a stroke drawn back and forth keeps only its newest pass, not a
+            # zigzag between passes: back and forth at two heights, ending low
+            page.mouse.move(rate_box["x"] + 100, rate_box["y"] + 20)
+            page.mouse.down()
+            for i, (x, steps) in enumerate([(300, 15), (100, 11), (300, 13), (100, 17)]):  # passes interleave in time
+                page.mouse.move(rate_box["x"] + x, rate_box["y"] + (20 if i < 3 else rate_box["height"] - 30), steps=steps)
+            page.mouse.up()
+            redrawn = page_document_in(page)["events"]["rate"]
+            rises = [later > earlier for earlier, later in zip(redrawn[1], redrawn[1][1:]) if later != earlier]
+            turns = sum(a != b for a, b in zip(rises, rises[1:]))
+            assert turns <= 4, redrawn  # a zigzag between passes turns at nearly every breakpoint
+            expect(status).to_contain_text("Made", timeout=120_000)
             regularity = page.locator("#tab-events .knob[data-knob=regularity] input")
             regularity.fill("1000")
             regularity.dispatch_event("change")

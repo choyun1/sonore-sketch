@@ -6,7 +6,7 @@ track over the same time (docs/design/tabs/paths.md)::
     {"paths": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000,
      "source": "noise", "room": "dry",
      "stroke": [[t, x, y], ...], "elevation": 0 or [times, degrees],
-     "speed": null or [fractions, speeds]}
+     "speed": null or [fractions, speeds], "smoothing": 0.15}
 
 ``stroke`` holds the pointer's positions as drawn: ``t`` in seconds from
 the start of the stroke, ``x`` to the listener's right and ``y`` ahead, in
@@ -55,6 +55,9 @@ MAX_POINTS = 20000  # a stroke of 10 s at 120 events a second is 1200
 SLOWEST = 1 / 20  # of the speed track's fastest (W8)
 STEP = 0.01  # s, the spacing the stroke is put on before smoothing (W3)
 SMOOTHING = 0.03  # s, the Gaussian's standard deviation (W3)
+SHAPE_SMOOTHING = 0.15  # m, the default width of a second Gaussian along the path, for the hand's wobble
+MAX_SHAPE_SMOOTHING = 0.5  # m, the widest the page offers
+SHAPE_STEP = 0.01  # m, the spacing the path is put on for it
 HRIR_FILE = Path(__file__).resolve().parent / "data" / "mit_kemar.npz"
 
 
@@ -77,6 +80,9 @@ def check(state: Mapping[str, Any]) -> None:
             raise ValueError(f"each point of 'stroke' must be [t, x, y], numbers, not {point!r}")
     if any(later[0] < earlier[0] for earlier, later in zip(stroke, stroke[1:])):
         raise ValueError("the stroke's times must not go back")
+    shape = state.get("smoothing", SHAPE_SMOOTHING)
+    if not number(shape) or not 0 <= shape <= MAX_SHAPE_SMOOTHING:
+        raise ValueError(f"'smoothing' must be a width in meters from 0 to {MAX_SHAPE_SMOOTHING:g}, not {shape!r}")
     speed = state.get("speed")
     if speed is not None:
         valid = (
@@ -97,9 +103,12 @@ def check(state: Mapping[str, Any]) -> None:
         raise ValueError("'elevation' must be a number of degrees or [times, degrees]")
 
 
-def smoothed(stroke: list[list[float]]) -> tuple[np.ndarray, np.ndarray]:
+def smoothed(stroke: list[list[float]], shape: float = SHAPE_SMOOTHING) -> tuple[np.ndarray, np.ndarray]:
     """The stroke put every ``STEP`` seconds and smoothed with a Gaussian of
-    ``SMOOTHING`` seconds (W3): its times from 0 and its (x, y) points."""
+    ``SMOOTHING`` seconds (W3), which takes out the pointer's steps, then its
+    shape smoothed along the path with a Gaussian ``shape`` meters wide
+    (``SHAPE_SMOOTHING`` unless the state says), which takes out the hand's wobble and leaves each point's time:
+    its times from 0 and its (x, y) points."""
     drawn = np.asarray(stroke, dtype=float)
     times = drawn[:, 0] - drawn[0, 0]
     if times[-1] <= 0:
@@ -109,7 +118,25 @@ def smoothed(stroke: list[list[float]]) -> tuple[np.ndarray, np.ndarray]:
     times, points = times[keep], drawn[keep, 1:]
     grid = np.arange(0.0, times[-1] + STEP / 2, STEP)
     resampled = np.column_stack([np.interp(grid, times, points[:, k]) for k in range(2)])
-    return grid, gaussian_filter1d(resampled, SMOOTHING / STEP, axis=0, mode="nearest")
+    return grid, smooth_shape(gaussian_filter1d(resampled, SMOOTHING / STEP, axis=0, mode="nearest"), shape)
+
+
+def smooth_shape(points: np.ndarray, width: float) -> np.ndarray:
+    """``points`` moved to a Gaussian average of the path around them,
+    ``width`` meters wide along it, each at the same distance along the
+    path as before."""
+    along = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(points, axis=0).T))])
+    if not (along[-1] > 0 and width > 0):
+        return points
+    # evenly spaced from end to end, at most SHAPE_STEP apart
+    grid = np.linspace(0.0, along[-1], int(np.ceil(along[-1] / SHAPE_STEP)) + 1)
+    spacing = grid[1] - grid[0]
+    even = np.column_stack([np.interp(grid, along, points[:, k]) for k in range(2)])
+    # mirrored through each end point, so a straight end stays where it was drawn
+    pad = min(len(even) - 1, int(4 * width / spacing + 0.5))
+    padded = np.concatenate([2 * even[0] - even[pad:0:-1], even, 2 * even[-1] - even[-2 : -2 - pad : -1]])
+    shape = gaussian_filter1d(padded, width / spacing, axis=0, mode="nearest")[pad : pad + len(even)]
+    return np.column_stack([np.interp(along, grid, shape[:, k]) for k in range(2)])
 
 
 def speed_times(state: Mapping[str, Any], points: np.ndarray) -> np.ndarray | None:
@@ -148,7 +175,7 @@ def trajectory(state: Mapping[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     (at least ``MIN_DISTANCE``), lifted to the elevation track's angle;
     Cartesian, meters, x right, y ahead, z up."""
     duration = float(state["duration"])
-    stroke_times, flat = smoothed(state["stroke"])
+    stroke_times, flat = smoothed(state["stroke"], float(state.get("smoothing", SHAPE_SMOOTHING)))
     along = speed_times(state, flat)
     if along is not None:
         # points the pointer reported at one place take no time; keep the first

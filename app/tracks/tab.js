@@ -12,6 +12,7 @@ import {
   TRACKS,
   clampValue,
   drawnPoints,
+  extendStroke,
   fromScale,
   insertPoint,
   lineSpan,
@@ -425,7 +426,7 @@ export function createTracksTab(root, { commit }) {
         } else if (gesture.kind === "line") {
           gesture.preview = [gesture.from, [t, value]];
         } else {
-          gesture.stroke.push([t, value]);
+          extendStroke(gesture.stroke, [t, value]);
           gesture.preview = gesture.stroke;
         }
       }

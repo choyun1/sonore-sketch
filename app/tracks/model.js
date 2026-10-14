@@ -282,6 +282,24 @@ export function replaceSpan(breakpoints, span) {
   return [...kept, ...span].sort((a, b) => a[0] - b[0]);
 }
 
+// Add `point` [t, value] to a freehand stroke being drawn, in place. Where
+// the pointer goes back over times the stroke already covers, the newer
+// pass replaces the older one: points from earlier in the stroke between the
+// last point's time and this one's are dropped, so a stroke drawn back and
+// forth stays one value at each time instead of zigzagging between passes.
+export function extendStroke(stroke, point) {
+  const last = stroke[stroke.length - 1];
+  if (last) {
+    const [low, high] = [Math.min(last[0], point[0]), Math.max(last[0], point[0])];
+    for (let i = stroke.length - 2; i >= 0; i--) {
+      const t = stroke[i][0];
+      if ((t > low && t < high) || t === point[0]) stroke.splice(i, 1);
+    }
+  }
+  stroke.push(point);
+  return stroke;
+}
+
 // Ramer-Douglas-Peucker on a stroke [[t, value], ...], keeping every point
 // whose value is more than `tolerance` (in the track's unit) from the chord
 // between the kept points on either side.

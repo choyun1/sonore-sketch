@@ -18,6 +18,7 @@
 // (blobs.md, B7) on the plane's axes, so drawn and heard compare by eye
 // (with bands, measured within them: bands.md, K7), above the page's waveform.
 
+import { extendStroke } from "../tracks/model.js";
 import { magma } from "../colormap.js";
 import {
   drawAxisName,
@@ -772,7 +773,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     }
     if (bandDrag.kind === "line" || bandDrag.kind === "freehand") {
       const here = [stftPlot.t(at[0]), stftPlot.f(at[1])];
-      bandDrag.stroke = bandDrag.kind === "line" ? [bandDrag.stroke[0], here] : [...bandDrag.stroke, here];
+      bandDrag.stroke = bandDrag.kind === "line" ? [bandDrag.stroke[0], here] : extendStroke([...bandDrag.stroke], here);
       const points = strokeOnto(bandDrag.origin, bandDrag.stroke);
       bandDrag.bands = bandDrag.bands.map((band, i) => (i === bandDrag.index ? { ...band, points } : band));
       bandDrag.changed = true;
