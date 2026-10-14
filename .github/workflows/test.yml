@@ -19,6 +19,8 @@ jobs:
       - name: Install
         run: |
           python -m pip install -e ".[test]"
+          # Until sonore releases its public modulation hooks: sonore's main, at the merge that added them.
+          python -m pip install --force-reinstall --no-deps "sonore @ git+https://github.com/choyun1/sonore@bc2ee2f67ce705d65ab3e085c0cdfe977315529d"
           python -m playwright install --with-deps chromium
       - name: Python tests
         run: python -m pytest -q
@@ -38,6 +40,9 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install
-        run: python -m pip install -e ".[test]"
+        run: |
+          python -m pip install -e ".[test]"
+          # Until sonore releases its public modulation hooks: sonore's main, at the merge that added them.
+          python -m pip install --force-reinstall --no-deps "sonore @ git+https://github.com/choyun1/sonore@bc2ee2f67ce705d65ab3e085c0cdfe977315529d"
       - name: Python tests
         run: python -m pytest -q
