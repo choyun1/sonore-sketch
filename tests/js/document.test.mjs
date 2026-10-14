@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { clearTab, defaultPage, openDocument, resetTab, stretchPage, tabState, upgrade, withTabState } from "../../app/document.js";
+import { START_DURATION, clearTab, defaultPage, isStartingPage, openDocument, resetTab, stretchPage, tabState, upgrade, withTabState } from "../../app/document.js";
 import * as painted from "../../app/painted/model.js";
 import * as edit from "../../app/edit/model.js";
 import * as mask from "../../app/mask/model.js";
@@ -9,6 +9,27 @@ import { DEFAULTS, defaultDocument } from "../../app/tracks/model.js";
 
 test("the default page holds the Draw speech tab's default drawing", () => {
   assert.deepEqual(tabState(defaultPage(), "tracks"), defaultDocument());
+});
+
+test("Draw speech starts at its word's 0.6 s, every other tab at 2 s", () => {
+  assert.equal(defaultPage().duration, 0.6);
+  assert.equal(START_DURATION, 2);
+  for (const tab of ["painted", "mask", "blobs", "edit", "paths", "events"]) {
+    const page = defaultPage(tab);
+    assert.equal(page.duration, 2, tab);
+    assert.equal(page.tab, tab);
+    assert.deepEqual({ ...page, duration: 0.6, tab: "tracks", tracks: defaultPage().tracks }, defaultPage()); // the same drawings
+    assert.deepEqual(stretchPage(page, 0.6).tracks, defaultPage().tracks); // the word, stretched to 2 s
+  }
+});
+
+test("the page is a starting page until something changes", () => {
+  assert.ok(isStartingPage(defaultPage(), "tracks"));
+  assert.ok(isStartingPage(defaultPage("blobs"), "blobs"));
+  assert.ok(isStartingPage({ ...defaultPage("blobs"), tab: "tracks" }, "blobs")); // the tab saved in it does not count
+  assert.ok(!isStartingPage(defaultPage(), "blobs")); // 0.6 s is not where Draw modulation starts
+  assert.ok(!isStartingPage(stretchPage(defaultPage(), 1.2), "tracks"));
+  assert.ok(!isStartingPage({ ...defaultPage("blobs"), blobs: { ...defaultPage().blobs, items: [] } }, "blobs"));
 });
 
 test("a TrackDraw document (an old link or file) opens as a page document", () => {
@@ -38,8 +59,8 @@ test("opening refuses what is not a document, and tidies what is", () => {
 });
 
 test("stretching the page stretches what the Draw speech tab drew", () => {
-  const page = stretchPage(defaultPage(), 4);
-  assert.equal(page.duration, 4);
+  const page = stretchPage(defaultPage(), 1.2);
+  assert.equal(page.duration, 1.2);
   assert.deepEqual(page.tracks.params.F3[0], defaultPage().tracks.params.F3[0].map((t) => t * 2));
 });
 
@@ -83,4 +104,5 @@ test("Reset puts the tab shown back as the page opened, the others stay", () => 
   assert.equal(reset.duration, 0.8);
   assert.deepEqual(reset.blobs.items, []);
   assert.deepEqual(resetTab(changed, "tracks").tracks, defaultPage().tracks); // with no start, the defaults
+  assert.equal(resetTab(changed, "blobs", defaultPage("blobs")).duration, 2); // a tab's own starting duration
 });

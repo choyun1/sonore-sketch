@@ -101,6 +101,17 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=180_000)
             print(f"ready and first sound made in {time.perf_counter() - start:.1f} s: {page.locator('#versions').inner_text()}")
 
+            # Draw speech starts at its word's 0.6 s, the other tabs at 2 s,
+            # while nothing is drawn yet (app.md, "Starting duration").
+            expect(page.locator("#duration")).to_have_value("0.6")
+            page.click(".tabs [data-tab=painted]")
+            expect(page.locator("#duration")).to_have_value("2")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.click(".tabs [data-tab=tracks]")
+            expect(page.locator("#duration")).to_have_value("0.6")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("starting duration: 0.6 s on Draw speech, 2 s on Draw spectrogram")
+
             # The page starts by saying "sonore"; the drawing checks below are
             # written for the earlier /aɪ/ example, so they start from it.
             default = document_in(page)
@@ -495,7 +506,7 @@ def main() -> None:
             example = page_document_in(page)["blobs"]
             start = example["items"]
             assert len(start) == 1 and start[0]["rate"] > 0 and start[0]["density"] > 0, start  # one blob, upper right
-            expect(page.locator("#tab-blobs .coarse")).to_be_hidden()  # the starting 2 s is not under 2 s
+            expect(page.locator("#tab-blobs .coarse")).to_be_visible()  # 0.6 s (the duration the page was left at) is under 2 s
             # The example keeps to one band round 500 Hz; the steps below start
             # from the same blob with no bands.
             assert example["bands"] == [{"points": [[0, 500]], "width": 2, "level": 0}], example["bands"]
@@ -774,7 +785,7 @@ def main() -> None:
             assert heard.n_samples == 24000 and abs(np.corrcoef(heard.data[:, 0], np.interp(np.arange(24000) / 16000, t, tone))[0, 1]) > 0.99
             print("edit: a WAV file opened as the source, set the duration to 1.5 s, was heard, saved, and left out of the link")
             page.keyboard.press("Control+z")
-            assert page_document_in(page)["duration"] == 2 and page_document_in(page)["edit"]["source"] == "speech"
+            assert page_document_in(page)["duration"] == 0.6 and page_document_in(page)["edit"]["source"] == "speech"
             print("edit: Undo takes the recording away again")
 
             # The Erase spectrogram tab (mask.md): it starts on the syllable

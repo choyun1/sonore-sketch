@@ -4,7 +4,7 @@
 // can switch tabs and come back to what you drew.
 //
 //   {"app": "sonore-sketch", "version": 2, "sonore": "0.7.0",
-//    "duration": 2, "fs": 16000, "tab": "tracks",
+//    "duration": 0.6, "fs": 16000, "tab": "tracks",
 //    "tracks": {"mode": "klatt", "params": {...}},
 //    "painted": {"f_lo": 100, "f_hi": 6400, ..., "levels": "..."},
 //    "blobs": {"carrier": "tones", ..., "items": [{"rate": 4, ...}]},
@@ -38,14 +38,27 @@ export const APP = "sonore-sketch";
 export const VERSION = 2;
 export const TABS = ["tracks", "painted", "mask", "blobs", "edit", "paths", "events"];
 
-export function defaultPage() {
-  const { sonore, duration, fs, mode, params } = tracks.defaultDocument();
+// The page's starting duration [s] on every tab but Draw speech, which starts
+// at its word's own 0.6 s (Cho, 2026-10-14).
+export const START_DURATION = 2;
+
+// The page as it opens on `tab`: every tab's starting drawing, at that tab's
+// starting duration. On the other tabs the Draw speech word is stretched to
+// the 2 s, as any change of duration would, so going back to 0.6 s gives the
+// word back as it was spoken.
+export function defaultPage(tab = "tracks") {
+  const word = tracks.defaultDocument();
+  const { sonore, duration, fs, mode, params } = tab === "tracks" ? word : tracks.stretch(word, START_DURATION);
   return {
-    app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
+    app: APP, version: VERSION, sonore, duration, fs, tab,
     tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
     mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(),
   };
 }
+
+// Whether `page` is still the starting page of `tab`: nothing drawn or set
+// yet. Until then the duration follows the tab shown (main.js, switchTab).
+export const isStartingPage = (page, tab) => JSON.stringify({ ...page, tab }) === JSON.stringify(defaultPage(tab));
 
 // A document from a file or a link, as version 2; throws an Error saying what
 // is wrong with it.

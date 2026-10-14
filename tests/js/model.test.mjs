@@ -28,8 +28,8 @@ import {
 
 test("a number is a flat track over the whole duration", () => {
   const doc = defaultDocument();
-  assert.deepEqual(points(doc, "F4"), [[0, 4400], [2, 4400]]);
-  assert.deepEqual(points({ ...doc, params: {} }, "B3"), [[0, 150], [2, 150]]);
+  assert.deepEqual(points(doc, "F4"), [[0, 4400], [0.6, 4400]]);
+  assert.deepEqual(points({ ...doc, params: {} }, "B3"), [[0, 150], [0.6, 150]]);
 });
 
 test("withPoints stores [times, values], sorted, and leaves the old document alone", () => {
@@ -78,8 +78,8 @@ test("freehand strokes simplify to the fewest breakpoints within the tolerance",
 
 test("stretching scales breakpoint times exactly and keeps values (tracks.md, C3)", () => {
   const doc = defaultDocument();
-  const longer = stretch(doc, 4);
-  assert.equal(longer.duration, 4);
+  const longer = stretch(doc, 1.2);
+  assert.equal(longer.duration, 1.2);
   assert.deepEqual(longer.params.F1[0], doc.params.F1[0].map((t) => t * 2));
   assert.deepEqual(longer.params.F1[1], doc.params.F1[1]);
   assert.equal(longer.params.F4, 4400);
