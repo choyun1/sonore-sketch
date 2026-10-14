@@ -4,9 +4,11 @@
 //
 // One stroke on the top view is one path: drawing again replaces it. The
 // stroke keeps the pointer's own timing, so how fast you draw is how fast
-// the sound moves (W6). The elevation track is drawn freehand over the
-// page's time, like a track on the Draw speech tab, and replaces what it
-// passes over.
+// the sound moves (W6), until the speed track under it is drawn on: that
+// track runs along the path from its start to its end (W7), and the spot
+// under the pointer is marked on the path. The elevation track is drawn
+// freehand over the page's time, like a track on the Draw speech tab. Both
+// tracks replace what a stroke passes over.
 
 import { drawAxisName, drawBorder, drawPlayhead, drawTimeTicks, drawValueTicks, fitCanvasInCssPixels, pointerPosition } from "../plot.js";
 import { replaceSpan, simplify } from "../tracks/model.js";
@@ -18,11 +20,17 @@ import {
   MIN_DISTANCE,
   ROOMS,
   SOURCES,
+  SPEED_RANGE,
   elevationAt,
   elevationPoints,
+  pathLength,
+  pointAlong,
   positionAt,
+  speedPoints,
   strokePoint,
+  timeline,
   withElevation,
+  withSpeed,
 } from "./model.js";
 
 const TOP_MARGIN = 22; // px around the top view, for the words front, back, left and right
@@ -32,18 +40,24 @@ const LABEL_ANGLE = Math.PI / 6; // where the rings are labeled, below the horiz
 const ELEVATION_TICKS = [-40, 0, 45, 90];
 const ELEVATION_TOLERANCE = 1.5; // degrees, how far a simplified elevation stroke may stray
 const HEAD_RADIUS = 0.0875; // m, a KEMAR-sized head, drawn to scale
+const SPEED_TOLERANCE = 0.08; // octaves, how far a simplified speed stroke may stray
+const NICE_SPEEDS = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]; // m/s
 
 export function createPathsTab(root, { commit, hasRecording }) {
   let state = null;
   let drawing = null; // the stroke being drawn on the top view, [[t, x, y], ...]
   let started = 0; // its first event's time stamp, ms
   let lifting = null; // the elevation stroke being drawn, [[t, degrees], ...]
+  let shaping = null; // the speed stroke being drawn, [[fraction, speed], ...]
+  let hover = null; // the fraction of the path under the pointer on the speed track
+  let path = null; // the path in page time (timeline), for the dot and the marker
   let playhead = null;
 
   root.innerHTML = `
     <div class="paths-body">
       <div class="paths-area">
         <canvas class="top-view" aria-label="The listener seen from above, nose up; draw where the sound goes"></canvas>
+        <canvas class="speed" aria-label="Speed along the path, from its start to its end; the spot under the pointer is marked on the path"></canvas>
         <canvas class="elevation" aria-label="Elevation over time, from 40 degrees below ear height to straight up"></canvas>
       </div>
       <aside class="side">
@@ -52,16 +66,19 @@ export function createPathsTab(root, { commit, hasRecording }) {
             <select class="source">${SOURCES.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
           <label class="field" title="Dry, or with a room's reverberation, which stays put while the source moves">Room
             <select class="room">${ROOMS.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
+          <button type="button" class="even" title="Move at one speed from the start of the path to its end">Even speed</button>
+          <button type="button" class="as-drawn" title="Move as fast as you drew each part">Speed as drawn</button>
           <button type="button" class="level" title="Put the whole path back at ear height">Elevation back to 0°</button>
         </fieldset>
-        <p class="hint">Use headphones. Drag on the top view to draw where the sound goes: the speed you draw is the speed it moves, stretched to the duration. Drag on the elevation track below to raise or lower it. Space plays.</p>
+        <p class="hint">Use headphones. Drag on the top view to draw where the sound goes: the speed you draw is the speed it moves, stretched to the duration. Drag on the speed track below to change how fast it goes along the path; the duration sets the average. Drag on the elevation track to raise or lower it. Space plays.</p>
         <p class="hint">The head is MIT's KEMAR mannequin, measured at 1.4 m (the dashed ring); nearer and farther, only level and delay change. Expect height to come through weakly: it is heard through the shape of your own ears, and these are the mannequin's.</p>
       </aside>
     </div>`;
   const query = (selector) => root.querySelector(selector);
   const top = query("canvas.top-view");
   const track = query("canvas.elevation");
-  const ui = { source: query(".source"), room: query(".room"), level: query(".level") };
+  const speedTrack = query("canvas.speed");
+  const ui = { source: query(".source"), room: query(".room"), level: query(".level"), even: query(".even"), asDrawn: query(".as-drawn") };
 
   const style = (name, fallback) => getComputedStyle(root).getPropertyValue(name).trim() || fallback;
 
@@ -70,10 +87,14 @@ export function createPathsTab(root, { commit, hasRecording }) {
     ui.room.value = state.room;
     ui.source.querySelector('option[value="file"]').disabled = !hasRecording() && state.source !== "file";
     ui.level.disabled = state.elevation === 0;
+    ui.asDrawn.disabled = !state.speed;
+    ui.even.disabled = !state.stroke.length;
   }
   ui.source.addEventListener("change", () => commit({ ...state, source: ui.source.value }));
   ui.room.addEventListener("change", () => commit({ ...state, room: ui.room.value }));
   ui.level.addEventListener("click", () => commit({ ...state, elevation: 0 }));
+  ui.even.addEventListener("click", () => commit(withSpeed(state, [[0, 1], [1, 1]])));
+  ui.asDrawn.addEventListener("click", () => commit({ ...state, speed: null }));
 
   // --- the top view ----------------------------------------------------------------
 
@@ -203,9 +224,18 @@ export function createPathsTab(root, { commit, hasRecording }) {
       context.fillText("Drag to draw where the sound goes", cx, cy + 2.2 * plot.scale);
     }
 
-    if (playhead !== null && state?.stroke.length && !drawing) {
-      const at = positionAt(state.stroke, state.duration, playhead);
-      const [px, py] = plot.toPixels(at);
+    const marked = shaping ? shaping[shaping.length - 1][0] : hover;
+    if (marked !== null && path?.points.length && !drawing) {
+      const [px, py] = plot.toPixels(pointAlong(path, marked));
+      context.strokeStyle = ink;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(px, py, 8, 0, 2 * Math.PI);
+      context.stroke();
+    }
+
+    if (playhead !== null && path?.points.length && !drawing) {
+      const [px, py] = plot.toPixels(positionAt(path, playhead).point);
       context.fillStyle = style("--error", "#d1495b");
       context.beginPath();
       context.arc(px, py, 7, 0, 2 * Math.PI);
@@ -244,10 +274,101 @@ export function createPathsTab(root, { commit, hasRecording }) {
     const stroke = drawing;
     drawing = null;
     if (event.type === "pointercancel") return renderTop();
-    commit({ ...state, stroke });
+    commit({ ...state, stroke, speed: null }); // a new path starts at the speed it was drawn
   }
   top.addEventListener("pointerup", finishStroke);
   top.addEventListener("pointercancel", finishStroke);
+
+  // --- the speed track ----------------------------------------------------------------
+
+  function speedPlot() {
+    const width = speedTrack.clientWidth || 400;
+    const height = speedTrack.clientHeight || 120;
+    const [x0, x1, y0, y1] = [TRACK_MARGIN.left, width - TRACK_MARGIN.right, TRACK_MARGIN.top, height - TRACK_MARGIN.bottom];
+    const [low, high] = SPEED_RANGE.map(Math.log2);
+    return {
+      width, height, x0, x1, y0, y1,
+      x: (fraction) => x0 + fraction * (x1 - x0),
+      y: (speed) => y1 - ((Math.log2(speed) - low) / (high - low)) * (y1 - y0),
+      at: ([px, py]) => [
+        Math.min(1, Math.max(0, (px - x0) / (x1 - x0))),
+        2 ** Math.min(high, Math.max(low, low + ((y1 - py) / (y1 - y0)) * (high - low))),
+      ],
+    };
+  }
+
+  function renderSpeed() {
+    if (!state) return;
+    const context = fitCanvasInCssPixels(speedTrack);
+    const plot = speedPlot();
+    context.clearRect(0, 0, plot.width, plot.height);
+    drawBorder(context, speedTrack, plot);
+    // labeled in m/s for the current duration, since the duration sets the average
+    const length = pathLength(state);
+    const average = length / state.duration;
+    const ticks = average > 0 ? NICE_SPEEDS.filter((speed) => speed >= SPEED_RANGE[0] * average && speed <= SPEED_RANGE[1] * average) : [];
+    drawValueTicks(context, plot, ticks.map((speed) => speed / average), plot.y, (relative) => `${Number((relative * average).toPrecision(2))}`, {
+      gridColor: style("--grid", "#eeece6"),
+    });
+    drawAxisName(context, plot, "speed, m/s");
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    for (const fraction of [0, 0.25, 0.5, 0.75, 1]) {
+      context.textAlign = fraction === 0 ? "left" : fraction === 1 ? "right" : "center";
+      context.fillText(`${(fraction * length).toFixed(1)} m`, plot.x(fraction), plot.y1 + 5);
+    }
+    if (!state.stroke.length) return;
+    const points = speedPoints(state);
+    const shown = shaping ? replaceSpan(points, [...shaping].sort((a, b) => a[0] - b[0])) : points;
+    context.strokeStyle = style("--accent", "#2e86ab");
+    context.lineWidth = 2;
+    context.beginPath();
+    const ends = [[0, shown[0][1]], ...shown, [1, shown[shown.length - 1][1]]];
+    ends.forEach(([fraction, speed], i) => (i ? context.lineTo(plot.x(fraction), plot.y(speed)) : context.moveTo(plot.x(fraction), plot.y(speed))));
+    context.stroke();
+    const marked = shaping ? shaping[shaping.length - 1][0] : hover;
+    if (marked !== null) drawPlayhead(context, plot, plot.x(marked), style("--ink", "#1d232b"));
+    if (playhead !== null && path?.points.length) drawPlayhead(context, plot, plot.x(positionAt(path, playhead).along), style("--error", "#d1495b"));
+  }
+
+  const fromSpeed = (event) => speedPlot().at(pointerPosition(speedTrack, event));
+
+  speedTrack.addEventListener("pointerdown", (event) => {
+    if (!state?.stroke.length || event.button !== 0) return;
+    event.preventDefault();
+    speedTrack.setPointerCapture(event.pointerId);
+    shaping = [fromSpeed(event)];
+    renderSpeed();
+    renderTop();
+  });
+  speedTrack.addEventListener("pointermove", (event) => {
+    if (!shaping) {
+      hover = state?.stroke.length ? fromSpeed(event)[0] : null;
+      renderSpeed();
+      renderTop();
+      return;
+    }
+    const moves = event.getCoalescedEvents?.() ?? [];
+    for (const move of moves.length ? moves : [event]) shaping.push(fromSpeed(move));
+    renderSpeed();
+    renderTop();
+  });
+  speedTrack.addEventListener("pointerleave", () => {
+    if (shaping || hover === null) return;
+    hover = null;
+    renderSpeed();
+    renderTop();
+  });
+  function finishShape(event) {
+    if (!shaping) return;
+    const logged = shaping.map(([fraction, speed]) => [fraction, Math.log2(speed)]);
+    const span = simplify(logged, SPEED_TOLERANCE).map(([fraction, octaves]) => [fraction, 2 ** octaves]);
+    shaping = null;
+    if (event.type === "pointercancel") return render();
+    commit(withSpeed(state, replaceSpan(speedPoints(state), span)));
+  }
+  speedTrack.addEventListener("pointerup", finishShape);
+  speedTrack.addEventListener("pointercancel", finishShape);
 
   // --- the elevation track ------------------------------------------------------------
 
@@ -315,17 +436,20 @@ export function createPathsTab(root, { commit, hasRecording }) {
   function render() {
     if (!state) return;
     renderTop();
+    renderSpeed();
     renderTrack();
   }
   new ResizeObserver(render).observe(top);
+  new ResizeObserver(render).observe(speedTrack);
   new ResizeObserver(render).observe(track);
 
   return {
     id: "paths",
     figure: top.parentElement, // where the shell shows synthesis progress
     setDocument(next) {
-      drawing = lifting = null;
+      drawing = lifting = shaping = null;
       state = next;
+      path = timeline(state, state.duration);
       showSettings();
       render();
     },

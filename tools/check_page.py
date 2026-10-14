@@ -379,7 +379,8 @@ def main() -> None:
 
             # The Draw path tab: the example plays; a stroke on the top view
             # replaces the path and is heard; a stroke on the elevation track
-            # lifts it; Clear leaves nothing to hear; Undo brings it back.
+            # lifts it; a stroke on the speed track and Even speed set the
+            # speed; Clear leaves nothing to hear; Undo brings it back.
             page.click(".tabs [data-tab=paths]")
             expect(page.locator("#tab-paths")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
@@ -405,6 +406,19 @@ def main() -> None:
             elevation = page_document_in(page)["paths"]["elevation"]
             assert isinstance(elevation, list) and max(elevation[1]) > 45, elevation
             expect(status).to_contain_text("Made", timeout=120_000)
+            # the speed track: a stroke across its second half makes that half fast
+            assert page_document_in(page)["paths"]["speed"] is None
+            speed = page.locator("canvas.speed").bounding_box()
+            page.mouse.move(speed["x"] + speed["width"] * 0.55, speed["y"] + 14)
+            page.mouse.down()
+            page.mouse.move(speed["x"] + speed["width"] + 20, speed["y"] + 14, steps=10)  # past its end, which holds it at the end
+            page.mouse.up()
+            shaped = page_document_in(page)["paths"]["speed"]
+            assert shaped and shaped[1][-1] > 2 * shaped[1][0], shaped
+            expect(status).to_contain_text("Made", timeout=120_000)
+            page.click("#tab-paths .even")
+            assert len(set(page_document_in(page)["paths"]["speed"][1])) == 1
+            expect(status).to_contain_text("Made", timeout=120_000)
             from sonore_sketch import page as page_module  # the Python half hears what the page wrote
 
             heard = page_module.handle({"tab": "paths", "state": page_module.tab_state(page_document_in(page), "paths")})
@@ -416,7 +430,7 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=120_000)
             page.click(".tabs [data-tab=tracks]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            print("paths: a stroke and an elevation are drawn and heard in two ears; Clear and Undo work")
+            print("paths: a stroke, a speed and an elevation are drawn and heard in two ears; Clear and Undo work")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore

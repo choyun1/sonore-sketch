@@ -56,7 +56,7 @@ different sound from it.
 | **[Erase spectrogram](https://choyun1.github.io/sonore-sketch/#tab=erase-spectrogram)** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
 | **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
-| **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
+| **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
 
 ## Using the page
 
@@ -308,7 +308,11 @@ share each band beat at F0 and pull the search away (K-M5b).
    you draw is how fast the sound moves; it is stretched to the page's
    duration. Its points are put every 10 ms and smoothed with a 30 ms
    Gaussian, which takes out the speed changes the pointer adds at every
-   screen frame (`docs/design/tabs/paths.md`, W-M2).
+   screen frame (`docs/design/tabs/paths.md`, W-M2). The speed track
+   under the top view starts as that drawn speed; drawing on it sets the
+   speed along the path instead, from its start to its end (W7), scaled so
+   the trip takes the duration and never slower than 1/20 of its fastest
+   (W8).
 2. Each point keeps its direction and distance around the listener (at
    least 25 cm from the head's center), and the elevation track lifts it
    on the sphere of that distance, from −40° to 90°, the range MIT

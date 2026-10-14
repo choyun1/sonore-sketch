@@ -5,7 +5,8 @@ track over the same time (docs/design/tabs/paths.md)::
 
     {"paths": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000,
      "source": "noise", "room": "dry",
-     "stroke": [[t, x, y], ...], "elevation": 0 or [times, degrees]}
+     "stroke": [[t, x, y], ...], "elevation": 0 or [times, degrees],
+     "speed": null or [fractions, speeds]}
 
 ``stroke`` holds the pointer's positions as drawn: ``t`` in seconds from
 the start of the stroke, ``x`` to the listener's right and ``y`` ahead, in
@@ -13,7 +14,10 @@ meters. The stroke keeps its own timing, stretched to the page's duration
 (W6), so how fast you drew each part is how fast the sound moves there. Its
 points are first put every 10 ms and smoothed with a 30 ms Gaussian (W3),
 which takes out the speed changes the pointer's events add at every screen
-frame; ``tools/measure_paths.py`` measured both. The top view gives each
+frame; ``tools/measure_paths.py`` measured both. A speed track, when
+drawn, replaces the drawing's timing: relative speeds at fractions of the
+path's length from its start (W7), scaled so the trip takes the duration,
+none slower than 1/20 of the fastest (W8). The top view gives each
 point its direction around the listener and its distance; the elevation
 track lifts it on the sphere of that distance, from -40 to 90 degrees, the
 measured range.
@@ -48,6 +52,7 @@ HALF_WIDTH = 4.0  # m: the top view spans -4..4 m on both axes
 MIN_DISTANCE = 0.25  # m from the head's center; a path is kept at least this far out
 ELEVATION_RANGE = (-40.0, 90.0)  # degrees, the measured range
 MAX_POINTS = 20000  # a stroke of 10 s at 120 events a second is 1200
+SLOWEST = 1 / 20  # of the speed track's fastest (W8)
 STEP = 0.01  # s, the spacing the stroke is put on before smoothing (W3)
 SMOOTHING = 0.03  # s, the Gaussian's standard deviation (W3)
 HRIR_FILE = Path(__file__).resolve().parent / "data" / "mit_kemar.npz"
@@ -72,6 +77,15 @@ def check(state: Mapping[str, Any]) -> None:
             raise ValueError(f"each point of 'stroke' must be [t, x, y], numbers, not {point!r}")
     if any(later[0] < earlier[0] for earlier, later in zip(stroke, stroke[1:])):
         raise ValueError("the stroke's times must not go back")
+    speed = state.get("speed")
+    if speed is not None:
+        valid = (
+            isinstance(speed, list) and len(speed) == 2 and all(isinstance(part, list) for part in speed)
+            and len(speed[0]) == len(speed[1]) > 0 and all(number(value) for part in speed for value in part)
+            and all(0 <= fraction <= 1 for fraction in speed[0]) and all(value > 0 for value in speed[1])
+        )
+        if not valid:
+            raise ValueError("'speed' must be null or [fractions, speeds]: fractions of the path from 0 to 1, speeds above 0")
     elevation = state.get("elevation", 0)
     if number(elevation):
         return
@@ -98,6 +112,25 @@ def smoothed(stroke: list[list[float]]) -> tuple[np.ndarray, np.ndarray]:
     return grid, gaussian_filter1d(resampled, SMOOTHING / STEP, axis=0, mode="nearest")
 
 
+def speed_times(state: Mapping[str, Any], points: np.ndarray) -> np.ndarray | None:
+    """Times from 0 to 1 at which the path passes ``points`` (the smoothed
+    stroke) under the speed track, or None when there is no track or no
+    distance to cover. Speeds are interpolated on a log scale, as the track
+    shows them, and kept at least ``SLOWEST`` of the fastest (W8)."""
+    speed = state.get("speed")
+    steps = np.hypot(*np.diff(points, axis=0).T)
+    if speed is None or not steps.sum() > 0:
+        return None
+    along = np.concatenate([[0.0], np.cumsum(steps)]) / steps.sum()
+    fractions, speeds = np.asarray(speed[0], dtype=float), np.log2(np.asarray(speed[1], dtype=float))
+    order = np.argsort(fractions, kind="stable")
+    middles = (along[:-1] + along[1:]) / 2
+    relative = 2 ** np.interp(middles, fractions[order], speeds[order])
+    relative = np.maximum(relative, SLOWEST * 2 ** speeds.max())
+    times = np.concatenate([[0.0], np.cumsum(steps / relative)])
+    return times / times[-1]
+
+
 def elevation_at(state: Mapping[str, Any], times: np.ndarray) -> np.ndarray:
     """The elevation track at ``times`` (page time), linear between
     breakpoints and held beyond them, kept within the measured range."""
@@ -116,7 +149,15 @@ def trajectory(state: Mapping[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     Cartesian, meters, x right, y ahead, z up."""
     duration = float(state["duration"])
     stroke_times, flat = smoothed(state["stroke"])
-    times = stroke_times / stroke_times[-1] * duration if stroke_times[-1] > 0 else np.array([0.0, duration])
+    along = speed_times(state, flat)
+    if along is not None:
+        # points the pointer reported at one place take no time; keep the first
+        keep = np.append(True, np.diff(along) > 0)
+        times, flat = along[keep] * duration, flat[keep]
+    elif stroke_times[-1] > 0:
+        times = stroke_times / stroke_times[-1] * duration
+    else:
+        times = np.array([0.0, duration])
     if len(flat) < len(times):
         flat = np.repeat(flat, len(times), axis=0)
     distance = np.maximum(np.hypot(flat[:, 0], flat[:, 1]), MIN_DISTANCE)

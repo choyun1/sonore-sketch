@@ -7,7 +7,9 @@ headphones, through sonore's `move_sound`.
 Status: decided (2026-10-14). Cho chose W1 (b), the top view with an
 elevation track, and accepted W2–W6 as recommended. Built
 (2026-10-14): steps 1 to 4 of the order of work, on the same pull
-request as this document.
+request as this document. A speed track was proposed afterwards
+(2026-10-14, "A speed track" below); Cho chose W7 (a), along the path,
+and W8 stands at its recommendation. Built the same day.
 
 This project is AI-assisted: the document and `tools/measure_paths.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -261,6 +263,55 @@ unlike the others' 16 kHz.
 or a constant speed along the drawn shape. *Recommended:* the stroke's own
 timing; speed is half of what a moving sound is.
 *Decided (2026-10-14):* as recommended.
+
+## A speed track (2026-10-14)
+
+Using the drawing's own timing (W6) worked, but Cho found it hard to
+control: the hand's own speeding up and slowing down, at corners above
+all, becomes the motion, and nothing on the page shows the speed. A
+speed track under the top view, like the elevation track, makes the
+speed something you see and edit.
+
+- **What it holds.** Relative speed: faster here, slower there. Its
+  scale is set by the duration: the page scales it so the trip from the
+  start of the path to its end takes exactly the duration. With speed
+  r(s) at arc length s along the path, the sound moves at c·r(s), where
+  c = (∫ ds / r(s)) / duration, and the track's axis is labeled in m/s
+  for the current duration, so changing the duration relabels the axis
+  and leaves the shape alone.
+- **Where it starts.** The speed you drew, smoothed as now (W3), so
+  nothing changes until you edit the track. Drawing a new path resets the
+  track to the new drawing's speed. An "Even speed" button sets it flat.
+- **Seeing the place.** Hovering or drawing on the track puts a marker on
+  the matching point of the path, and the playhead runs along both while
+  the sound plays.
+- **Elevation** stays on its time axis (W7 says why the speed track may
+  not be on one).
+
+**W7. The speed track's horizontal axis.** (a) **Distance along the
+path**, from its start to its end: each spot on the track is a fixed
+point on the path, so the marker under the cursor stays put while you
+draw speed. It cannot show a pause, since standing still covers no
+distance (W8). (b) **Time**, like the elevation track: the two line up,
+but slowing one part pushes every later point to a later time, so the
+point under the cursor slides while you draw. *Recommended:* (a).
+*Decided (2026-10-14):* (a).
+
+**W8. The slowest speed.** With (a), a speed of zero would take forever,
+so the track has a floor, 1/20 of its top [estimate: slow enough to
+hear as lingering, and it keeps one segment from taking nearly all the
+duration]. A pause, if wanted, would be a separate "hold here" mark
+rather than a speed. *Recommended:* the floor, and no hold mark until
+asked for.
+
+Data model: the paths section gains `"speed": null` (the drawing's own
+timing, as saved drawings have) or `[fractions, speeds]`, breakpoints at
+fractions of the path's length from 0 to 1 and relative speeds. The
+Python side turns them into times along the smoothed path; the stroke's
+own times then set only its shape. As built, the page keeps the stored
+speeds scaled so that 1 is the average speed, interpolates them on a log
+scale as the track shows them (from 1/8 to 8 times the average), and its
+own timeline of the path matches the Python side's (`tests/test_paths.py`).
 
 ## Order of work
 
