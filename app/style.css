@@ -329,8 +329,13 @@ canvas.rate {
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
   cursor: crosshair; touch-action: none;
 }
-.events-plots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-canvas.sparsity-bands, canvas.sparsity-rate {
+.events-plots { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+canvas.mod-pooled { cursor: crosshair; touch-action: none; }
+.events-area canvas.stft { cursor: crosshair; }
+.side .knob .ends { flex-basis: 100%; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: -4px; }
+.side .tone-field[hidden] { display: none; }
+select.tone { width: 100%; }
+canvas.mod-pooled, canvas.mod-frame {
   display: block; width: 100%; height: 190px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }

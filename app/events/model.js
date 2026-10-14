@@ -18,30 +18,39 @@ export const EVENTS = [
   ["noise", "noise burst"],
   ["impact", "impact"],
 ];
+export const TONES = [
+  ["pure", "pure tone"],
+  ["harmonic", "harmonic complex"],
+];
 export const RATE_RANGE = [1, 1000]; // events per second (sonore_sketch.events.RATE_RANGE)
 export const DEFAULT_RATE = 10;
 export const MAX_BREAKPOINTS = 2000; // sonore_sketch.events.MAX_BREAKPOINTS
 
 // Every knob is a slider: its name in the state, its label, unit, range,
 // scale ("log" moves by equal ratios), the step its values keep, and which
-// events use it (null: every event). The ranges are the ones
-// sonore_sketch.events.check takes (E2, E4).
+// events use it (null: every event), and for the tone pip, which tones. A
+// knob with `ends` shows what its two ends mean under the slider. The ranges
+// are the ones sonore_sketch.events.check takes (E2, E4).
 export const KNOBS = [
   { name: "length", label: "Length", unit: "ms", factor: 1000, low: 0.01, high: 0.1, scale: "linear", step: 0.001, events: ["chirp", "pip", "noise"], title: "How long each event lasts, under a Hann window" },
   { name: "f_low", label: "From", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["chirp"], title: "The chirp's starting frequency" },
   { name: "f_high", label: "To", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["chirp"], title: "The chirp's ending frequency" },
-  { name: "frequency", label: "Frequency", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["pip"], title: "The tone pip's frequency" },
+  { name: "frequency", label: "Frequency", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["pip"], title: "The tone's frequency, or the harmonic complex's fundamental (F0)" },
+  { name: "harmonics", label: "Harmonics", unit: "", low: 1, high: 30, scale: "linear", step: 1, events: ["pip"], tones: ["harmonic"], title: "How many harmonics of F0, from the fundamental up (those above 0.45 times the sampling rate are left out)" },
+  { name: "noise_low", label: "From", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["noise"], title: "The noise band's lowest frequency" },
+  { name: "noise_high", label: "To", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["noise"], title: "The noise band's highest frequency" },
   { name: "decay", label: "Decay", unit: "ms", factor: 1000, low: 0.002, high: 0.05, scale: "log", step: 0.0005, events: ["impact"], title: "The impact's time constant: how fast it dies away" },
   { name: "cutoff", label: "Cutoff", unit: "Hz", low: 300, high: 8000, scale: "log", step: 10, events: ["impact"], title: "The impact's lowpass: lower is duller, like a knock; higher is brighter, like a clap" },
-  { name: "regularity", label: "Regularity", unit: "", low: 1, high: 64, scale: "log", step: 0.1, events: null, title: "The gamma shape of the intervals: 1 is random (Poisson) timing, 64 nearly regular" },
+  { name: "regularity", label: "Regularity", unit: "", low: 1, high: 64, scale: "log", step: 0.1, events: null, ends: ["random", "regular"], title: "How evenly the events are spaced, at the same rate: 1 is completely random (Poisson) timing, 64 nearly like a clock. The gaps vary by about 1/√k of their mean (the gamma shape k)" },
   { name: "level_sd", label: "Level spread", unit: "dB", low: 0, high: 12, scale: "linear", step: 0.5, events: null, title: "The standard deviation of each copy's level" },
-  { name: "pitch_sd", label: "Pitch spread", unit: "cents", low: 0, high: 300, scale: "linear", step: 5, events: null, title: "The standard deviation of each copy's pitch shift; a higher copy is also shorter" },
+  { name: "pitch_sd", label: "Pitch spread", unit: "cents", low: 0, high: 600, scale: "linear", step: 10, events: null, title: "The standard deviation of each copy's pitch shift; a higher copy is also shorter" },
 ];
 export const SLIDER_STEPS = 1000; // a range input's positions from low to high
 
 export function defaultSection() {
   return {
-    event: "chirp", length: 0.03, f_low: 2000, f_high: 6000, frequency: 1000, decay: 0.008, cutoff: 2000,
+    event: "chirp", length: 0.03, f_low: 2000, f_high: 6000, tone: "pure", frequency: 1000, harmonics: 8,
+    noise_low: 100, noise_high: 7500, decay: 0.008, cutoff: 2000,
     rate: DEFAULT_RATE, regularity: 1, level_sd: 0, pitch_sd: 0, seed: 0,
   };
 }
@@ -68,12 +77,21 @@ export function toSlider(name, value) {
 export function knobLabel(name, value) {
   const { unit, factor = 1, scale } = knob(name);
   const shown = value * factor;
-  const digits = unit === "" ? (shown < 10 ? 1 : 0) : unit === "dB" ? 1 : scale === "log" && shown < 10 ? 1 : 0;
+  const digits = knob(name).step >= 1 ? 0 : unit === "" ? (shown < 10 ? 1 : 0) : unit === "dB" ? 1 : scale === "log" && shown < 10 ? 1 : 0;
   return `${shown.toFixed(digits)}${unit ? ` ${unit}` : ""}`;
 }
 
-// Whether the knob belongs to the event chosen.
-export const knobShown = (name, event) => knob(name).events === null || knob(name).events.includes(event);
+// A section from an older page, with the knobs it lacks at their defaults.
+export const withDefaults = (section) => ({ ...defaultSection(), ...section });
+
+// Whether the knob belongs to the event and tone chosen.
+export function knobShown(name, { event, tone }) {
+  const { events, tones } = knob(name);
+  return (events === null || events.includes(event)) && (!tones || tones.includes(tone));
+}
+
+// The knob's label: the frequency is the harmonic complex's F0.
+export const knobName = (name, { event, tone }) => (name === "frequency" && event === "pip" && tone === "harmonic" ? "F0" : knob(name).label);
 
 // --- the rate track ------------------------------------------------------------------
 
@@ -98,11 +116,6 @@ export function rateAt(section, duration, t) {
   return valueAt(ratePoints(section, duration), t);
 }
 
-// The rate while flat, else null (the sparsity plot's dot needs one rate).
-export function flatRate(section) {
-  return typeof section.rate === "number" ? section.rate : null;
-}
-
 // The section after the page's duration changes: the rate track's times
 // stretch with it, as every track does.
 export function stretchSection(section, from, to) {
@@ -116,11 +129,14 @@ export function stretchSection(section, from, to) {
 export function check(state) {
   if (!state || state.events !== FORMAT) throw new Error(`not a Scatter events state of format ${FORMAT}`);
   if (!EVENTS.some(([id]) => id === state.event)) throw new Error(`the event must be one of ${EVENTS.map(([id]) => id).join(", ")}`);
+  if (!TONES.some(([id]) => id === state.tone)) throw new Error(`the tone must be one of ${TONES.map(([id]) => id).join(", ")}`);
   for (const { name, low, high } of KNOBS) {
     const value = state[name];
     if (!(Number.isFinite(value) && value >= low && value <= high)) throw new Error(`the events' ${name} must be a number from ${low} to ${high}`);
   }
   if (!Number.isInteger(state.seed)) throw new Error("the events' seed must be a whole number");
+  if (!Number.isInteger(state.harmonics)) throw new Error("the number of harmonics must be a whole number");
+  if (state.noise_low >= state.noise_high) throw new Error("the noise burst's lowest frequency must be below its highest");
   const { rate } = state;
   let values = [rate];
   if (typeof rate !== "number") {

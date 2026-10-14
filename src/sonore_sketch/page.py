@@ -126,7 +126,7 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     and the fraction of envelope values sonore clipped; on the Erase
     spectrogram tab the source's and the result's spectrograms in the mask's
     own STFT (``mask.pictures``); on the Scatter events tab the result's
-    envelope sparsity by band and against rate (``events.sparsity``).
+    modulation spectrogram (``events.modulation``).
     """
     return shared.finish(handle_steps(request))
 
@@ -147,7 +147,7 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
     elif tab == "edit":
         sound, original, clipped = yield from shared.scaled(edit.steps(request["state"]), 0.9)
     elif tab == "events":
-        sound, sparsity = yield from shared.scaled(events.steps(request["state"]), 0.9)
+        sound, modulation = yield from shared.scaled(events.steps(request["state"]), 0.9)
     else:
         sound = TABS[tab](request["state"])
         yield 0.9
@@ -166,8 +166,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
         result["source_modulation"] = edit.plane_picture(original)
         result["modulation"] = edit.plane_picture(edit.analyze(sound, request["state"]))
         result["clipped"] = clipped
-    if tab == "events":  # the result's envelope sparsity, by band and against rate (events.md, E7)
-        result["sparsity"] = sparsity
+    if tab == "events":  # the result's modulation spectrogram (events.md, E7)
+        result["modulation_frames"], result["modulation_pooled"] = modulation["frames"], modulation["pooled"]
     if tab == "mask":  # the source's and the result's spectrograms in the mask's own STFT (mask.md)
         result["source_stft"], result["result_stft"] = mask.pictures(source_stft, result_stft)
     return result

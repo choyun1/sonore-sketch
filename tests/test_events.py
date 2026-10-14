@@ -54,33 +54,57 @@ def test_a_short_sound_with_no_event_is_silent_not_an_error():
     assert sound.n_samples == 800 and np.all(np.isfinite(sound.data))
 
 
-def test_sparsity_falls_toward_noise_as_the_rate_rises():
-    sparse = events.sparsity(events.synthesize(state(rate=3)), state(rate=3))
-    dense = events.sparsity(events.synthesize(state(rate=1000)), state(rate=1000))
-    assert sparse["mean"] > 10 * dense["mean"]
-    assert dense["mean"] < 5 * dense["noise_mean"]
-    curve = np.asarray(sparse["curve"])
-    assert curve[0] > curve[-1] and np.all(np.diff(curve[2:]) < 0)  # falling from 10/s on
-    assert sparse["rate"] == 3 and len(sparse["cfs"]) == len(sparse["values"]) == len(sparse["noise"])
-    assert max(sparse["cfs"]) < 8000  # the bands under the page's Nyquist frequency
+def test_the_tone_pip_is_a_pure_tone_or_a_harmonic_complex():
+    def peaks(sound):
+        spectrum = np.abs(np.fft.rfft(sound.data[:, 0], 16000))  # 1 Hz bins
+        return np.flatnonzero(spectrum > 0.2 * spectrum.max())
+
+    pure = peaks(events.event(state(event="pip", frequency=500.0, length=0.1)))
+    assert np.all(np.abs(pure - 500) < 20)
+    harmonic = peaks(events.event(state(event="pip", tone="harmonic", frequency=200.0, harmonics=5, length=0.1)))
+    assert {round(f / 200) for f in harmonic} == {1, 2, 3, 4, 5}
 
 
-def test_the_chirps_own_bands_are_where_it_sweeps():
-    sparsity = events.sparsity(events.synthesize(state()), state())
-    own = np.asarray(sparsity["cfs"])[np.asarray(sparsity["own"])]
-    assert own.min() > 1500 and own.max() < 7000
+def test_a_harmonic_complex_keeps_its_harmonics_under_the_nyquist_frequency():
+    sound = events.event(state(event="pip", tone="harmonic", frequency=3000.0, harmonics=30))
+    spectrum = np.abs(np.fft.rfft(sound.data[:, 0], 16000))
+    assert spectrum[7300:].max() < 1e-3 * spectrum.max()  # 3 and 6 kHz only
 
 
-def test_a_drawn_rate_has_no_dot_but_a_flat_one_does():
-    drawn = state(rate=[[0, 2], [10, 100]])
-    assert events.sparsity(events.synthesize(drawn), drawn)["rate"] is None
-    flat = state(rate=[[0, 2], [30, 30]])
-    assert events.sparsity(events.synthesize(flat), flat)["rate"] == 30
+def test_the_noise_burst_is_a_band_of_noise():
+    x = events.event(state(event="noise", noise_low=1000.0, noise_high=2000.0, length=0.1)).data[:, 0]
+    power = np.abs(np.fft.rfft(x, 16000)) ** 2
+    assert power[1000:2001].sum() > 0.9 * power.sum()
 
 
-def test_handle_returns_the_sparsity():
+def test_a_pitch_spread_of_600_cents_renders():
+    sound = events.synthesize(state(pitch_sd=600.0, rate=300))
+    assert np.all(np.isfinite(sound.data)) and sound.rms == pytest.approx(1.0)
+
+
+def test_the_modulation_spectrogram_shows_a_regular_rate():
+    # a train at 8 per second, nearly regular: the pooled depth peaks near 8 Hz
+    sound = events.synthesize(state(duration=3.0, event="impact", rate=8, regularity=64))
+    pooled = events.modulation(sound)["pooled"]
+    levels = np.frombuffer(pooled["data"], dtype=np.uint8).reshape(pooled["n_rates"], pooled["n_windows"])
+    middle = levels[:, pooled["n_windows"] // 3 : 2 * pooled["n_windows"] // 3].astype(float)
+    measured = middle > 0  # 0: not valid
+    profile = np.sum(middle, axis=1) / np.maximum(np.sum(measured, axis=1), 1)
+    assert 5 <= pooled["rates"][int(np.argmax(profile))] <= 12
+
+
+def test_the_modulation_pictures_have_their_stated_shapes():
+    modulation = events.modulation(events.synthesize(state()))
+    frames, pooled = modulation["frames"], modulation["pooled"]
+    assert len(frames["data"]) == frames["n_windows"] * frames["n_bands"] * frames["n_rates"]
+    assert len(pooled["data"]) == pooled["n_windows"] * pooled["n_rates"]
+    assert len(frames["bands"]) == frames["n_bands"] == 24 and max(frames["bands"]) < 7200
+    assert frames["rates"][0] == pytest.approx(0.5) and frames["rates"][-1] == pytest.approx(64)
+
+
+def test_handle_returns_the_modulation_spectrogram():
     result = handle({"tab": "events", "state": state()})
-    assert set(result["sparsity"]) >= {"cfs", "values", "noise", "own", "curve_rates", "curve", "noise_mean", "mean", "rate"}
+    assert {"modulation_frames", "modulation_pooled"} <= set(result)
     assert np.frombuffer(result["samples"], dtype="<f4").size == 32000
 
 
@@ -90,7 +114,10 @@ def test_handle_returns_the_sparsity():
     ({"length": 0.5}, "'length'"),
     ({"cutoff": 20}, "'cutoff'"),
     ({"regularity": 0.5}, "'regularity'"),
-    ({"pitch_sd": 400}, "'pitch_sd'"),
+    ({"pitch_sd": 700}, "'pitch_sd'"),
+    ({"tone": "square"}, "'tone'"),
+    ({"harmonics": 2.5}, "'harmonics'"),
+    ({"noise_low": 3000, "noise_high": 2000}, "below its highest"),
     ({"seed": 1.5}, "'seed'"),
     ({"rate": 0.5}, "the rate must stay"),
     ({"rate": [[0, 1], [10, 2000]]}, "the rate must stay"),

@@ -69,7 +69,7 @@ export function upgrade(opened) {
     edit: opened.edit ?? edit.defaultSection(),
     mask: opened.mask ?? mask.defaultSection(),
     paths: opened.paths ?? paths.defaultSection(),
-    events: opened.events ?? events.defaultSection(),
+    events: events.withDefaults(opened.events ?? {}),
   };
 }
 

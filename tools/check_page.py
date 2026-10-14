@@ -458,13 +458,20 @@ def main() -> None:
             page.click("#clear")
             assert page_document_in(page)["events"]["rate"] == 10
             expect(status).to_contain_text("Made", timeout=120_000)
+            page.select_option("#tab-events select.event", "pip")
+            expect(status).to_contain_text("Made", timeout=120_000)
+            page.select_option("#tab-events select.tone", "harmonic")
+            expect(page.locator("#tab-events .knob[data-knob=harmonics]")).to_be_visible()
+            assert page_document_in(page)["events"]["tone"] == "harmonic"
+            expect(status).to_contain_text("Made", timeout=120_000)
+            assert page.evaluate("[...document.querySelector('#tab-events canvas.mod-frame').getContext('2d').getImageData(80, 60, 1, 1).data].some((v) => v > 0)")
             page.select_option("#tab-events select.event", "impact")
             assert page.locator("#tab-events .knob[data-knob=cutoff]").is_visible()
             assert not page.locator("#tab-events .knob[data-knob=length]").is_visible()
             expect(status).to_contain_text("Made", timeout=120_000)
             page.click(".tabs [data-tab=tracks]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            print("events: a rate track, a slider, New draw, Clear and the impact are made and heard")
+            print("events: a rate track, a slider, New draw, Clear, a harmonic pip and the impact are made and heard; the modulation picture is drawn")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore

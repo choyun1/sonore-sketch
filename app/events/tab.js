@@ -6,9 +6,11 @@
 // The rate track is drawn freehand over the page's time, on a log axis, and
 // replaces what it passes over, like the elevation track on the Draw path
 // tab. A slider's change is committed when it is let go (E6). Under the
-// sound's spectrogram, two plots of one statistic, the envelope sparsity
-// (E7): by band, and against rate.
+// sound's spectrogram, its modulation spectrogram (E7): the depth pooled
+// over bands, rate by time, and beside it the band x rate depth at one
+// moment, which follows the playhead, as on sonore's gallery page.
 
+import { magma } from "../colormap.js";
 import {
   drawAxisName,
   drawBorder,
@@ -27,10 +29,11 @@ import {
   EVENTS,
   KNOBS,
   RATE_RANGE,
+  TONES,
   SLIDER_STEPS,
-  flatRate,
   fromSlider,
   knobLabel,
+  knobName,
   knobShown,
   ratePoints,
   toSlider,
@@ -39,24 +42,25 @@ import {
 
 const TRACK_MARGIN = { left: 52, right: 10, top: 8, bottom: 22 };
 const STFT_MARGIN = { left: 52, right: 10, top: 6, bottom: 22 };
-const PLOT_MARGIN = { left: 52, right: 18, top: 22, bottom: 34 }; // room on the right for the label 1000
-const RATE_TICKS = [1, 10, 100, 1000];
+const FRAME_MARGIN = { left: 44, right: 10, top: 22, bottom: 34 };
+const RATE_TICKS = [1, 10, 100, 1000]; // events per second, the rate track's axis
 const RATE_TOLERANCE = 0.02; // log10 units, how far a simplified rate stroke may stray (about 5%)
-const F_LOW = 100; // Hz, the spectrogram's and the band plot's lowest frequency
-const SPARSITY_RANGE = [0.01, 10]; // var / mean², the plots' axis
-const SPARSITY_TICKS = [0.01, 0.1, 1, 10];
+const MOD_TICKS = [0.5, 1, 2, 4, 8, 16, 32, 64]; // Hz, the modulation rates' axis
+const F_LOW = 100; // Hz, the spectrogram's lowest frequency
 const FREQUENCY_TICKS = [100, 200, 500, 1000, 2000, 5000];
+const INVALID = "rgba(128, 128, 128, 0.35)"; // a cell the modulation spectrogram cannot trust
 
 const EVENT_KNOBS = KNOBS.filter((entry) => entry.events !== null);
 const COPY_KNOBS = KNOBS.filter((entry) => entry.events === null);
 
-const knobField = ({ name, label, title }) =>
+const knobField = ({ name, label, title, ends }) =>
   `<label class="field knob" data-knob="${name}" title="${title}"><span class="knob-name">${label}</span><output></output>
-    <input type="range" min="0" max="${SLIDER_STEPS}" step="1"></label>`;
+    <input type="range" min="0" max="${SLIDER_STEPS}" step="1">${ends ? `<span class="ends"><span>${ends[0]}</span><span>${ends[1]}</span></span>` : ""}</label>`;
 
 export function createEventsTab(root, { commit }) {
   let state = null;
-  let sound = null; // the last result, with its sparsity
+  let sound = null; // the last result, with its modulation spectrogram
+  let chosen = null; // the moment the band x rate picture shows while nothing plays (null: the middle)
   let drawing = null; // the rate stroke being drawn, [[t, rate], ...]
   let playhead = null;
 
@@ -66,15 +70,17 @@ export function createEventsTab(root, { commit }) {
         <canvas class="rate" aria-label="Events per second over time, from 1 to 1000 on a log axis; draw to change it"></canvas>
         <canvas class="stft" aria-label="The result's spectrogram"></canvas>
         <div class="events-plots">
-          <canvas class="sparsity-bands" aria-label="Envelope sparsity in each frequency band"></canvas>
-          <canvas class="sparsity-rate" aria-label="Envelope sparsity against rate"></canvas>
+          <canvas class="mod-pooled" aria-label="The modulation spectrogram: modulation depth by rate over time, pooled over frequency bands; click to choose a moment"></canvas>
+          <canvas class="mod-frame" aria-label="Modulation depth by frequency band and rate at one moment"></canvas>
         </div>
-        <p class="hint">Sparsity is each band's envelope variance over its squared mean, a statistic of sonore's texture model: high when the band's envelope is peaky, as with separate events, and close to Gaussian noise's (dashed) when many overlap. It says nothing about rhythm or onsets. Against rate: the mean over the event's own bands (shaded on the left) for this event at each rate, with random timing and nothing spread; the red dot is this sound, while its rate is flat.</p>
+        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, from 0.5 to 64 times a second, over time. Left: pooled over frequency bands. Right: each band at one moment, which follows the sound as it plays; click the spectrogram or the left picture to choose the moment. Brighter is deeper, over the top 30 dB; gray cells cannot be measured (a rate faster than the band is wide, or a window running off the sound). Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
       </div>
       <aside class="side">
         <fieldset><legend>Event</legend>
           <label class="field" title="The event that is copied">
             <select class="event">${EVENTS.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
+          <label class="field tone-field" title="A pure tone at one frequency, or a harmonic complex: F0 and its harmonics">
+            <select class="tone">${TONES.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
           ${EVENT_KNOBS.map(knobField).join("")}
         </fieldset>
         <fieldset><legend>Copies</legend>
@@ -88,9 +94,9 @@ export function createEventsTab(root, { commit }) {
   const query = (selector) => root.querySelector(selector);
   const track = query("canvas.rate");
   const stft = query("canvas.stft");
-  const bands = query("canvas.sparsity-bands");
-  const rates = query("canvas.sparsity-rate");
-  const ui = { event: query(".event"), draw: query(".draw"), flat: query(".flat") };
+  const pooled = query("canvas.mod-pooled");
+  const frame = query("canvas.mod-frame");
+  const ui = { event: query(".event"), tone: query(".tone"), toneField: query(".tone-field"), draw: query(".draw"), flat: query(".flat") };
   const fields = [...root.querySelectorAll(".knob")];
 
   const style = (name, fallback) => getComputedStyle(root).getPropertyValue(name).trim() || fallback;
@@ -99,22 +105,31 @@ export function createEventsTab(root, { commit }) {
 
   function showSettings() {
     ui.event.value = state.event;
+    ui.tone.value = state.tone;
+    ui.toneField.hidden = state.event !== "pip";
     for (const field of fields) {
       const name = field.dataset.knob;
-      field.hidden = !knobShown(name, state.event);
+      field.hidden = !knobShown(name, state);
+      field.querySelector(".knob-name").textContent = knobName(name, state);
       field.querySelector("input").value = toSlider(name, state[name]);
       field.querySelector("output").textContent = knobLabel(name, state[name]);
     }
     ui.flat.disabled = state.rate === DEFAULT_RATE;
   }
   ui.event.addEventListener("change", () => commit({ ...state, event: ui.event.value }));
+  ui.tone.addEventListener("change", () => commit({ ...state, tone: ui.tone.value }));
   for (const field of fields) {
     const name = field.dataset.knob;
     const input = field.querySelector("input");
     input.addEventListener("input", () => (field.querySelector("output").textContent = knobLabel(name, fromSlider(name, Number(input.value)))));
     input.addEventListener("change", () => {
       const value = fromSlider(name, Number(input.value));
-      if (value !== state[name]) commit({ ...state, [name]: value });
+      if (value === state[name]) return;
+      const changed = { ...state, [name]: value };
+      // the noise band's ends cannot cross: the other end moves out of the way
+      if (name === "noise_low" && value >= state.noise_high) changed.noise_high = Math.min(7500, Math.round(value * 1.25));
+      if (name === "noise_high" && value <= state.noise_low) changed.noise_low = Math.max(50, Math.round(value / 1.25));
+      commit(changed);
     });
   }
   ui.draw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }));
@@ -194,100 +209,155 @@ export function createEventsTab(root, { commit }) {
     const fTop = (sound?.fs ?? state.fs) / 2;
     const plot = stftPanel.geometry(F_LOW, fTop, sound ? soundSeconds(sound) : state.duration);
     stftPanel.draw(context, plot, sound?.spectrogram ?? null, { named: true });
-    if (playhead !== null && playhead <= plot.duration) drawPlayhead(context, plot, plot.x(playhead), style("--error", "#d1495b"));
+    const at = shownTime();
+    if (at <= plot.duration) drawPlayhead(context, plot, plot.x(at), playhead !== null ? style("--error", "#d1495b") : style("--accent", "#2e86ab"));
   }
 
-  // A plot with log axes on both sides, in `canvas`.
-  function logPlot(canvas, [xLow, xHigh]) {
-    const width = canvas.clientWidth || 300;
-    const height = canvas.clientHeight || 180;
-    const [x0, x1, y0, y1] = [PLOT_MARGIN.left, width - PLOT_MARGIN.right, PLOT_MARGIN.top, height - PLOT_MARGIN.bottom];
-    const [yLow, yHigh] = SPARSITY_RANGE.map(Math.log10);
-    const clampY = (value) => Math.min(yHigh, Math.max(yLow, Math.log10(Math.max(value, 1e-6))));
+  // The moment the band x rate picture shows: the playhead while playing,
+  // else the moment chosen, else the middle of the sound.
+  const shownTime = () => playhead ?? chosen ?? (sound ? soundSeconds(sound) : state.duration) / 2;
+
+  // Paint 8-bit levels into `context` as cells over the box [x0, x1] x [y0, y1]:
+  // `level(column, row)` for `columns` x `rows` cells, row 0 at the bottom.
+  function paintCells(context, box, columns, rows, level, edges) {
+    const { x0, x1, y0, y1 } = box;
+    const [columnEdge, rowEdge] = edges;
+    for (let column = 0; column < columns; column++) {
+      const left = x0 + columnEdge(column) * (x1 - x0);
+      const right = x0 + columnEdge(column + 1) * (x1 - x0);
+      for (let row = 0; row < rows; row++) {
+        const value = level(column, row);
+        const top = y1 - rowEdge(row + 1) * (y1 - y0);
+        const bottom = y1 - rowEdge(row) * (y1 - y0);
+        if (value) {
+          const [red, green, blue] = magma((value - 1) / 254);
+          context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+        } else context.fillStyle = INVALID;
+        context.fillRect(Math.floor(left), Math.floor(top), Math.ceil(right - left) + 1, Math.ceil(bottom - top) + 1);
+      }
+    }
+  }
+
+  // Edges of cells centered on log-spaced values, as fractions of the axis from `low` to `high`.
+  function logEdges(values, low, high) {
+    const at = (value) => Math.log(value / low) / Math.log(high / low);
+    const middle = (i) => Math.sqrt(values[i - 1] * values[i]);
+    return (i) => at(i === 0 ? values[0] ** 1.5 / values[1] ** 0.5 : i === values.length ? values[i - 1] ** 1.5 / values[i - 2] ** 0.5 : middle(i));
+  }
+
+  const pooledImage = { canvas: document.createElement("canvas"), picture: null, key: "" };
+
+  function pooledPlot() {
+    const width = pooled.clientWidth || 600;
+    const height = pooled.clientHeight || 190;
+    const duration = sound ? soundSeconds(sound) : state.duration;
+    const [x0, x1, y0, y1] = [STFT_MARGIN.left, width - STFT_MARGIN.right, FRAME_MARGIN.top, height - FRAME_MARGIN.bottom];
+    const [low, high] = [MOD_TICKS[0] / 2 ** 0.25, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
     return {
-      width, height, x0, x1, y0, y1,
-      x: (value) => x0 + ((Math.log10(value) - Math.log10(xLow)) / (Math.log10(xHigh) - Math.log10(xLow))) * (x1 - x0),
-      y: (value) => y1 - ((clampY(value) - yLow) / (yHigh - yLow)) * (y1 - y0),
+      width, height, x0, x1, y0, y1, duration, low, high,
+      x: (t) => x0 + (t / duration) * (x1 - x0),
+      y: (rate) => y1 - (Math.log(rate / low) / Math.log(high / low)) * (y1 - y0),
+      t: (px) => Math.min(duration, Math.max(0, ((px - x0) / (x1 - x0)) * duration)),
     };
   }
 
-  function plotFrame(canvas, plot, title, xTicks, xLabel, xName) {
-    const context = fitCanvasInCssPixels(canvas);
-    context.clearRect(0, 0, plot.width, plot.height);
-    drawBorder(context, canvas, plot);
-    drawValueTicks(context, plot, SPARSITY_TICKS, plot.y, (value) => `${value}`, { gridColor: style("--grid", "#eeece6") });
-    drawAxisName(context, plot, "var / mean²");
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    for (const tick of xTicks) context.fillText(xLabel(tick), plot.x(tick), plot.y1 + 4);
-    context.fillText(xName, (plot.x0 + plot.x1) / 2, plot.y1 + 18);
+  function title(context, plot, text) {
     context.textAlign = "left";
     context.textBaseline = "bottom";
     context.fillStyle = style("--ink", "#1d232b");
-    context.fillText(title, plot.x0, plot.y0 - 6);
-    return context;
+    context.fillText(text, plot.x0, plot.y0 - 6);
   }
 
-  function line(context, plot, xs, ys, color, { dashed = false, width = 1.5 } = {}) {
-    context.strokeStyle = color;
-    context.lineWidth = width;
-    context.setLineDash(dashed ? [5, 4] : []);
-    context.beginPath();
-    xs.forEach((x, i) => (i ? context.lineTo(plot.x(x), plot.y(ys[i])) : context.moveTo(plot.x(x), plot.y(ys[i]))));
-    context.stroke();
-    context.setLineDash([]);
-  }
-
-  function renderBands() {
-    const sparsity = sound?.sparsity;
-    const fTop = (sound?.fs ?? state.fs) / 2;
-    const plot = logPlot(bands, [F_LOW, fTop]);
-    const context = plotFrame(bands, plot, "Sparsity by band", FREQUENCY_TICKS.filter((f) => f < fTop), frequencyLabel, "band, Hz");
-    if (!sparsity) return;
-    const { cfs, values, noise, own } = sparsity;
-    // the event's own bands, shaded
-    context.fillStyle = "rgba(128, 128, 128, 0.12)";
-    cfs.forEach((f, i) => {
-      if (!own[i]) return;
-      const left = i ? Math.sqrt(f * cfs[i - 1]) : f;
-      const right = i < cfs.length - 1 ? Math.sqrt(f * cfs[i + 1]) : f;
-      context.fillRect(plot.x(Math.max(F_LOW, left)), plot.y0, plot.x(Math.min(fTop, right)) - plot.x(Math.max(F_LOW, left)), plot.y1 - plot.y0);
-    });
-    const shown = cfs.map((f, i) => i).filter((i) => cfs[i] >= F_LOW);
-    line(context, plot, shown.map((i) => cfs[i]), shown.map((i) => noise[i]), style("--muted", "#6b7280"), { dashed: true, width: 1 });
-    line(context, plot, shown.map((i) => cfs[i]), shown.map((i) => values[i]), style("--accent", "#2e86ab"));
-  }
-
-  function renderRates() {
-    const sparsity = sound?.sparsity;
-    const plot = logPlot(rates, RATE_RANGE);
-    const context = plotFrame(rates, plot, "Sparsity against rate", RATE_TICKS, (rate) => `${rate}`, "events / s");
-    if (!sparsity) return;
-    const { curve_rates: curveRates, curve, noise_mean: noiseMean, mean, rate } = sparsity;
-    line(context, plot, RATE_RANGE, [noiseMean, noiseMean], style("--muted", "#6b7280"), { dashed: true, width: 1 });
-    line(context, plot, curveRates, curve, style("--ink", "#1d232b"), { width: 1.2 });
-    context.fillStyle = style("--ink", "#1d232b");
-    curveRates.forEach((r, i) => {
-      context.beginPath();
-      context.arc(plot.x(r), plot.y(curve[i]), 2.5, 0, 2 * Math.PI);
-      context.fill();
-    });
-    if (rate !== null && rate === flatRate(state)) {
-      context.fillStyle = style("--error", "#d1495b");
-      context.beginPath();
-      context.arc(plot.x(rate), plot.y(mean), 5, 0, 2 * Math.PI);
-      context.fill();
+  function renderPooled() {
+    const context = fitCanvasInCssPixels(pooled);
+    const plot = pooledPlot();
+    context.clearRect(0, 0, plot.width, plot.height);
+    const picture = sound?.modulationPooled;
+    if (picture) {
+      // painted once per picture and size, then copied, so the playhead moves over it cheaply
+      const key = [plot.x1 - plot.x0, plot.y1 - plot.y0, plot.duration].join(" ");
+      if (pooledImage.picture !== picture || pooledImage.key !== key) {
+        const { data, nRates, nWindows, rates: centers, tStart, tStep } = picture;
+        const box = { x0: 0, x1: Math.max(1, Math.round(plot.x1 - plot.x0)), y0: 0, y1: Math.max(1, Math.round(plot.y1 - plot.y0)) };
+        pooledImage.canvas.width = box.x1;
+        pooledImage.canvas.height = box.y1;
+        const columnEdge = (k) => Math.min(1, Math.max(0, (tStart + (k - 0.5) * tStep) / plot.duration));
+        paintCells(pooledImage.canvas.getContext("2d"), box, nWindows, nRates, (column, row) => data[row * nWindows + column], [columnEdge, logEdges(centers, plot.low, plot.high)]);
+        Object.assign(pooledImage, { picture, key });
+      }
+      context.drawImage(pooledImage.canvas, plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
     }
+    drawBorder(context, pooled, plot);
+    drawValueTicks(context, plot, MOD_TICKS, plot.y, (rate) => `${rate}`, { gridColor: "rgba(255, 255, 255, 0.12)" });
+    drawAxisName(context, plot, "rate, Hz");
+    drawTimeTicks(context, plot, plot.duration, 4);
+    title(context, plot, "Modulation depth, pooled over bands");
+    const at = shownTime();
+    drawPlayhead(context, plot, plot.x(at), playhead !== null ? style("--error", "#d1495b") : style("--accent", "#2e86ab"));
+  }
+
+  function framePlot(fTop) {
+    const width = frame.clientWidth || 300;
+    const height = frame.clientHeight || 190;
+    const [x0, x1, y0, y1] = [FRAME_MARGIN.left, width - FRAME_MARGIN.right, FRAME_MARGIN.top, height - FRAME_MARGIN.bottom];
+    const [low, high] = [MOD_TICKS[0] / 2 ** 0.25, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
+    return {
+      width, height, x0, x1, y0, y1, low, high, fTop,
+      x: (rate) => x0 + (Math.log(rate / low) / Math.log(high / low)) * (x1 - x0),
+      y: (f) => y1 - (Math.log(f / F_LOW) / Math.log(fTop / F_LOW)) * (y1 - y0),
+    };
+  }
+
+  function renderFrame() {
+    const context = fitCanvasInCssPixels(frame);
+    const picture = sound?.modulationFrames;
+    const plot = framePlot(picture ? picture.bands[picture.bands.length - 1] * 1.1 : 7000);
+    context.clearRect(0, 0, plot.width, plot.height);
+    const at = shownTime();
+    if (picture) {
+      const { data, nBands, nRates, nWindows, bands: centers, rates: rateCenters, tStart, tStep } = picture;
+      const window = Math.min(nWindows - 1, Math.max(0, Math.round((at - tStart) / tStep)));
+      const offset = window * nBands * nRates;
+      const rowEdge = logEdges(centers, F_LOW, plot.fTop);
+      paintCells(context, plot, nRates, nBands, (column, row) => data[offset + row * nRates + column], [logEdges(rateCenters, plot.low, plot.high), rowEdge]);
+    }
+    drawBorder(context, frame, plot);
+    drawValueTicks(context, plot, FREQUENCY_TICKS.filter((f) => f < plot.fTop), plot.y, frequencyLabel, { gridColor: "rgba(255, 255, 255, 0.12)" });
+    drawAxisName(context, plot, "Hz");
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    for (const rate of MOD_TICKS) context.fillText(`${rate}`, plot.x(rate), plot.y1 + 4);
+    context.fillText("rate, Hz", (plot.x0 + plot.x1) / 2, plot.y1 + 18);
+    title(context, plot, `By band at ${at.toFixed(2)} s`);
+  }
+
+  // A click or drag on the spectrogram or the pooled picture chooses the moment shown.
+  for (const canvas of [stft, pooled]) {
+    const choose = (event) => {
+      if (!state) return;
+      chosen = pooledPlot().t(pointerPosition(canvas, event)[0]);
+      renderStft();
+      renderPooled();
+      renderFrame();
+    };
+    canvas.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      canvas.setPointerCapture(event.pointerId);
+      choose(event);
+    });
+    canvas.addEventListener("pointermove", (event) => {
+      if (canvas.hasPointerCapture(event.pointerId)) choose(event);
+    });
   }
 
   function render() {
     if (!state) return;
     renderTrack();
     renderStft();
-    renderBands();
-    renderRates();
+    renderPooled();
+    renderFrame();
   }
-  for (const canvas of [track, stft, bands, rates]) new ResizeObserver(render).observe(canvas);
+  for (const canvas of [track, stft, pooled, frame]) new ResizeObserver(render).observe(canvas);
 
   return {
     id: "events",
@@ -300,6 +370,7 @@ export function createEventsTab(root, { commit }) {
     },
     setResult(result) {
       sound = result ?? null;
+      if (sound && chosen !== null && chosen > soundSeconds(sound)) chosen = null;
       render();
     },
     setPlayhead(t) {
@@ -307,6 +378,8 @@ export function createEventsTab(root, { commit }) {
       if (!state) return;
       renderTrack();
       renderStft();
+      renderPooled();
+      renderFrame();
     },
     blocked() {
       return null;

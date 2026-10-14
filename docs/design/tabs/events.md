@@ -10,7 +10,7 @@ follows the "From single events to a texture" section of sonore's
 gallery page, with the reader moving the knobs. Its internal tab id is
 `events`; its name on the page is **Scatter events** (E1).
 
-Status: built (see "As built" at the end). Cho answered four questions
+Status: built (see "As built" and "Changes after the first build" at the end). Cho answered four questions
 on 2026-10-14: add lowpass-filtered impacts such as claps to the events
 (E2), build the rate sweep in as a drawn track (E3), the name (E1) and the
 README tagline (E9); the rest was built as recommended, except E5 (see
@@ -231,6 +231,36 @@ and #67), so E10 needed nothing more here.
 - Tested in `tests/test_events.py` and `tests/js/events.test.mjs`, and in
   the page check (`tools/check_page.py`: a rate stroke, a slider, New draw,
   Clear and the impact, each made and heard).
+
+## Changes after the first build (Cho, 2026-10-14)
+
+Cho tried the built tab and asked for changes; one choice was made on a
+decision card (the plots), the rest were asked for directly.
+
+- **The sparsity plots are replaced by the modulation spectrogram** (Cho
+  chose "Replace both"). The wait Cho noticed was the sparsity-against-rate
+  curve: [measure, native, one run] the sound itself took 0.01 s, the
+  curve 1.7 to 2.2 s, made on the first sound of a visit and again on every
+  event change; a later 3 s request took 0.22 s. Cho also found both plots
+  hard to read. In their place: sonore's `ModulationSpectrogram`, with the
+  gallery's settings, as the depth pooled over bands (rate by time, under
+  the spectrogram) and the band by rate depth at one moment, which follows
+  the playhead as on the gallery's page. [measure, native, one run each]
+  render plus modulation spectrogram for a 3 s sound: 0.3 to 0.7 s across
+  the four events at 100/s with a 600-cent spread. E7 above is superseded.
+- **Pitch spread goes up to 600 cents** (was 300; E4).
+- **The tone pip is a pure tone or a harmonic complex** (F0 and 1 to 30
+  harmonics, those above 0.45 times the sampling rate left out), since a
+  single frequency alone said little (E2).
+- **The noise burst is a band of noise,** its lowest and highest frequency
+  set by two sliders (a 4th-order Butterworth bandpass, before the Hann
+  window); by default 100 Hz to 7.5 kHz.
+- **Regularity is explained on the page:** its slider is labeled
+  "random" and "regular" at its ends, and its tooltip says the gaps vary
+  by about 1/√k of their mean.
+
+Saved drawings from before these changes open with the new knobs at their
+defaults.
 
 ## References
 

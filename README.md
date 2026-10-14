@@ -58,7 +58,7 @@ different sound from it.
 | **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 | **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
-| **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and how sparse each band's envelope is (sonore's texture statistics; McDermott & Simoncelli, 2011) | built |
+| **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and their modulation spectrogram, which follows the sound as it plays (sonore's `ModulationSpectrogram`; Atlas & Shamma, 2003) | built |
 
 ## Using the page
 
@@ -157,18 +157,22 @@ envelopes below zero, sonore clips them and a note under the plane says how
 much. A recording is kept in saved files but never in links.
 
 **Scatter events.** Choose the **event** and its knobs: a chirp (its first
-and last frequency), a tone pip (its frequency) or a noise burst, each 10
-to 100 ms long, or an impact, a noise burst that dies away (its **Decay**)
-through a lowpass (its **Cutoff**: low for a knock, higher for a clap).
+and last frequency), a tone pip (a pure tone at one frequency, or a
+harmonic complex: its F0 and how many harmonics) or a noise burst (the
+lowest and highest frequency of its band), each 10 to 100 ms long, or an
+impact, a noise burst that dies away (its **Decay**) through a lowpass
+(its **Cutoff**: low for a knock, higher for a clap).
 Drag on the rate track to draw how many copies come each second, from 1
 to 1000 on a log axis; **Rate back to 10/s** makes it flat again, as does
-Clear. **Regularity** goes from random (Poisson) timing at 1 to nearly
-regular at 64, and **Level spread** and **Pitch spread** draw each copy's
-level and pitch from a normal distribution. The sliders apply when you
-let go; **New draw** hears another draw with the same settings. Under the
-spectrogram, the envelope sparsity of each band, and the same statistic
-against the rate for this event, with the sound's own value as a red dot
-while its rate is flat.
+Clear. **Regularity** sets how evenly the copies are spaced at the same
+rate: at 1 the gaps are random (Poisson timing), at 64 nearly like a
+clock. **Level spread** and **Pitch spread** (up to 600 cents) draw each
+copy's level and pitch from a normal distribution. The sliders apply when
+you let go; **New draw** hears another draw with the same settings. Under
+the spectrogram is its modulation spectrogram: how deeply the envelope
+rises and falls at each rate from 0.5 to 64 Hz, pooled over frequency
+bands over time, and beside it each band at one moment, which follows the
+sound as it plays (click the spectrogram to choose the moment).
 
 ## The same sound in Python
 
@@ -347,7 +351,8 @@ share each band beat at F0 and pull the search away (K-M5b).
 ### Scatter events
 
 1. The event is made with sonore's own functions (`exponential_chirp`,
-   `pure_tone`, `gaussian_noise` under a Hann window; the impact is
+   `pure_tone`, `harmonic_complex`, or `gaussian_noise` through a
+   Butterworth bandpass, under a Hann window; the impact is
    `gaussian_noise` under an exponential decay, through a causal
    4th-order Butterworth lowpass, `butter_filter`, so its onset stays
    sharp). It lasts eight time constants, and at least 50 ms.
@@ -358,15 +363,16 @@ share each band beat at F0 and pull the search away (K-M5b).
    (cents) are drawn from normal distributions; a higher copy is also
    shorter, as a tape played fast is. The sound is brought to one RMS, since its
    power grows with the rate.
-3. The plots measure the sound with sonore's texture model
-   (`sonore.texture.TextureStats`) and read one of its statistics, each
-   band's envelope variance over its squared mean (McDermott & Simoncelli,
-   2011). The dashed line is Gaussian noise filtered by the event, the
-   limit as the rate grows. The curve against rate is made once for each
-   event, from 3 s renders at 1 to 1000 per second with random timing and
-   nothing spread, and averaged over the event's own bands (those within
-   10 dB of its strongest). It keeps how peaky the envelopes are and drops
-   the events' timing.
+3. The pictures under it are sonore's `ModulationSpectrogram` of the
+   sound, with the settings of sonore's gallery page of that name: 24
+   cosine bands from 100 Hz, envelopes at 1 kHz, a constant-Q bank of
+   modulation filters from 0.5 to 64 Hz with windows three cycles long,
+   every 20 ms. Depth is the modulation's amplitude over the envelope's
+   local mean (0 dB is 100% modulation), shown over its top 30 dB; cells
+   where the rate exceeds the band's width, or the window runs off the
+   sound, cannot be trusted and are gray. Pooled depth weights the bands
+   by their level. It is a one-way view: it drops the fine structure, the
+   modulation phase and rates above 64 Hz.
 
 ### What the Result panels measure
 
@@ -382,6 +388,10 @@ Assmann, P. F., Ballard, W. J., Bornstein, L., & Paschall, D. D. (1994).
 Track-Draw: A graphical interface for controlling the parameters of a
 speech synthesizer. *Behavior Research Methods, Instruments, & Computers*,
 *26*(4), 431–436. https://doi.org/10.3758/BF03204661
+
+Atlas, L., & Shamma, S. A. (2003). Joint acoustic and modulation
+frequency. *EURASIP Journal on Advances in Signal Processing*, *2003*(7),
+668–675. https://doi.org/10.1155/S1110865703305013
 
 Chi, T., Gao, Y., Guyton, M. C., Ru, P., & Shamma, S. (1999).
 Spectro-temporal modulation transfer functions and speech intelligibility.

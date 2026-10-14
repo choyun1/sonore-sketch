@@ -10,7 +10,7 @@
 //               {id, type: "result", result} or {id, type: "error", message, detail},
 //               or {id, type: "dropped"} when a newer request arrived first.
 
-import { modulationPicture, spectrogramPicture } from "./pictures.js";
+import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
 
 const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (tracks.md, M6)
 const SONORE_VERSION = "0.7.0"; // keep in step with pyproject.toml (app.md, D5)
@@ -153,17 +153,6 @@ function readPicture(result, key, make) {
   }
 }
 
-// Plain data in `result` under `key` (numbers and lists), as JavaScript, or null.
-function readPlain(result, key) {
-  if (!result.has(key)) return null;
-  const proxy = result.get(key);
-  try {
-    return proxy.toJs({ dict_converter: Object.fromEntries });
-  } finally {
-    proxy.destroy();
-  }
-}
-
 function convert(result) {
   try {
     return {
@@ -177,7 +166,8 @@ function convert(result) {
       modulation: readPicture(result, "modulation", modulationPicture),
       sourceModulation: readPicture(result, "source_modulation", modulationPicture),
       clipped: result.has("clipped") ? result.get("clipped") : null,
-      sparsity: readPlain(result, "sparsity"),
+      modulationFrames: readPicture(result, "modulation_frames", modulationSpectrogramPicture),
+      modulationPooled: readPicture(result, "modulation_pooled", modulationSpectrogramPicture),
     };
   } finally {
     result.destroy();
@@ -214,7 +204,7 @@ onmessage = async ({ data: { id, request } }) => {
     }
     const transfer = [result.samples.buffer, result.spectrogram.data.buffer];
     if (result.right) transfer.push(result.right.buffer);
-    for (const picture of [result.modulation, result.sourceModulation, result.sourceStft, result.resultStft]) if (picture) transfer.push(picture.data.buffer);
+    for (const picture of [result.modulation, result.sourceModulation, result.sourceStft, result.resultStft, result.modulationFrames, result.modulationPooled]) if (picture) transfer.push(picture.data.buffer);
     postMessage({ id, type: "result", result }, transfer);
   } catch (error) {
     // A PythonError's message is the traceback, ending with the exception's
