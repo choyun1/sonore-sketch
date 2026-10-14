@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import sonore as so
 
-from sonore_sketch import edit, page
+from sonore_sketch import edit, page, sources
 
 STATE = {
     "edit": 1, "sonore": "0.6.0", "duration": 1.0, "fs": 16000, "source": "syllables", "carrier": "source",
@@ -56,7 +56,7 @@ def test_doing_nothing_gives_the_source_back():
     # E-M2: an unedited spectrum on the source's own fine structure rebuilds it
     state = {**STATE, "iterations": 0, "levels": edit.encode(np.zeros((edit.ROWS, edit.COLUMNS)))}
     sound, _ = _run(state)
-    original = edit.source(state)
+    original = sources.source(state)
     x, y = original.data[:, 0], sound.data[: original.n_samples, 0]
     assert np.corrcoef(x, y)[0, 1] > 0.95
 
@@ -71,14 +71,14 @@ def test_the_speech_source_is_the_speech_tabs_sound():
     speech = {"mode": "klatt", "params": {"F0": 120, "AV": [[0, 0.05, 0.95, 1.0], [0, 60, 60, 0]], "F1": 500}}
     state = {**STATE, "source": "speech", "speech": speech}
     direct = so.klatt_synthesize(1.0, 16000, {"F0": 120.0, "AV": ([0, 0.05, 0.95, 1.0], [0, 60, 60, 0]), "F1": 500.0}, rng=0)
-    np.testing.assert_array_equal(edit.source(state).data, direct.data)
+    np.testing.assert_array_equal(sources.source(state).data, direct.data)
 
 
 def test_a_recording_is_cut_or_padded_to_the_duration_and_resampled():
     tone = np.sin(2 * np.pi * 440 * np.arange(8000) / 8000)  # 1 s at 8 kHz
     pcm = base64.b64encode(np.round(tone * 32767).astype("<i2").tobytes()).decode()
     state = {**STATE, "duration": 1.5, "source": "file", "recording": {"name": "a.wav", "fs": 8000, "pcm16": pcm}}
-    sound = edit.source(state)
+    sound = sources.source(state)
     assert sound.fs == 16000 and sound.n_samples == 24000
     assert np.all(sound.data[16100:, 0] == 0)
     assert np.max(np.abs(sound.data[:16000, 0])) == pytest.approx(1, abs=0.02)
@@ -86,7 +86,7 @@ def test_a_recording_is_cut_or_padded_to_the_duration_and_resampled():
 
 def test_a_link_without_the_recording_says_to_open_it_again():
     with pytest.raises(ValueError, match="open the file again"):
-        edit.source({**STATE, "source": "file"})
+        sources.source({**STATE, "source": "file"})
 
 
 def test_a_page_document_gives_the_edit_state_its_source():

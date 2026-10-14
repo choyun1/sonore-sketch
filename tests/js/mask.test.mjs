@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { decodeLevels } from "../../app/painted/model.js";
 import { defaultPage, forLink, openDocument, stretchPage, tabState, upgrade, withRecording, withTabState } from "../../app/document.js";
-import { encodePcm16 } from "../../app/edit/model.js";
+import { encodePcm16 } from "../../app/sources.js";
 import { BLANK_LEVELS, COLUMNS, FLOOR_DB, ROWS, WINDOW_S, blank, check, retime, rowFrequency, stretchSection } from "../../app/mask/model.js";
 
 function python(code) {

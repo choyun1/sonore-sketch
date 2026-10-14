@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import sonore as so
 
-from sonore_sketch import edit, mask, page
+from sonore_sketch import mask, page, sources
 
 FS = 16000
 STATE = {
@@ -45,7 +45,7 @@ def test_the_gains_read_the_mask_bilinearly_in_amplitude():
 
 def test_a_blank_mask_gives_the_source_back():
     sound = mask.synthesize(STATE)
-    original = edit.source(STATE)
+    original = sources.source(STATE)
     np.testing.assert_allclose(sound.data[:, 0] / sound.rms, original.data[:, 0] / original.rms, atol=1e-6)
 
 
@@ -62,7 +62,7 @@ def test_a_removed_band_comes_out_removed():
 def test_the_speech_source_is_the_speech_tabs_sound():
     speech = {"mode": "klatt", "params": {"F0": 120, "AV": [[0, 0.05, 0.95, 1.0], [0, 60, 60, 0]], "F1": 500}}
     state = {**STATE, "source": "speech", "speech": speech}
-    np.testing.assert_allclose(mask.synthesize(state).data, edit.source(state).normalize().data, atol=1e-6)
+    np.testing.assert_allclose(mask.synthesize(state).data, sources.source(state).normalize().data, atol=1e-6)
 
 
 def test_a_page_document_gives_the_mask_state_its_source():

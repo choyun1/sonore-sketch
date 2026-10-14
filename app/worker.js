@@ -10,6 +10,8 @@
 //               {id, type: "result", result} or {id, type: "error", message, detail},
 //               or {id, type: "dropped"} when a newer request arrived first.
 
+import { modulationPicture, spectrogramPicture } from "./pictures.js";
+
 const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (tracks.md, M6)
 const SONORE_VERSION = "0.6.0"; // keep in step with pyproject.toml (app.md, D5)
 // The wheel's file on PyPI (from https://pypi.org/project/sonore/<version>/#files),
@@ -17,7 +19,7 @@ const SONORE_VERSION = "0.6.0"; // keep in step with pyproject.toml (app.md, D5)
 // header that lets a page fetch it. Change it with SONORE_VERSION (tests/test_page.py checks).
 const SONORE_WHEEL =
   "https://files.pythonhosted.org/packages/10/c5/6f56efcfc8e6b2b110c0d28e21c69e8722f820689f4e640c94faa9d339ed/sonore-0.6.0-py3-none-any.whl";
-const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
+const PYTHON_FILES = ["__init__.py", "blobs.py", "edit.py", "mask.py", "page.py", "painted.py", "shared.py", "sources.py", "tracks.py"]; // every file in src/sonore_sketch (tests/test_page.py checks)
 
 let steps = null;
 let latest = -1; // the newest request's id: an older one stops at its next step
@@ -111,39 +113,14 @@ lambda text: handle_steps(json.loads(text))
   });
 }
 
-// A modulation spectrum picture (blobs.measured_picture, edit.plane_picture), or null.
-function modulationPicture(result, key) {
+// A picture in `result` under `key`, as `make` (pictures.js) reads it, or null.
+function readPicture(result, key, make) {
   if (!result.has(key)) return null;
-  const picture = result.get(key);
+  const proxy = result.get(key);
   try {
-    return {
-      data: toBytes(picture.get("data")),
-      nDensities: picture.get("n_densities"),
-      nRates: picture.get("n_rates"),
-      rateFirst: picture.get("rate_first"),
-      rateStep: picture.get("rate_step"),
-      densityStep: picture.get("density_step"),
-    };
+    return make((field) => proxy.get(field), toBytes(proxy.get("data")));
   } finally {
-    picture.destroy();
-  }
-}
-
-// A spectrogram picture (page.spectrogram, mask.pictures), or null.
-function spectrogramPicture(result, key) {
-  if (!result.has(key)) return null;
-  const picture = result.get(key);
-  try {
-    return {
-      data: toBytes(picture.get("data")),
-      nFreqs: picture.get("n_freqs"),
-      nWindows: picture.get("n_windows"),
-      fMax: picture.get("f_max"),
-      tStart: picture.get("t_start"),
-      tStep: picture.get("t_step"),
-    };
-  } finally {
-    picture.destroy();
+    proxy.destroy();
   }
 }
 
@@ -153,11 +130,11 @@ function convert(result) {
       fs: result.get("fs"),
       samples: new Float32Array(toBytes(result.get("samples")).buffer),
       synthesisSeconds: result.get("synthesis_s"),
-      spectrogram: spectrogramPicture(result, "spectrogram"),
-      sourceStft: spectrogramPicture(result, "source_stft"),
-      resultStft: spectrogramPicture(result, "result_stft"),
-      modulation: modulationPicture(result, "modulation"),
-      sourceModulation: modulationPicture(result, "source_modulation"),
+      spectrogram: readPicture(result, "spectrogram", spectrogramPicture),
+      sourceStft: readPicture(result, "source_stft", spectrogramPicture),
+      resultStft: readPicture(result, "result_stft", spectrogramPicture),
+      modulation: readPicture(result, "modulation", modulationPicture),
+      sourceModulation: readPicture(result, "source_modulation", modulationPicture),
       clipped: result.has("clipped") ? result.get("clipped") : null,
     };
   } finally {

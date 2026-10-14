@@ -9,13 +9,13 @@
 // the syllable train does not stretch with the duration, so neither do
 // erasures on them: a duration change sets `span` to the time the columns
 // held, and what lies past it is not erased (Cho, 2026-10-06). The source
-// is the Erase modulation tab's (F2), and so is the page's recording.
+// is one of the Erase modulation tab's (F2; sources.js), and so is the
+// page's recording.
 //
 // No DOM here, so this file runs under `node --test`.
 
-import { SOURCES } from "../edit/model.js";
+import { SOURCES } from "../sources.js";
 
-export { SOURCES };
 export const FORMAT = 1;
 export const ROWS = 256;
 export const COLUMNS = 256;
@@ -37,11 +37,11 @@ export function blank() {
 }
 
 export function isBlank(bytes) {
-  return bytes.every((b) => b === 0);
+  return bytes.every((cut) => cut === 0);
 }
 
 // A row's center frequency [Hz] at sampling rate fs.
-export const rowFrequency = (r, fs) => ((r + 0.5) / ROWS) * (fs / 2);
+export const rowFrequency = (row, fs) => ((row + 0.5) / ROWS) * (fs / 2);
 
 // Sources that keep their own time when the duration changes.
 export const FIXED_SOURCES = ["file", "syllables"];
@@ -61,11 +61,11 @@ export function stretchSection(section, from, to) {
 export function retime(bytes, span, duration) {
   if (!(span > 0) || Math.abs(span - duration) < 1e-9) return bytes;
   const out = new Uint8Array(bytes.length);
-  for (let c = 0; c < COLUMNS; c++) {
-    const t = ((c + 0.5) / COLUMNS) * duration;
+  for (let column = 0; column < COLUMNS; column++) {
+    const t = ((column + 0.5) / COLUMNS) * duration;
     if (t >= span) continue;
     const from = Math.min(COLUMNS - 1, Math.floor((t / span) * COLUMNS));
-    for (let r = 0; r < ROWS; r++) out[r * COLUMNS + c] = bytes[r * COLUMNS + from];
+    for (let row = 0; row < ROWS; row++) out[row * COLUMNS + column] = bytes[row * COLUMNS + from];
   }
   return out;
 }

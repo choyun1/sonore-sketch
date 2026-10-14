@@ -3,13 +3,19 @@
 // sonore normalizes every sound to RMS 1, so the page scales each result to a
 // peak of -1 dBFS before playing or saving it.
 
-export const PEAK = 10 ** (-1 / 20);
+const PLAYBACK_PEAK = 10 ** (-1 / 20);
+
+// The largest magnitude among `samples`.
+export function absolutePeak(samples) {
+  let peak = 0;
+  for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
+  return peak;
+}
 
 export function toPlayback(samples) {
-  let peak = 0;
-  for (const x of samples) peak = Math.max(peak, Math.abs(x));
-  const gain = peak > 0 ? PEAK / peak : 0;
-  return samples.map((x) => x * gain);
+  const peak = absolutePeak(samples);
+  const gain = peak > 0 ? PLAYBACK_PEAK / peak : 0;
+  return samples.map((sample) => sample * gain);
 }
 
 export class Player {
@@ -62,7 +68,7 @@ export class Player {
 export function wavBlob(samples, fs) {
   const scaled = toPlayback(samples);
   const view = new DataView(new ArrayBuffer(44 + 2 * scaled.length));
-  const text = (offset, s) => [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  const text = (offset, letters) => [...letters].forEach((letter, i) => view.setUint8(offset + i, letter.charCodeAt(0)));
   text(0, "RIFF");
   view.setUint32(4, 36 + 2 * scaled.length, true);
   text(8, "WAVE");
@@ -76,6 +82,6 @@ export function wavBlob(samples, fs) {
   view.setUint16(34, 16, true);
   text(36, "data");
   view.setUint32(40, 2 * scaled.length, true);
-  scaled.forEach((x, i) => view.setInt16(44 + 2 * i, Math.round(Math.max(-1, Math.min(1, x)) * 32767), true));
+  scaled.forEach((sample, i) => view.setInt16(44 + 2 * i, Math.round(Math.max(-1, Math.min(1, sample)) * 32767), true));
   return new Blob([view], { type: "audio/wav" });
 }

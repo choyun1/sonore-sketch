@@ -10,7 +10,7 @@ export function encodeState(state) {
 export function decodeState(text) {
   const base64 = text.replace(/-/g, "+").replace(/_/g, "/");
   const binary = atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4));
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  const bytes = Uint8Array.from(binary, (letter) => letter.charCodeAt(0));
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 

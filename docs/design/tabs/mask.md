@@ -161,7 +161,7 @@ and, at the page level of a saved file (never in a link):
 ### Python side
 
 `src/sonore_sketch/mask.py`, `synthesize(state) -> so.Sound`, as the other
-tabs: it takes the source from `edit.source` (the syllable train, the
+tabs: it takes the source from `sources.source` (the syllable train, the
 Speech tab's sound or the recording), analyzes it with a `GaborFrame`, applies the
 gains and resynthesizes. Tests: removing a band comes out at its painted
 depth (F-M2, as a test); a blank mask gives back the source (an

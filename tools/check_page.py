@@ -365,6 +365,17 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=60_000)
             assert document_in(page) == default, "the Tracks drawing changed while painting"
             print("painted: Clear, Undo, the noise carrier and switching tabs work")
+            # The arrow keys, Home and End move between the tabs (the WAI-ARIA tabs
+            # pattern), and only the tab shown is in the Tab order.
+            page.keyboard.press("ArrowLeft")  # from the first tab round to the last
+            expect(page.locator("#tab-edit")).to_be_visible()
+            assert page.evaluate("document.activeElement.dataset.tab") == "edit"
+            page.keyboard.press("Home")
+            expect(page.locator("#tab-tracks")).to_be_visible()
+            assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "tracks"
+            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 4
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("tabs: the arrow keys and Home move between the tabs")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore
@@ -598,7 +609,7 @@ def main() -> None:
             erased = page_document_in(page)["edit"]["levels"]
             assert erased != section["levels"], "the stroke did not change the mask"
             expect(status).to_contain_text("Made", timeout=120_000)
-            from sonore_sketch import edit as edit_tab  # the Python half reads what the page wrote
+            from sonore_sketch import edit as edit_tab, sources  # the Python half reads what the page wrote
 
             cut = edit_tab.cuts({**section, "levels": erased})
             column = int(round(edit_tab.SIDE - 1 - (math.log2(16) * 16 - 0.5)))
@@ -650,7 +661,7 @@ def main() -> None:
                 page.click("#save")
             saved = json.loads(Path(download.value.path()).read_text())
             assert saved["recording"]["name"] == "pulse.wav" and saved["recording"]["fs"] == 16000, saved.get("recording", {}).keys()
-            heard = edit_tab.recording({**edit_tab_state(saved), "source": "file"})
+            heard = sources.recording({**edit_tab_state(saved), "source": "file"})
             assert heard.n_samples == 24000 and abs(np.corrcoef(heard.data[:, 0], np.interp(np.arange(24000) / 16000, t, tone))[0, 1]) > 0.99
             print("edit: a WAV file opened as the source, set the duration to 1.5 s, was heard, saved, and left out of the link")
             page.keyboard.press("Control+z")

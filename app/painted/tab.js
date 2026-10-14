@@ -7,15 +7,24 @@
 // toward the brush's level by its weight when the stroke ends.
 
 import { magma } from "../colormap.js";
-import { fitCanvas, niceStep } from "../plot.js";
+import {
+  drawAxisName,
+  drawBrush,
+  drawBorder,
+  drawPlayhead,
+  drawTimeTicks,
+  drawValueTicks,
+  fitCanvasInCssPixels,
+  frequencyLabel,
+  pointerPosition,
+} from "../plot.js";
 import {
   CARRIERS,
+  LevelCache,
   applyStroke,
   blank,
   dab,
   dabsAlong,
-  decodeLevels,
-  encodeLevels,
   isSilent,
   octaves,
   resampleRows,
@@ -33,7 +42,7 @@ export function createPaintedTab(root, { commit, log }) {
   let pointer = null; // [x, y] of the brush outline, or null
   let playhead = null;
   let mode = "paint";
-  const cache = new Map();
+  const cache = new LevelCache(CACHE);
 
   root.innerHTML = `
     <div class="painted-body">
@@ -48,19 +57,19 @@ export function createPaintedTab(root, { commit, log }) {
         </fieldset>
         <fieldset><legend>Sound</legend>
           <label class="field" title="What the painting shapes: log-spaced tones, harmonics of F0, or noise">Carrier
-            <select class="carrier">${CARRIERS.map((c) => `<option value="${c}">${c}</option>`).join("")}</select></label>
+            <select class="carrier">${CARRIERS.map((carrier) => `<option value="${carrier}">${carrier}</option>`).join("")}</select></label>
           <label class="field f0-field" title="The harmonic carrier's fundamental">F0 <input type="number" class="f0" min="20" max="1000" step="1"> Hz</label>
           <label class="field" title="The painted frequency range; changing it keeps what is painted inside the new range">Range
-            <input type="number" class="f-lo" min="20" step="1"> – <input type="number" class="f-hi" step="1"> Hz</label>
+            <input type="number" class="f-lo" min="20" step="1" aria-label="Range from, Hz"> – <input type="number" class="f-hi" step="1" aria-label="Range to, Hz"> Hz</label>
         </fieldset>
         <p class="hint">Drag to paint; right-drag erases. Space plays. Ctrl+Z undoes.</p>
       </aside>
     </div>`;
-  const $ = (selector) => root.querySelector(selector);
-  const canvas = $("canvas.paint");
+  const query = (selector) => root.querySelector(selector);
+  const canvas = query("canvas.paint");
   const ui = {
-    size: $(".size"), softness: $(".softness"), level: $(".level"),
-    carrier: $(".carrier"), f0: $(".f0"), f0Field: $(".f0-field"), fLo: $(".f-lo"), fHi: $(".f-hi"),
+    size: query(".size"), softness: query(".softness"), level: query(".level"),
+    carrier: query(".carrier"), f0: query(".f0"), f0Field: query(".f0-field"), fLo: query(".f-lo"), fHi: query(".f-hi"),
   };
   for (const input of root.querySelectorAll('input[name="paint-mode"]')) {
     input.addEventListener("change", () => (mode = input.value));
@@ -72,34 +81,19 @@ export function createPaintedTab(root, { commit, log }) {
 
   // --- the painting and its state ------------------------------------------------
 
-  function remember(levels, decoded) {
-    cache.delete(levels);
-    cache.set(levels, decoded);
-    if (cache.size > CACHE) cache.delete(cache.keys().next().value);
-  }
-
   // Commit `next` bytes (and any other changes) as a new state.
   async function commitBytes(next, changes = {}) {
     const before = state;
-    const levels = await encodeLevels(next);
-    remember(levels, next);
+    const levels = await cache.encode(next);
     // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
     if (state === before) commit({ ...state, ...changes, levels });
   }
 
   let loaded = Promise.resolve(); // the painting shown being read
   async function load(next) {
-    const size = rows(next) * next.columns;
-    let decoded = cache.get(next.levels);
-    if (!decoded) {
-      try {
-        decoded = await decodeLevels(next.levels, size);
-      } catch (error) {
-        log?.error(`could not read the painting: ${error.message}`);
-        decoded = blank(next);
-      }
-      remember(next.levels, decoded);
-    }
+    const decoded = await cache.decode(next.levels, rows(next) * next.columns, () => blank(next), (error) =>
+      log?.error(`could not read the painting: ${error.message}`),
+    );
     if (state === next) {
       bytes = decoded;
       render();
@@ -126,8 +120,8 @@ export function createPaintedTab(root, { commit, log }) {
   function changeRange() {
     const f_lo = Number(ui.fLo.value);
     const f_hi = Number(ui.fHi.value);
-    const ok = f_lo >= 20 && f_hi < state.fs / 2 && Math.log2(f_hi / f_lo) * state.rows_per_octave >= 2;
-    if (!ok || !bytes || (f_lo === state.f_lo && f_hi === state.f_hi)) return showSettings();
+    const valid = f_lo >= 20 && f_hi < state.fs / 2 && Math.log2(f_hi / f_lo) * state.rows_per_octave >= 2;
+    if (!valid || !bytes || (f_lo === state.f_lo && f_hi === state.f_hi)) return showSettings();
     // an F0 with no harmonic left in the new range moves to its bottom, so the harmonic carrier still sounds
     const f0 = hasHarmonic(state.f0, f_lo, f_hi) ? state.f0 : Math.ceil(f_lo);
     const next = { ...state, f_lo, f_hi, f0 };
@@ -151,7 +145,7 @@ export function createPaintedTab(root, { commit, log }) {
       x: (t) => x0 + (t / state.duration) * (x1 - x0),
       y: (f) => y1 - (Math.log2(f / state.f_lo) / span) * (y1 - y0),
       // a pointer position in cells: [row from the bottom, column]
-      cell: (px, py) => [((y1 - py) / (y1 - y0)) * rows(state), ((px - x0) / (x1 - x0)) * state.columns],
+      cell: (x, y) => [((y1 - y) / (y1 - y0)) * rows(state), ((x - x0) / (x1 - x0)) * state.columns],
     };
   }
 
@@ -159,14 +153,9 @@ export function createPaintedTab(root, { commit, log }) {
 
   function render() {
     if (!state) return;
-    const context = fitCanvas(canvas);
-    const ratio = canvas.width / (canvas.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const g = geometry();
-    const style = getComputedStyle(canvas);
-    const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
-    const line = style.getPropertyValue("--line").trim() || "#d5d9e0";
-    context.clearRect(0, 0, g.width, g.height);
+    const context = fitCanvasInCssPixels(canvas);
+    const plot = geometry();
+    context.clearRect(0, 0, plot.width, plot.height);
 
     const shown = stroke?.preview ?? bytes;
     if (shown) {
@@ -177,16 +166,16 @@ export function createPaintedTab(root, { commit, log }) {
       const pixels = image.getContext("2d").createImageData(columns, nRows);
       const floor = -state.floor_db;
       for (let row = 0; row < nRows; row++) {
-        for (let c = 0; c < columns; c++) {
-          const level = 1 - Math.min(shown[row * columns + c], floor) / floor;
-          const i = 4 * ((nRows - 1 - row) * columns + c);
+        for (let column = 0; column < columns; column++) {
+          const level = 1 - Math.min(shown[row * columns + column], floor) / floor;
+          const i = 4 * ((nRows - 1 - row) * columns + column);
           pixels.data.set(magma(level), i); // in magma, as sonore plots levels
           pixels.data[i + 3] = 255;
         }
       }
       image.getContext("2d").putImageData(pixels, 0, 0);
       context.imageSmoothingEnabled = true;
-      context.drawImage(image, g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+      context.drawImage(image, plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
     }
 
     // the harmonic carrier sounds only at multiples of F0, so paint between them is silent:
@@ -196,85 +185,43 @@ export function createPaintedTab(root, { commit, log }) {
       context.lineWidth = 1;
       context.setLineDash([2, 3]);
       context.beginPath();
-      for (let k = Math.ceil(state.f_lo / state.f0); k * state.f0 <= state.f_hi; k++) {
-        const y = g.y(k * state.f0);
-        if (y - g.y((k + 1) * state.f0) < 4) break;
-        context.moveTo(g.x0, Math.round(y) + 0.5);
-        context.lineTo(g.x1, Math.round(y) + 0.5);
+      for (let harmonic = Math.ceil(state.f_lo / state.f0); harmonic * state.f0 <= state.f_hi; harmonic++) {
+        const y = plot.y(harmonic * state.f0);
+        if (y - plot.y((harmonic + 1) * state.f0) < 4) break;
+        context.moveTo(plot.x0, Math.round(y) + 0.5);
+        context.lineTo(plot.x1, Math.round(y) + 0.5);
       }
       context.stroke();
       context.setLineDash([]);
     }
 
     // axes
-    context.strokeStyle = line;
-    context.fillStyle = muted;
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.strokeRect(g.x0 + 0.5, g.y0 + 0.5, g.x1 - g.x0 - 1, g.y1 - g.y0 - 1);
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const f of FREQUENCY_TICKS.filter((f) => f >= state.f_lo && f <= state.f_hi)) {
-      const y = Math.round(g.y(f)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.18)"; // over the dark picture
-      context.beginPath();
-      context.moveTo(g.x0, y);
-      context.lineTo(g.x1, y);
-      context.stroke();
-      context.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, g.x0 - 6, y);
-    }
-    context.save();
-    context.translate(12, (g.y0 + g.y1) / 2);
-    context.rotate(-Math.PI / 2);
-    context.textAlign = "center";
-    context.fillText("Hz", 0, 0);
-    context.restore();
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    const step = niceStep(state.duration, g.x1 - g.x0);
-    for (let k = 0; k * step <= state.duration + 1e-9; k++) {
-      const x = g.x(k * step);
-      if (x < g.x1 - 24) context.fillText(`${+(k * step).toFixed(2)}`, x, g.y1 + 5); // room for "s"
-    }
-    context.textAlign = "right";
-    context.fillText("s", g.x1, g.y1 + 5);
+    drawBorder(context, canvas, plot);
+    const ticks = FREQUENCY_TICKS.filter((f) => f >= state.f_lo && f <= state.f_hi);
+    drawValueTicks(context, plot, ticks, plot.y, frequencyLabel, { gridColor: "rgba(255, 255, 255, 0.18)", clamp: false }); // over the dark picture
+    drawAxisName(context, plot, "Hz");
+    drawTimeTicks(context, plot, state.duration, 5);
 
-    if (playhead !== null) {
-      context.strokeStyle = style.getPropertyValue("--accent").trim() || "#d1495b";
-      context.beginPath();
-      context.moveTo(Math.round(g.x(playhead)) + 0.5, g.y0);
-      context.lineTo(Math.round(g.x(playhead)) + 0.5, g.y1);
-      context.stroke();
-    }
-    if (pointer) {
-      context.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      context.setLineDash([3, 3]);
-      context.beginPath();
-      context.arc(pointer[0], pointer[1], Number(ui.size.value) / 2, 0, 2 * Math.PI);
-      context.stroke();
-      context.setLineDash([]);
-    }
+    if (playhead !== null) drawPlayhead(context, plot, plot.x(playhead), getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#d1495b");
+    if (pointer) drawBrush(context, pointer, Number(ui.size.value));
   }
 
   // --- painting --------------------------------------------------------------------
 
-  function local(event) {
-    const box = canvas.getBoundingClientRect();
-    return [event.clientX - box.left, event.clientY - box.top];
-  }
+  const local = (event) => pointerPosition(canvas, event);
 
-  function brush(g) {
+  function brush(plot) {
     const radius = Number(ui.size.value) / 2;
     return {
-      rRow: Math.max(0.5, (radius / (g.y1 - g.y0)) * rows(state)),
-      rColumn: Math.max(0.5, (radius / (g.x1 - g.x0)) * state.columns),
+      rowRadius: Math.max(0.5, (radius / (plot.y1 - plot.y0)) * rows(state)),
+      columnRadius: Math.max(0.5, (radius / (plot.x1 - plot.x0)) * state.columns),
       softness: Number(ui.softness.value),
     };
   }
 
   function dabAt(at) {
-    const { rRow, rColumn, softness } = brush(geometry());
-    dab(stroke.weights, rows(state), state.columns, at[0], at[1], rRow, rColumn, softness);
+    const { rowRadius, columnRadius, softness } = brush(geometry());
+    dab(stroke.weights, rows(state), state.columns, at[0], at[1], rowRadius, columnRadius, softness);
   }
 
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -299,11 +246,11 @@ export function createPaintedTab(root, { commit, log }) {
   canvas.addEventListener("pointermove", (event) => {
     pointer = local(event);
     if (stroke) {
-      const { rRow, rColumn } = brush(geometry());
+      const { rowRadius, columnRadius } = brush(geometry());
       const moves = event.getCoalescedEvents?.() ?? [event];
       for (const move of moves.length ? moves : [event]) {
         const at = geometry().cell(...local(move));
-        for (const center of dabsAlong(stroke.last, at, rRow, rColumn)) dabAt(center);
+        for (const center of dabsAlong(stroke.last, at, rowRadius, columnRadius)) dabAt(center);
         stroke.last = at;
       }
       stroke.preview = applyStroke(bytes, stroke.weights, stroke.target);
@@ -319,7 +266,7 @@ export function createPaintedTab(root, { commit, log }) {
     if (!stroke) return;
     const next = stroke.preview;
     stroke = null;
-    if (event.type === "pointercancel" || next.every((b, i) => b === bytes[i])) return render();
+    if (event.type === "pointercancel" || next.every((cell, i) => cell === bytes[i])) return render();
     bytes = next;
     render();
     commitBytes(next);

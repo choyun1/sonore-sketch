@@ -9,8 +9,9 @@
 //
 // No DOM here, so this file runs under `node --test`.
 
+import { SOURCES } from "../sources.js";
+
 export const FORMAT = 1;
-export const SOURCES = ["syllables", "speech", "file"];
 export const CARRIERS = ["source", "tones", "noise"];
 export const MAX_ITERATIONS = 20;
 export const RATE_MIN = 1;
@@ -23,7 +24,6 @@ export const ROWS = 48;
 export const DENSITY_STEP = DENSITY_MAX / ROWS; // 0.125
 export const FLOOR_DB = -60;
 export const COARSE_BELOW_S = 2; // as on the Draw modulation tab: few rates below this
-export const MAX_RECORDING_S = 10; // F6: a recording sets the duration, up to the page's limit
 
 // sonore_sketch.edit.EXAMPLE_LEVELS: the "keep rates below 4 Hz" preset the
 // tab starts from (E8); tests/test_edit.py and the JS tests check the two agree.
@@ -41,14 +41,14 @@ export function defaultSection() {
 // --- the grid ---------------------------------------------------------------------
 
 // A column's center rate [Hz]: the negative side, 0 for the center column, the positive side.
-export function columnRate(c) {
-  if (c === SIDE) return 0;
-  const k = c > SIDE ? c - SIDE - 1 : SIDE - 1 - c;
-  const magnitude = RATE_MIN * 2 ** ((k + 0.5) / COLUMNS_PER_OCTAVE);
-  return c > SIDE ? magnitude : -magnitude;
+export function columnRate(column) {
+  if (column === SIDE) return 0;
+  const fromCenter = column > SIDE ? column - SIDE - 1 : SIDE - 1 - column; // columns out from the center one
+  const magnitude = RATE_MIN * 2 ** ((fromCenter + 0.5) / COLUMNS_PER_OCTAVE);
+  return column > SIDE ? magnitude : -magnitude;
 }
 
-export const rowDensity = (r) => (r + 0.5) * DENSITY_STEP;
+export const rowDensity = (row) => (row + 0.5) * DENSITY_STEP;
 
 // --- presets (E6) ------------------------------------------------------------------
 
@@ -61,9 +61,9 @@ export function blank() {
 // Keep rates below `rate` Hz: cut every faster column.
 export function keepBelow(rate) {
   const bytes = blank();
-  for (let c = 0; c < COLUMNS; c++) {
-    if (Math.abs(columnRate(c)) <= rate) continue;
-    for (let r = 0; r < ROWS; r++) bytes[r * COLUMNS + c] = REMOVED;
+  for (let column = 0; column < COLUMNS; column++) {
+    if (Math.abs(columnRate(column)) <= rate) continue;
+    for (let row = 0; row < ROWS; row++) bytes[row * COLUMNS + column] = REMOVED;
   }
   return bytes;
 }
@@ -72,45 +72,16 @@ export function keepBelow(rate) {
 // one side of the plane, above the first row (density 0 has no direction).
 export function removeSweeps(direction) {
   const bytes = blank();
-  for (let c = 0; c < COLUMNS; c++) {
-    const rate = columnRate(c);
+  for (let column = 0; column < COLUMNS; column++) {
+    const rate = columnRate(column);
     if (direction === "down" ? rate <= 0 : rate >= 0) continue;
-    for (let r = 1; r < ROWS; r++) bytes[r * COLUMNS + c] = REMOVED;
+    for (let row = 1; row < ROWS; row++) bytes[row * COLUMNS + column] = REMOVED;
   }
   return bytes;
 }
 
 export function isBlank(bytes) {
-  return bytes.every((b) => b === 0);
-}
-
-// --- recordings (E1, after the Erase spectrogram design's F1, F3, F6) ---------------
-
-// Mono samples (any range) as 16-bit PCM in base64, scaled so the peak is
-// just under full scale; what a page document keeps of a recording.
-export function encodePcm16(samples) {
-  let peak = 0;
-  for (const x of samples) peak = Math.max(peak, Math.abs(x));
-  const scale = peak > 0 ? 32767 / peak : 0;
-  const bytes = new Uint8Array(samples.length * 2);
-  const view = new DataView(bytes.buffer);
-  samples.forEach((x, i) => view.setInt16(2 * i, Math.round(x * scale), true));
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(binary);
-}
-
-export function pcm16Length(pcm16) {
-  const padding = pcm16.endsWith("==") ? 2 : pcm16.endsWith("=") ? 1 : 0;
-  return Math.floor(((pcm16.length * 3) / 4 - padding) / 2);
-}
-
-export function checkRecording(recording) {
-  const { name, fs, pcm16 } = recording ?? {};
-  if (typeof name !== "string" || !(fs > 0) || typeof pcm16 !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(pcm16)) {
-    throw new Error("a recording must have a name, a sampling rate and 16-bit samples in base64");
-  }
-  return recording;
+  return bytes.every((cut) => cut === 0);
 }
 
 // --- checking --------------------------------------------------------------------

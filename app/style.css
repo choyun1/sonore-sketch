@@ -285,11 +285,7 @@ canvas.measured {
 @media (max-width: 720px) {
   .tracks-body { flex-direction: column-reverse; }
   .painted-body, .blobs-body, .edit-body, .mask-body { flex-direction: column-reverse; }
-  .time-axis { width: 100%; height: 18px; margin-top: -4px; }
-.time-axis text { fill: var(--muted); font-size: 11px; text-anchor: middle; }
-.time-axis text.unit { text-anchor: end; }
-
-.side { width: 100%; flex-direction: row; flex-wrap: wrap; }
+  .side { width: 100%; flex-direction: row; flex-wrap: wrap; }
   .result { margin-right: 0; }
 }
 

@@ -10,13 +10,11 @@ import {
   ROWS,
   SIDE,
   check,
-  checkRecording,
   columnRate,
-  encodePcm16,
   keepBelow,
-  pcm16Length,
   removeSweeps,
 } from "../../app/edit/model.js";
+import { checkRecording, encodePcm16, pcm16Length } from "../../app/sources.js";
 
 // The Python half's presets, as base64 of deflated bytes (sonore_sketch.edit).
 function python(code) {

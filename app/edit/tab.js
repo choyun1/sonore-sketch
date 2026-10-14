@@ -14,8 +14,24 @@
 // axis, and its waveform.
 
 import { magma } from "../colormap.js";
-import { drawWaveform, fitCanvas, niceStep } from "../plot.js";
-import { applyCut, brushWeight, decodeLevels, encodeLevels, typedNumber } from "../painted/model.js";
+import {
+  drawAxisName,
+  drawBrush,
+  drawBorder,
+  drawMaskOutline,
+  drawPlayhead,
+  drawRateAxisWords,
+  drawRateTicks,
+  drawTitle,
+  drawValueTicks,
+  drawWaveform,
+  fitCanvasInCssPixels,
+  logSpectrogramPlot,
+  pointerPosition,
+  soundSeconds,
+} from "../plot.js";
+import { LevelCache, applyCut, brushWeight, typedNumber } from "../painted/model.js";
+import { attachSourceControls, sourceFieldset } from "../sources.js";
 import {
   CARRIERS,
   COARSE_BELOW_S,
@@ -23,27 +39,21 @@ import {
   DENSITY_MAX,
   FLOOR_DB,
   MAX_ITERATIONS,
-  MAX_RECORDING_S,
   RATE_MAX,
   RATE_MIN,
   ROWS,
   SIDE,
   blank,
-  encodePcm16,
   keepBelow,
-  pcm16Length,
   removeSweeps,
 } from "./model.js";
 
 const MARGIN = { left: 52, right: 10, top: 8, bottom: 36 };
 const STRIP = 8; // half the center strip's width, px
-const RATE_TICKS = [1, 2, 4, 8, 16, 32, 64];
 const CACHE = 200; // decoded masks kept, so undo and redo are instant
 const OUTLINE_DB = 30; // the mask's outline runs where the cut crosses this
-const SOURCE_LABELS = { syllables: "Syllable train", speech: "The Draw speech tab's sound", file: "A recording" };
 const CARRIER_LABELS = { source: "the source's own", tones: "tones", noise: "noise" };
 const STFT_MARGIN = { left: 52, right: 10, top: 6, bottom: 20 };
-const FREQUENCY_TICKS = [100, 200, 500, 1000, 2000, 5000];
 
 export function createEditTab(root, { commit, openRecording, hasRecording, log }) {
   let state = null;
@@ -55,7 +65,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   let sound = null;
   let source = null; // {key, picture}: the source's modulation spectrum, kept while only the mask changes
   let playhead = null;
-  const cache = new Map();
+  const cache = new LevelCache(CACHE);
 
   root.innerHTML = `
     <div class="edit-body">
@@ -77,14 +87,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
         </section>
       </div>
       <aside class="side">
-        <fieldset><legend>Source</legend>
-          <select class="source" title="The sound whose modulation you erase">
-            ${Object.entries(SOURCE_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
-          </select>
-          <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to erase from; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
-          <input type="file" class="audio-file" accept="audio/*" hidden>
-          <p class="hint recording-note"></p>
-        </fieldset>
+        ${sourceFieldset("The sound whose modulation you erase")}
         <fieldset><legend>Brush</legend>
           <label class="choice" title="Erase modulation where you paint (E)"><input type="radio" name="edit-mode" value="paint" checked> Erase <kbd>E</kbd></label>
           <label class="choice" title="Restore what was erased; right-drag restores too (R)"><input type="radio" name="edit-mode" value="erase"> Restore <kbd>R</kbd></label>
@@ -102,21 +105,20 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
         </fieldset>
         <fieldset><legend>Sound</legend>
           <label class="field" title="What carries the modulation that is left: the source's own fine structure (keeps its voice), log-spaced tones (shows what was erased most clearly), or noise">Carrier
-            <select class="carrier">${CARRIERS.map((c) => `<option value="${c}">${CARRIER_LABELS[c]}</option>`).join("")}</select></label>
+            <select class="carrier">${CARRIERS.map((carrier) => `<option value="${carrier}">${CARRIER_LABELS[carrier]}</option>`).join("")}</select></label>
           <label class="field" title="How many times to search for a sound whose own modulation comes closer to what is left (each one an analysis and a synthesis; slower). On the source's own fine structure, an erasure needs a few to be heard">Iterations <input type="number" class="iterations" min="0" max="${MAX_ITERATIONS}" step="1"></label>
         </fieldset>
         <p class="hint coarse" hidden></p>
         <p class="hint">Paint on the plane to erase that modulation; right-drag restores it. Space plays.</p>
       </aside>
     </div>`;
-  const $ = (selector) => root.querySelector(selector);
-  const canvas = $("canvas.mask-plane");
+  const query = (selector) => root.querySelector(selector);
+  const canvas = query("canvas.mask-plane");
   const ui = {
-    source: $(".source"), openAudio: $(".open-audio"), audioFile: $(".audio-file"), recordingNote: $(".recording-note"),
-    size: $(".size"), softness: $(".softness"), cut: $(".cut"),
-    keepBelow: $(".keep-below"), keepRate: $(".keep-rate"), noDown: $(".no-down"), noUp: $(".no-up"),
-    carrier: $(".carrier"), iterations: $(".iterations"), coarse: $(".coarse"), stft: $("canvas.result-stft"), wave: $("canvas.wave"),
-    measured: $("canvas.measured-plane"), clipNote: $(".clip-note"),
+    size: query(".size"), softness: query(".softness"), cut: query(".cut"),
+    keepBelow: query(".keep-below"), keepRate: query(".keep-rate"), noDown: query(".no-down"), noUp: query(".no-up"),
+    carrier: query(".carrier"), iterations: query(".iterations"), coarse: query(".coarse"), stft: query("canvas.result-stft"), wave: query("canvas.wave"),
+    measured: query("canvas.measured-plane"), clipNote: query(".clip-note"),
   };
   for (const input of root.querySelectorAll('input[name="edit-mode"]')) input.addEventListener("change", () => (mode = input.value));
   function setMode(next) {
@@ -126,31 +128,15 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
 
   // --- the mask and its state --------------------------------------------------------
 
-  function remember(levels, decoded) {
-    cache.delete(levels);
-    cache.set(levels, decoded);
-    if (cache.size > CACHE) cache.delete(cache.keys().next().value);
-  }
-
   async function commitBytes(next) {
     const before = state;
-    const levels = await encodeLevels(next);
-    remember(levels, next);
+    const levels = await cache.encode(next);
     // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
     if (state === before) commit({ ...state, levels });
   }
 
   async function load(next) {
-    let decoded = cache.get(next.levels);
-    if (!decoded) {
-      try {
-        decoded = await decodeLevels(next.levels, ROWS * COLUMNS);
-      } catch (error) {
-        log?.error(`could not read the mask: ${error.message}`);
-        decoded = blank();
-      }
-      remember(next.levels, decoded);
-    }
+    const decoded = await cache.decode(next.levels, ROWS * COLUMNS, blank, (error) => log?.error(`could not read the mask: ${error.message}`));
     if (state === next) {
       bytes = decoded;
       render();
@@ -159,33 +145,27 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   }
 
   // The source's identity: its spectrum is kept while only the mask, the carrier or the iterations change.
-  const sourceKey = (s) => JSON.stringify([s.source, s.duration, s.fs, s.f_lo, s.f_hi, s.bands_per_octave, s.speech ?? null, s.recording?.pcm16.length ?? 0, s.recording?.name ?? ""]);
+  const sourceKey = (tabState) =>
+    JSON.stringify([
+      tabState.source, tabState.duration, tabState.fs, tabState.f_lo, tabState.f_hi, tabState.bands_per_octave,
+      tabState.speech ?? null, tabState.recording?.pcm16.length ?? 0, tabState.recording?.name ?? "",
+    ]);
+
+  // the Source controls, opening a recording among them (E1, c)
+  const showSource = attachSourceControls(root, { state: () => state, commit, openRecording, hasRecording, log });
 
   function showSettings() {
-    ui.source.value = state.source;
+    showSource();
     ui.carrier.value = state.carrier;
     ui.iterations.value = state.iterations;
-    const recording = state.recording;
-    ui.recordingNote.textContent =
-      state.source !== "file" ? "" : recording
-        ? `${recording.name}: ${(pcm16Length(recording.pcm16) / recording.fs).toFixed(2)} s, heard at ${state.duration} s.`
-        : "No recording yet: open an audio file. Links do not carry recordings, so open it again after following one.";
     ui.coarse.hidden = state.duration >= COARSE_BELOW_S;
     ui.coarse.textContent = `At ${state.duration} s, rates come in steps of ${+(1 / state.duration).toFixed(2)} Hz, coarse below about 8 Hz; ${COARSE_BELOW_S} s or more shows slow modulation finer.`;
   }
 
-  ui.source.addEventListener("change", () => {
-    // the page may hold a recording while another source is chosen
-    if (ui.source.value === "file" && !hasRecording()) {
-      showSettings(); // the source changes when a recording opens
-      return ui.audioFile.click();
-    }
-    commit({ ...state, source: ui.source.value });
-  });
   ui.carrier.addEventListener("change", () => commit({ ...state, carrier: ui.carrier.value }));
   ui.iterations.addEventListener("change", () => {
-    const n = Math.round(typedNumber(ui.iterations.value, NaN));
-    if (n >= 0 && n <= MAX_ITERATIONS && n !== state.iterations) commit({ ...state, iterations: n });
+    const iterations = Math.round(typedNumber(ui.iterations.value, NaN));
+    if (iterations >= 0 && iterations <= MAX_ITERATIONS && iterations !== state.iterations) commit({ ...state, iterations });
     else ui.iterations.value = state.iterations;
   });
   // A preset replaces the mask; Undo brings the old one back (E6).
@@ -197,27 +177,11 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   ui.noDown.addEventListener("click", () => commitBytes(removeSweeps("down")));
   ui.noUp.addEventListener("click", () => commitBytes(removeSweeps("up")));
 
-  // --- opening a recording (E1, c) -----------------------------------------------------
-
-  ui.openAudio.addEventListener("click", () => ui.audioFile.click());
-  ui.audioFile.addEventListener("change", async () => {
-    const file = ui.audioFile.files[0];
-    ui.audioFile.value = "";
-    if (!file) return;
-    try {
-      const { samples, seconds } = await decodeAudio(file, state.fs);
-      if (!samples.some((x) => x !== 0)) throw new Error("it is silent");
-      openRecording({ name: file.name, fs: state.fs, pcm16: encodePcm16(samples) }, seconds);
-      log?.info(`opened the recording ${file.name} (${seconds.toFixed(2)} s)`);
-    } catch (error) {
-      ui.recordingNote.textContent = `Could not open ${file.name}: ${error.message}`;
-      log?.error(`could not open the recording ${file.name}: ${error.message}`);
-    }
-  });
-
   // --- the plane -------------------------------------------------------------------
 
-  // The plane's axes on `target` (the design plane, or the measured one below).
+  // The plane's plot on `target` (the design plane, or the measured one
+  // below): x0 to x1, y0 to y1, the strip around xc, and `half` the width of
+  // each side; pixels to and from rate, density and the mask's cells.
   function geometry(target = canvas, margin = MARGIN) {
     const width = target.clientWidth || 600;
     const height = target.clientHeight || 300;
@@ -228,74 +192,77 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     const xc = (x0 + x1) / 2;
     const half = xc - STRIP - x0;
     const span = Math.log2(RATE_MAX / RATE_MIN);
-    const unit = (rate) => Math.min(1, Math.log2(Math.max(Math.abs(rate), RATE_MIN) / RATE_MIN) / span);
+    const unitOf = (rate) => Math.min(1, Math.log2(Math.max(Math.abs(rate), RATE_MIN) / RATE_MIN) / span);
     return {
       width, height, x0, x1, y0, y1, xc, half,
       // rates under 1 Hz sit in the center strip
-      x: (rate) => (Math.abs(rate) < RATE_MIN ? xc : rate > 0 ? xc + STRIP + unit(rate) * half : xc - STRIP - unit(rate) * half),
+      x: (rate) => (Math.abs(rate) < RATE_MIN ? xc : rate > 0 ? xc + STRIP + unitOf(rate) * half : xc - STRIP - unitOf(rate) * half),
       y: (density) => y1 - (density / DENSITY_MAX) * (y1 - y0),
       // the rate at a pixel; the strip is |rate| < 1 Hz, shown as 0
-      rate: (px) => {
-        if (Math.abs(px - xc) < STRIP) return 0;
-        const u = Math.min(1, Math.max(0, (Math.abs(px - xc) - STRIP) / half));
-        return Math.sign(px - xc) * RATE_MIN * 2 ** (u * span);
+      rate: (x) => {
+        if (Math.abs(x - xc) < STRIP) return 0;
+        const unit = Math.min(1, Math.max(0, (Math.abs(x - xc) - STRIP) / half));
+        return Math.sign(x - xc) * RATE_MIN * 2 ** (unit * span);
       },
-      density: (py) => ((y1 - py) / (y1 - y0)) * DENSITY_MAX,
+      density: (y) => ((y1 - y) / (y1 - y0)) * DENSITY_MAX,
       // a pixel's place on the mask, in cells: [row from density 0, column]
-      cell: (px, py) => {
-        const row = ((y1 - py) / (y1 - y0)) * ROWS;
+      cell: (x, y) => {
+        const row = ((y1 - y) / (y1 - y0)) * ROWS;
         let column;
-        if (px <= xc - STRIP) column = ((px - x0) / half) * SIDE;
-        else if (px < xc + STRIP) column = SIDE + (px - (xc - STRIP)) / (2 * STRIP);
-        else column = SIDE + 1 + ((px - (xc + STRIP)) / half) * SIDE;
+        if (x <= xc - STRIP) column = ((x - x0) / half) * SIDE;
+        else if (x < xc + STRIP) column = SIDE + (x - (xc - STRIP)) / (2 * STRIP);
+        else column = SIDE + 1 + ((x - (xc + STRIP)) / half) * SIDE;
         return [row, column];
       },
       // a mask column's left edge, px
-      columnX: (c) => (c <= SIDE ? x0 + (c / SIDE) * half : c <= SIDE + 1 ? xc - STRIP + (c - SIDE) * 2 * STRIP : xc + STRIP + ((c - SIDE - 1) / SIDE) * half),
+      columnX: (column) =>
+        column <= SIDE ? x0 + (column / SIDE) * half
+          : column <= SIDE + 1 ? xc - STRIP + (column - SIDE) * 2 * STRIP
+            : xc + STRIP + ((column - SIDE - 1) / SIDE) * half,
     };
   }
 
-  const image = document.createElement("canvas");
+  const planeImage = document.createElement("canvas");
   const measuredImage = document.createElement("canvas");
 
   // A spectrum on the plane (`shown`, a modulation picture), darkened where
   // `mask` cuts, into `image`, one pixel per CSS pixel of the plot: each
   // pixel shows the analysis cell it falls in (the strip, the loudest cell
   // under 1 Hz) and the mask cell it falls in.
-  function picture(g, shown, mask, image) {
-    const width = Math.max(1, Math.round(g.x1 - g.x0));
-    const height = Math.max(1, Math.round(g.y1 - g.y0));
+  function picture(plot, shown, mask, image) {
+    const width = Math.max(1, Math.round(plot.x1 - plot.x0));
+    const height = Math.max(1, Math.round(plot.y1 - plot.y0));
     image.width = width;
     image.height = height;
     const context = image.getContext("2d");
     const pixels = context.createImageData(width, height);
     const floor = magma(0);
-    const rowOf = Int32Array.from({ length: height }, (_, py) => Math.min(ROWS - 1, Math.max(0, Math.floor(g.cell(0, g.y0 + py + 0.5)[0]))));
-    const densityCell = Int32Array.from({ length: height }, (_, py) => (shown ? Math.round(g.density(g.y0 + py + 0.5) / shown.densityStep) : -1));
-    const level = new Float32Array(height);
-    for (let px = 0; px < width; px++) {
-      const x = g.x0 + px + 0.5;
-      const column = Math.min(COLUMNS - 1, Math.max(0, Math.floor(g.cell(x, 0)[1])));
-      level.fill(-1);
+    const maskRowOf = Int32Array.from({ length: height }, (_, pixelY) => Math.min(ROWS - 1, Math.max(0, Math.floor(plot.cell(0, plot.y0 + pixelY + 0.5)[0]))));
+    const densityCellOf = Int32Array.from({ length: height }, (_, pixelY) => (shown ? Math.round(plot.density(plot.y0 + pixelY + 0.5) / shown.densityStep) : -1));
+    const levels = new Float32Array(height);
+    for (let pixelX = 0; pixelX < width; pixelX++) {
+      const x = plot.x0 + pixelX + 0.5;
+      const column = Math.min(COLUMNS - 1, Math.max(0, Math.floor(plot.cell(x, 0)[1])));
+      levels.fill(-1);
       if (shown) {
-        const strip = Math.abs(x - g.xc) < STRIP;
-        const ks = [];
-        if (strip) {
-          for (let k = 0; k < shown.nRates; k++) if (Math.abs(shown.rateFirst + k * shown.rateStep) < RATE_MIN) ks.push(k);
+        const inStrip = Math.abs(x - plot.xc) < STRIP;
+        const rateCells = [];
+        if (inStrip) {
+          for (let rateIndex = 0; rateIndex < shown.nRates; rateIndex++) if (Math.abs(shown.rateFirst + rateIndex * shown.rateStep) < RATE_MIN) rateCells.push(rateIndex);
         } else {
-          const k = Math.round((g.rate(x) - shown.rateFirst) / shown.rateStep);
-          if (k >= 0 && k < shown.nRates) ks.push(k);
+          const rateIndex = Math.round((plot.rate(x) - shown.rateFirst) / shown.rateStep);
+          if (rateIndex >= 0 && rateIndex < shown.nRates) rateCells.push(rateIndex);
         }
-        for (let py = 0; py < height; py++) {
-          const j = densityCell[py];
-          if (j < 0 || j >= shown.nDensities) continue;
-          for (const k of ks) level[py] = Math.max(level[py], shown.data[j * shown.nRates + k] / 255);
+        for (let pixelY = 0; pixelY < height; pixelY++) {
+          const densityIndex = densityCellOf[pixelY];
+          if (densityIndex < 0 || densityIndex >= shown.nDensities) continue;
+          for (const rateIndex of rateCells) levels[pixelY] = Math.max(levels[pixelY], shown.data[densityIndex * shown.nRates + rateIndex] / 255);
         }
       }
-      for (let py = 0; py < height; py++) {
-        const i = 4 * (py * width + px);
-        const color = level[py] >= 0 ? magma(level[py]) : floor;
-        const cut = mask ? Math.min(mask[rowOf[py] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
+      for (let pixelY = 0; pixelY < height; pixelY++) {
+        const i = 4 * (pixelY * width + pixelX);
+        const color = levels[pixelY] >= 0 ? magma(levels[pixelY]) : floor;
+        const cut = mask ? Math.min(mask[maskRowOf[pixelY] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
         const keep = 1 - 0.6 * cut; // cut cells stay readable underneath
         pixels.data[i] = color[0] * keep;
         pixels.data[i + 1] = color[1] * keep;
@@ -308,112 +275,40 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   }
 
   // The mask's outline: cell edges where the cut crosses OUTLINE_DB.
-  function outline(context, g, mask) {
-    const deep = (r, c) => mask[r * COLUMNS + c] >= OUTLINE_DB;
-    const rowY = (r) => g.y1 - (r / ROWS) * (g.y1 - g.y0);
-    context.beginPath();
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLUMNS; c++) {
-        const here = deep(r, c);
-        if (c + 1 < COLUMNS && here !== deep(r, c + 1)) {
-          const x = Math.round(g.columnX(c + 1)) + 0.5;
-          context.moveTo(x, rowY(r));
-          context.lineTo(x, rowY(r + 1));
-        }
-        if (r + 1 < ROWS && here !== deep(r + 1, c)) {
-          const y = Math.round(rowY(r + 1)) + 0.5;
-          context.moveTo(g.columnX(c), y);
-          context.lineTo(g.columnX(c + 1), y);
-        }
-      }
-    }
-    context.stroke();
+  function outline(context, plot, mask) {
+    const rowY = (row) => plot.y1 - (row / ROWS) * (plot.y1 - plot.y0);
+    drawMaskOutline(context, mask, ROWS, COLUMNS, OUTLINE_DB, plot.columnX, rowY);
   }
 
   // The plane's border, gridlines and labels, as on the Draw modulation tab
   // (`densities`: the ones labeled; `words`: the rate axis's name and directions).
-  function axes(context, target, g, densities, words) {
-    const style = getComputedStyle(target);
-    const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
-    const line = style.getPropertyValue("--line").trim() || "#d5d9e0";
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.fillStyle = muted;
-    context.strokeStyle = line;
-    context.strokeRect(g.x0 + 0.5, g.y0 + 0.5, g.x1 - g.x0 - 1, g.y1 - g.y0 - 1);
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const d of densities) {
-      const y = Math.round(g.y(d)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(g.x0, y);
-      context.lineTo(g.x1, y);
-      context.stroke();
-      context.fillText(`${d}`, g.x0 - 6, Math.min(Math.max(y, g.y0 + 5), g.y1 - 5));
-    }
-    if (words) {
-      context.save();
-      context.translate(12, (g.y0 + g.y1) / 2);
-      context.rotate(-Math.PI / 2);
-      context.textAlign = "center";
-      context.fillText("cyc/oct", 0, 0);
-      context.restore();
-    }
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    for (const sign of [-1, 1]) {
-      for (const r of RATE_TICKS) {
-        const x = Math.round(sign > 0 ? g.xc + STRIP + (Math.log2(r) / Math.log2(RATE_MAX)) * g.half : g.xc - STRIP - (Math.log2(r) / Math.log2(RATE_MAX)) * g.half) + 0.5;
-        context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-        context.beginPath();
-        context.moveTo(x, g.y0);
-        context.lineTo(x, g.y1);
-        context.stroke();
-        if (r > 1) context.fillText(`${sign * r}`.replace("-", "−"), x, g.y1 + 4);
-      }
-    }
-    context.fillText("0", g.xc, g.y1 + 4); // the strip: |rate| under 1 Hz
-    if (!words) return;
-    context.textAlign = "left";
-    context.fillText("← sweeps up", g.x0, g.y1 + 19);
-    context.textAlign = "center";
-    context.fillText("rate, Hz", g.xc, g.y1 + 19);
-    context.textAlign = "right";
-    context.fillText("sweeps down →", g.x1, g.y1 + 19);
+  function axes(context, target, plot, densities, words) {
+    drawBorder(context, target, plot);
+    drawValueTicks(context, plot, densities, plot.y, (density) => `${density}`);
+    if (words) drawAxisName(context, plot, "cyc/oct");
+    drawRateTicks(context, plot, plot.x, 2);
+    context.fillText("0", plot.xc, plot.y1 + 4); // the strip: |rate| under 1 Hz
+    if (words) drawRateAxisWords(context, plot, plot.xc);
   }
 
   function render() {
     if (!state) return;
-    const context = fitCanvas(canvas);
-    const ratio = canvas.width / (canvas.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const g = geometry();
-    context.clearRect(0, 0, g.width, g.height);
+    const context = fitCanvasInCssPixels(canvas);
+    const plot = geometry();
+    context.clearRect(0, 0, plot.width, plot.height);
     const mask = stroke?.preview ?? bytes;
     context.imageSmoothingEnabled = false;
-    context.drawImage(picture(g, source?.picture ?? null, mask, image), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-    axes(context, canvas, g, [0, 1, 2, 3, 4, 5, 6], true);
+    context.drawImage(picture(plot, source?.picture ?? null, mask, planeImage), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
+    axes(context, canvas, plot, [0, 1, 2, 3, 4, 5, 6], true);
 
     if (mask) {
       context.strokeStyle = "rgba(255, 255, 255, 0.85)";
       context.lineWidth = 1;
-      outline(context, g, mask);
+      outline(context, plot, mask);
     }
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillStyle = "rgba(255, 255, 255, 0.85)";
-    const title = source ? "The source's modulation spectrum; what is erased is darkened and outlined" : "The source's modulation spectrum: Play to analyze it";
-    context.fillText(title, g.x0 + 6, g.y0 + 4);
+    drawTitle(context, plot, source ? "The source's modulation spectrum; what is erased is darkened and outlined" : "The source's modulation spectrum: Play to analyze it");
 
-    if (pointer) {
-      context.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      context.setLineDash([3, 3]);
-      context.beginPath();
-      context.arc(pointer[0], pointer[1], Number(ui.size.value) / 2, 0, 2 * Math.PI);
-      context.stroke();
-      context.setLineDash([]);
-    }
+    if (pointer) drawBrush(context, pointer, Number(ui.size.value));
   }
 
   // What came out: the result's own modulation spectrum, measured from the
@@ -423,27 +318,22 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   const MEASURED_MARGIN = { left: MARGIN.left, right: MARGIN.right, top: 6, bottom: 22 };
   function renderMeasured() {
     const target = ui.measured;
-    const context = fitCanvas(target);
-    const ratio = target.width / (target.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const g = geometry(target, MEASURED_MARGIN);
-    context.clearRect(0, 0, g.width, g.height);
+    const context = fitCanvasInCssPixels(target);
+    const plot = geometry(target, MEASURED_MARGIN);
+    context.clearRect(0, 0, plot.width, plot.height);
     if (!state) return;
     const shown = sound?.modulation ?? null;
     context.imageSmoothingEnabled = false;
-    context.drawImage(picture(g, shown, null, measuredImage), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-    axes(context, target, g, [0, 2, 4, 6], false);
+    context.drawImage(picture(plot, shown, null, measuredImage), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
+    axes(context, target, plot, [0, 2, 4, 6], false);
     const mask = resultMask;
     if (mask && shown) {
       context.strokeStyle = "rgba(255, 255, 255, 0.6)";
       context.setLineDash([3, 3]);
-      outline(context, g, mask);
+      outline(context, plot, mask);
       context.setLineDash([]);
     }
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillStyle = "rgba(255, 255, 255, 0.85)";
-    context.fillText(shown ? "The result's modulation spectrum, measured; what was erased is outlined" : "The result's modulation spectrum: Play to measure it", g.x0 + 6, g.y0 + 4);
+    drawTitle(context, plot, shown ? "The result's modulation spectrum, measured; what was erased is outlined" : "The result's modulation spectrum: Play to measure it");
   }
 
   // E9: sonore clips envelopes an edit pushes below zero; say how much, not as an error.
@@ -455,42 +345,40 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
 
   // --- painting --------------------------------------------------------------------
 
-  function local(event) {
-    const box = canvas.getBoundingClientRect();
-    return [event.clientX - box.left, event.clientY - box.top];
-  }
+  const local = (event) => pointerPosition(canvas, event);
 
   // A dab of the brush at pixel `at`, weighed by distance on screen, so the
   // wide center strip is cut only where the circle drawn on it reaches (a
   // radius in cells would be in side columns, about 6 times narrower).
   function dabAt(at) {
-    const g = geometry();
+    const plot = geometry();
     const radius = Math.max(1, Number(ui.size.value) / 2);
     const softness = Number(ui.softness.value);
-    const side = g.half / SIDE; // a side column's width, px
-    const rowHeight = (g.y1 - g.y0) / ROWS;
-    const r0 = Math.max(0, Math.floor((g.y1 - at[1] - radius) / rowHeight));
-    const r1 = Math.min(ROWS - 1, Math.floor((g.y1 - at[1] + radius) / rowHeight));
-    for (let c = 0; c < COLUMNS; c++) {
-      const left = g.columnX(c);
-      const right = c === COLUMNS - 1 ? g.x1 : g.columnX(c + 1);
+    const sideColumnWidth = plot.half / SIDE; // px
+    const rowHeight = (plot.y1 - plot.y0) / ROWS;
+    const firstRow = Math.max(0, Math.floor((plot.y1 - at[1] - radius) / rowHeight));
+    const lastRow = Math.min(ROWS - 1, Math.floor((plot.y1 - at[1] + radius) / rowHeight));
+    for (let column = 0; column < COLUMNS; column++) {
+      const left = plot.columnX(column);
+      const right = column === COLUMNS - 1 ? plot.x1 : plot.columnX(column + 1);
       // distance to the column: from its center, less any width beyond a side column's
-      const dx = Math.max(0, Math.abs(at[0] - (left + right) / 2) - Math.max(0, (right - left - side) / 2));
-      if (dx > radius) continue;
-      for (let r = r0; r <= r1; r++) {
-        const dy = at[1] - (g.y1 - (r + 0.5) * rowHeight);
-        const w = brushWeight(Math.hypot(dx, dy) / radius, softness);
-        const i = r * COLUMNS + c;
-        if (w > stroke.weights[i]) stroke.weights[i] = w;
+      const across = Math.max(0, Math.abs(at[0] - (left + right) / 2) - Math.max(0, (right - left - sideColumnWidth) / 2));
+      if (across > radius) continue;
+      for (let row = firstRow; row <= lastRow; row++) {
+        const along = at[1] - (plot.y1 - (row + 0.5) * rowHeight);
+        const weight = brushWeight(Math.hypot(across, along) / radius, softness);
+        const i = row * COLUMNS + column;
+        if (weight > stroke.weights[i]) stroke.weights[i] = weight;
       }
     }
   }
 
-  // Dab centers from a to b (px), a quarter of the brush's radius apart, not including a.
-  function dabsAlongPx(a, b) {
-    const step = Math.max(1, Number(ui.size.value) / 8);
-    const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
-    return Array.from({ length: n }, (_, k) => [a[0] + ((k + 1) / n) * (b[0] - a[0]), a[1] + ((k + 1) / n) * (b[1] - a[1])]);
+  // Dab centers from `from` to `to` (px), a quarter of the brush's radius
+  // apart, not including `from`.
+  function dabsAlongPx(from, to) {
+    const spacing = Math.max(1, Number(ui.size.value) / 8);
+    const count = Math.max(1, Math.ceil(Math.hypot(to[0] - from[0], to[1] - from[1]) / spacing));
+    return Array.from({ length: count }, (_, k) => [from[0] + ((k + 1) / count) * (to[0] - from[0]), from[1] + ((k + 1) / count) * (to[1] - from[1])]);
   }
 
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -528,7 +416,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     if (!stroke) return;
     const next = stroke.preview;
     stroke = null;
-    if (event.type === "pointercancel" || next.every((b, i) => b === bytes[i])) return render();
+    if (event.type === "pointercancel" || next.every((cell, i) => cell === bytes[i])) return render();
     bytes = next;
     render();
     renderMeasured();
@@ -539,72 +427,19 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
 
   // --- the result ------------------------------------------------------------------
 
-  const stftImage = document.createElement("canvas");
-  let stftDrawn = { sound: null, key: "" };
+  const stftPanel = logSpectrogramPlot(ui.stft, STFT_MARGIN);
 
   function renderStft() {
-    const context = fitCanvas(ui.stft);
-    const ratio = ui.stft.width / (ui.stft.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const width = ui.stft.clientWidth || 600;
-    const height = ui.stft.clientHeight || 200;
-    context.clearRect(0, 0, width, height);
+    const context = stftPanel.clear();
     if (!state) return;
-    const { f_lo, f_hi } = state;
-    const x0 = STFT_MARGIN.left;
-    const x1 = width - STFT_MARGIN.right;
-    const y0 = STFT_MARGIN.top;
-    const y1 = height - STFT_MARGIN.bottom;
-    const duration = sound ? sound.samples.length / sound.fs : state.duration;
-    const span = Math.log2(f_hi / f_lo);
-    const w = Math.max(1, Math.round(x1 - x0));
-    const h = Math.max(1, Math.round(y1 - y0));
-    const key = [w, h, f_lo, f_hi, duration].join(" ");
-    if (stftDrawn.sound !== sound || stftDrawn.key !== key) {
-      paintLogSpectrogram(stftImage, sound?.spectrogram, w, h, f_lo, span, duration);
-      stftDrawn = { sound, key };
-    }
-    context.imageSmoothingEnabled = true;
-    context.drawImage(stftImage, x0, y0, x1 - x0, y1 - y0);
-    const style = getComputedStyle(ui.stft);
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.strokeStyle = style.getPropertyValue("--line").trim() || "#d5d9e0";
-    context.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0 - 1, y1 - y0 - 1);
-    context.fillStyle = style.getPropertyValue("--muted").trim() || "#6b7280";
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const f of FREQUENCY_TICKS.filter((f) => f >= f_lo && f <= f_hi)) {
-      const y = Math.round(y1 - (Math.log2(f / f_lo) / span) * (y1 - y0)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(x0, y);
-      context.lineTo(x1, y);
-      context.stroke();
-      context.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, x0 - 6, Math.min(Math.max(y, y0 + 5), y1 - 5));
-    }
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    const step = niceStep(duration, x1 - x0);
-    for (let k = 0; k * step <= duration + 1e-9; k++) {
-      const x = x0 + ((k * step) / duration) * (x1 - x0);
-      if (x < x1 - 24) context.fillText(`${+(k * step).toFixed(2)}`, x, y1 + 4);
-    }
-    context.textAlign = "right";
-    context.fillText("s", x1, y1 + 4);
-    if (playhead !== null) {
-      const x = Math.round(x0 + (playhead / duration) * (x1 - x0)) + 0.5;
-      context.strokeStyle = "#ffffff";
-      context.beginPath();
-      context.moveTo(x, y0);
-      context.lineTo(x, y1);
-      context.stroke();
-    }
+    // the sound's own duration: a result of an older duration shows at its own times
+    const plot = stftPanel.geometry(state.f_lo, state.f_hi, sound ? soundSeconds(sound) : state.duration);
+    stftPanel.draw(context, plot, sound?.spectrogram, { named: false });
+    if (playhead !== null) drawPlayhead(context, plot, plot.x(playhead), "#ffffff");
   }
 
   function renderWave() {
-    const duration = sound ? sound.samples.length / sound.fs : state?.duration ?? 1;
-    drawWaveform(ui.wave, sound?.samples, sound?.fs, duration);
+    drawWaveform(ui.wave, sound, sound ? soundSeconds(sound) : state?.duration ?? 1);
   }
 
   new ResizeObserver(render).observe(canvas);
@@ -658,50 +493,4 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       return true;
     },
   };
-}
-
-// The 5 ms spectrogram (the shell's) on a log-frequency axis from f_lo up
-// `span` octaves, into `target`, w x h pixels.
-function paintLogSpectrogram(target, picture, w, h, f_lo, span, duration) {
-  target.width = w;
-  target.height = h;
-  const pixels = target.getContext("2d").createImageData(w, h);
-  const floor = magma(0);
-  for (let i = 0; i < pixels.data.length; i += 4) {
-    pixels.data.set(floor, i);
-    pixels.data[i + 3] = 255;
-  }
-  if (picture) {
-    const { data, nFreqs, nWindows, fMax, tStart, tStep } = picture;
-    const bins = Int32Array.from({ length: h }, (_, py) => Math.round(((f_lo * 2 ** ((1 - (py + 0.5) / h) * span)) / fMax) * (nFreqs - 1)));
-    for (let px = 0; px < w; px++) {
-      const timeWindow = Math.round((((px + 0.5) / w) * duration - tStart) / tStep);
-      if (timeWindow < 0 || timeWindow >= nWindows) continue;
-      for (let py = 0; py < h; py++) {
-        const bin = bins[py];
-        if (bin < 0 || bin >= nFreqs) continue;
-        pixels.data.set(magma(data[bin * nWindows + timeWindow] / 255), 4 * (py * w + px));
-      }
-    }
-  }
-  target.getContext("2d").putImageData(pixels, 0, 0);
-}
-
-// A sound file as mono samples at `fs` (the browser decodes and resamples
-// it), at most MAX_RECORDING_S long, and its own length in seconds.
-export async function decodeAudio(file, fs) {
-  const context = new OfflineAudioContext(1, 1, fs);
-  let audio;
-  try {
-    audio = await context.decodeAudioData(await file.arrayBuffer());
-  } catch {
-    throw new Error("the browser cannot decode it as audio");
-  }
-  const n = Math.min(audio.length, Math.round(MAX_RECORDING_S * fs));
-  const samples = new Float32Array(n);
-  for (let channel = 0; channel < audio.numberOfChannels; channel++) {
-    const data = audio.getChannelData(channel);
-    for (let i = 0; i < n; i++) samples[i] += data[i] / audio.numberOfChannels;
-  }
-  return { samples, seconds: audio.length / audio.sampleRate };
 }

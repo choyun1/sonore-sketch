@@ -27,6 +27,7 @@ import * as blobs from "./blobs/model.js";
 import * as edit from "./edit/model.js";
 import * as mask from "./mask/model.js";
 import * as painted from "./painted/model.js";
+import { MAX_RECORDING_S, checkRecording } from "./sources.js";
 import * as tracks from "./tracks/model.js";
 
 export const APP = "sonore-sketch";
@@ -44,25 +45,25 @@ export function defaultPage() {
 
 // A document from a file or a link, as version 2; throws an Error saying what
 // is wrong with it.
-export function upgrade(doc) {
-  if (doc?.trackdraw === tracks.FORMAT) {
-    const { sonore, duration, fs, mode = "klatt", params = {} } = doc;
+export function upgrade(opened) {
+  if (opened?.trackdraw === tracks.FORMAT) {
+    const { sonore, duration, fs, mode = "klatt", params = {} } = opened;
     return {
       app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
       tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
       mask: mask.defaultSection(),
     };
   }
-  if (doc?.app !== APP || doc.version !== VERSION) {
+  if (opened?.app !== APP || opened.version !== VERSION) {
     throw new Error(`not a sonore-sketch document of version ${VERSION}, or a TrackDraw document of format ${tracks.FORMAT}`);
   }
   // A tab added since the document was saved starts from its default.
   return {
-    ...doc,
-    painted: doc.painted ?? painted.defaultSection(),
-    blobs: doc.blobs ?? blobs.defaultSection(),
-    edit: doc.edit ?? edit.defaultSection(),
-    mask: doc.mask ?? mask.defaultSection(),
+    ...opened,
+    painted: opened.painted ?? painted.defaultSection(),
+    blobs: opened.blobs ?? blobs.defaultSection(),
+    edit: opened.edit ?? edit.defaultSection(),
+    mask: opened.mask ?? mask.defaultSection(),
   };
 }
 
@@ -122,20 +123,20 @@ export function forLink(page) {
 // which sets the duration to its own (up to the page's limit; F6),
 // stretching what the other tabs have drawn.
 export function withRecording(page, recording, seconds, tab = "edit") {
-  const duration = tracks.clampDuration(Math.round(Math.min(edit.MAX_RECORDING_S, seconds) * 1000) / 1000);
+  const duration = tracks.clampDuration(Math.round(Math.min(MAX_RECORDING_S, seconds) * 1000) / 1000);
   const stretched = stretchPage(page, duration);
   return { ...stretched, recording, [tab]: { ...stretched[tab], source: "file" } };
 }
 
 // Check and tidy a document from a file or a link (upgrading it if old).
-export function openDocument(doc) {
-  const page = upgrade(doc);
+export function openDocument(opened) {
+  const page = upgrade(opened);
   const state = tracks.tidyDocument(tracks.check(tabState(page, "tracks")));
   painted.check(tabState(page, "painted"));
   blobs.check(tabState(page, "blobs"));
   edit.check(tabState(page, "edit"));
   mask.check(tabState(page, "mask"));
-  if (page.recording !== undefined) edit.checkRecording(page.recording);
+  if (page.recording !== undefined) checkRecording(page.recording);
   return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "tracks" }, "tracks", state);
 }
 
@@ -161,12 +162,14 @@ export function resetTab(page, tab, start = defaultPage()) {
 
 // Clear: `tab`'s drawing goes blank and its settings (carrier, range,
 // source) stay, as does the duration. Draw speech cannot be blank, so it
-// goes to a steady neutral vowel (tracks.NEUTRAL). The sampling rate goes
-// back to its default, which nothing on the page sets but a file or link.
+// goes to a steady neutral vowel: every track flat at its default
+// (tracks.DEFAULTS), a schwa on 100 Hz (F1-F5 at 500, 1500, 2500, 3500 and
+// 4500 Hz, a uniform tube's resonances), voiced, no noise. The sampling rate
+// goes back to its default, which nothing on the page sets but a file or link.
 export async function clearTab(page, tab) {
   const fresh = defaultPage();
   const cleared = { ...page, fs: fresh.fs, sonore: fresh.sonore };
-  if (tab === "tracks") return { ...cleared, tracks: { mode: "klatt", params: { ...tracks.NEUTRAL } } };
+  if (tab === "tracks") return { ...cleared, tracks: { mode: "klatt", params: { ...tracks.DEFAULTS } } };
   if (tab === "painted") return { ...cleared, painted: { ...page.painted, levels: await painted.encodeLevels(painted.blank(page.painted)) } };
   if (tab === "blobs") return { ...cleared, blobs: { ...page.blobs, items: [], bands: [] } };
   if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };
