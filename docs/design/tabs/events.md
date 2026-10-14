@@ -262,7 +262,36 @@ decision card (the plots), the rest were asked for directly.
 Saved drawings from before these changes open with the new knobs at their
 defaults.
 
+### One window for every modulation rate
+
+Cho noticed that the pooled picture always took a U shape. With the
+gallery's bank each rate's window is three cycles long, so the cells that
+cannot be measured are the first and last 1.5/rate seconds. [measure, one
+3 s chirp train] nothing below 1 Hz was valid, 4 Hz was valid from 0.38 to
+2.62 s and 64 Hz from 0.04 to 2.96 s, which draws a U on the log rate axis.
+Cho chose to try one window for every rate, as in an STFT. [measure, same
+sound] a 1 s window gives rates 2 to 64 Hz
+in 1 Hz steps, half a second gray at each end at every rate, and each event
+blurred over about ±0.3 s; 0.5 s gives 4 to 64 Hz, 0.25 s gray and
+±0.14 s. A 2 Hz floor is about the rate of a musical beat, and speech's
+rhythm peaks near 5 Hz (Ding et al., 2017), so the tab uses 1 s; but the
+page's sounds run from 0.05 to 10 s (0.6 s by default), and a 1 s window
+leaves a shorter sound all gray. So the window is a third of the sound, at
+most 1 s, and at least two cycles of 64 Hz; the slowest rate holds two
+cycles in it. [measure] 0.6 s: rates 10 to 64 Hz, valid from 0.1 to 0.5 s;
+3 s: 2 to 64 Hz, valid from 0.5 to 2.5 s.
+
+Cho also found the pooled picture hard to compare with the spectrogram, as
+it was narrower and its time axis did not line up. It now runs under the
+spectrogram at its full width, on the same time axis, and the band by rate
+picture stands in its own column beside the two.
+
 ## References
+
+- Ding, N., Patel, A. D., Chen, L., Butler, H., Luo, C., & Poeppel, D.
+  (2017). Temporal modulations in speech and music. *Neuroscience &
+  Biobehavioral Reviews*, 81, 181–187.
+  [doi:10.1016/j.neubiorev.2017.02.011](https://doi.org/10.1016/j.neubiorev.2017.02.011)
 
 - McDermott, J. H., & Simoncelli, E. P. (2011). Sound texture perception
   via statistics of the auditory periphery: evidence from sound synthesis.

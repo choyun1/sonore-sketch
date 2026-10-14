@@ -65,15 +65,22 @@ FREQUENCY_RANGE = (50.0, 7500.0)  # Hz, the chirp's, tone pip's and noise burst'
 HARMONICS_RANGE = (1, 30)  # the harmonic complex's number of harmonics
 MAX_BREAKPOINTS = 2000
 
-# The modulation spectrogram under the sound: the gallery's settings (24
-# cosine bands from 100 Hz, envelopes at 1 kHz, rates from 0.5 to 64 Hz, three
-# cycles per window), every 20 ms, depth shown over its top 30 dB.
+# The modulation spectrogram under the sound: 24 cosine bands from 100 Hz,
+# envelopes at 1 kHz, every 20 ms, depth shown over its top 30 dB. One window
+# for every rate, as in an STFT, so the cells that cannot be measured are the
+# same half window at each end at every rate (a window of three cycles of each
+# rate leaves nothing below 1 Hz of a 3 s sound, and draws a U). The window is
+# a third of the sound, at most 1 s, and holds two cycles of its slowest rate:
+# 2 Hz, about the rate of a musical beat, from a 3 s sound on.
 MOD_BANDS = 24
 MOD_F_LOW = 100.0
 MOD_F_HIGH = 7000.0
 MOD_ENV_FS = 1000.0
 MOD_HOP = 0.02
 MOD_RANGE_DB = 30.0
+MOD_WINDOW = 1.0  # s, the longest window
+MOD_WINDOW_SHARE = 1 / 3  # of the sound
+MOD_RATE_HIGH = 64.0  # Hz
 
 
 DEFAULTS: dict[str, Any] = {
@@ -224,7 +231,9 @@ def modulation(sound: so.Sound) -> dict[str, Any]:
     ``MOD_RANGE_DB``, with the bands' and rates' centers and the windows'
     times."""
     bank = so.cosine_filterbank(n_bands=MOD_BANDS, f_lo=MOD_F_LOW, f_hi=min(MOD_F_HIGH, 0.45 * sound.fs))
-    spectrogram = so.ModulationSpectrogram(bank.analyze(sound.mono()).envelopes(fs=MOD_ENV_FS), hop=MOD_HOP)
+    window = max(2 / MOD_RATE_HIGH, min(MOD_WINDOW, MOD_WINDOW_SHARE * sound.duration))  # two cycles of 64 Hz at least
+    envelopes = bank.analyze(sound.mono()).envelopes(fs=MOD_ENV_FS)
+    spectrogram = so.ModulationSpectrogram(envelopes, f_lo=2 / window, f_hi=MOD_RATE_HIGH, window=window, hop=MOD_HOP)
     with np.errstate(divide="ignore", invalid="ignore"):
         depth = np.where(spectrogram.valid, 20 * np.log10(spectrogram.depth[0]), np.nan)  # (band, rate, window)
         pooled = 20 * np.log10(spectrogram.pooled_depth()[0])  # (rate, window)

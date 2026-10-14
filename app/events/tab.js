@@ -45,7 +45,7 @@ const STFT_MARGIN = { left: 52, right: 10, top: 6, bottom: 22 };
 const FRAME_MARGIN = { left: 44, right: 10, top: 22, bottom: 34 };
 const RATE_TICKS = [1, 10, 100, 1000]; // events per second, the rate track's axis
 const RATE_TOLERANCE = 0.02; // log10 units, how far a simplified rate stroke may stray (about 5%)
-const MOD_TICKS = [0.5, 1, 2, 4, 8, 16, 32, 64]; // Hz, the modulation rates' axis
+const MOD_TICKS = [2, 4, 8, 16, 32, 64]; // Hz, the modulation rates' axis
 const F_LOW = 100; // Hz, the spectrogram's lowest frequency
 const FREQUENCY_TICKS = [100, 200, 500, 1000, 2000, 5000];
 const INVALID = "rgba(128, 128, 128, 0.35)"; // a cell the modulation spectrogram cannot trust
@@ -69,11 +69,9 @@ export function createEventsTab(root, { commit }) {
       <div class="events-area">
         <canvas class="rate" aria-label="Events per second over time, from 1 to 1000 on a log axis; draw to change it"></canvas>
         <canvas class="stft" aria-label="The result's spectrogram"></canvas>
-        <div class="events-plots">
-          <canvas class="mod-pooled" aria-label="The modulation spectrogram: modulation depth by rate over time, pooled over frequency bands; click to choose a moment"></canvas>
-          <canvas class="mod-frame" aria-label="Modulation depth by frequency band and rate at one moment"></canvas>
-        </div>
-        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, from 0.5 to 64 times a second, over time. Left: pooled over frequency bands. Right: each band at one moment, which follows the sound as it plays; click the spectrogram or the left picture to choose the moment. Brighter is deeper, over the top 30 dB; gray cells cannot be measured (a rate faster than the band is wide, or a window running off the sound). Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
+        <canvas class="mod-pooled" aria-label="The modulation spectrogram: modulation depth by rate over time, pooled over frequency bands; click to choose a moment"></canvas>
+        <canvas class="mod-frame" aria-label="Modulation depth by frequency band and rate at one moment"></canvas>
+        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, up to 64 times a second, over time. Every rate is measured over the same window, a third of the sound long and at most 1 s; the slowest rate shown holds two cycles in it (2 Hz from a 3 s sound on). Under the spectrogram, on the same time axis: pooled over frequency bands. Beside them: each band at one moment, which follows the sound as it plays; click the spectrogram or the pooled picture to choose the moment. Brighter is deeper, over the top 30 dB; gray cells cannot be measured (a rate faster than the band is wide, a rate too slow for the window, or half a window at each end, where the window runs off the sound). Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
       </div>
       <aside class="side">
         <fieldset><legend>Event</legend>
@@ -222,6 +220,9 @@ export function createEventsTab(root, { commit }) {
   function paintCells(context, box, columns, rows, level, edges) {
     const { x0, x1, y0, y1 } = box;
     const [columnEdge, rowEdge] = edges;
+    // gray underneath: cells that cannot be measured, and rates slower than the window holds
+    context.fillStyle = INVALID;
+    context.fillRect(x0, y0, x1 - x0, y1 - y0);
     for (let column = 0; column < columns; column++) {
       const left = x0 + columnEdge(column) * (x1 - x0);
       const right = x0 + columnEdge(column + 1) * (x1 - x0);
@@ -229,10 +230,9 @@ export function createEventsTab(root, { commit }) {
         const value = level(column, row);
         const top = y1 - rowEdge(row + 1) * (y1 - y0);
         const bottom = y1 - rowEdge(row) * (y1 - y0);
-        if (value) {
-          const [red, green, blue] = magma((value - 1) / 254);
-          context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
-        } else context.fillStyle = INVALID;
+        if (!value) continue;
+        const [red, green, blue] = magma((value - 1) / 254);
+        context.fillStyle = `rgb(${red}, ${green}, ${blue})`;
         context.fillRect(Math.floor(left), Math.floor(top), Math.ceil(right - left) + 1, Math.ceil(bottom - top) + 1);
       }
     }
@@ -252,7 +252,7 @@ export function createEventsTab(root, { commit }) {
     const height = pooled.clientHeight || 190;
     const duration = sound ? soundSeconds(sound) : state.duration;
     const [x0, x1, y0, y1] = [STFT_MARGIN.left, width - STFT_MARGIN.right, FRAME_MARGIN.top, height - FRAME_MARGIN.bottom];
-    const [low, high] = [MOD_TICKS[0] / 2 ** 0.25, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
+    const [low, high] = [MOD_TICKS[0] / 2 ** 0.5, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
     return {
       width, height, x0, x1, y0, y1, duration, low, high,
       x: (t) => x0 + (t / duration) * (x1 - x0),
@@ -300,7 +300,7 @@ export function createEventsTab(root, { commit }) {
     const width = frame.clientWidth || 300;
     const height = frame.clientHeight || 190;
     const [x0, x1, y0, y1] = [FRAME_MARGIN.left, width - FRAME_MARGIN.right, FRAME_MARGIN.top, height - FRAME_MARGIN.bottom];
-    const [low, high] = [MOD_TICKS[0] / 2 ** 0.25, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
+    const [low, high] = [MOD_TICKS[0] / 2 ** 0.5, MOD_TICKS[MOD_TICKS.length - 1] * 2 ** 0.25];
     return {
       width, height, x0, x1, y0, y1, low, high, fTop,
       x: (rate) => x0 + (Math.log(rate / low) / Math.log(high / low)) * (x1 - x0),
