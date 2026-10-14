@@ -59,7 +59,7 @@ test("erasures on a recording or syllables keep their seconds when the duration 
   assert.deepEqual(stretchSection({ ...section, span: 3 }, 6, 3), section); // back where the columns were
   assert.deepEqual(stretchSection({ ...section, source: "speech" }, 3, 6), { ...section, source: "speech" });
   assert.deepEqual(stretchSection({ ...section, source: "speech", span: 1 }, 2, 4), { ...section, source: "speech", span: 2 });
-  // on the page: Reset (0.6 s) after a 3 s recording keeps the first 0.6 s of the erasures
+  // on the page: Reset to 0.6 s after a 3 s recording keeps the first 0.6 s of the erasures
   const page = withTabState(defaultPage(), "mask", { ...tabState(defaultPage(), "mask"), source: "syllables" });
   assert.equal(stretchPage({ ...page, duration: 3 }, 0.6).mask.span, 3);
 

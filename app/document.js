@@ -4,7 +4,7 @@
 // can switch tabs and come back to what you drew.
 //
 //   {"app": "sonore-sketch", "version": 2, "sonore": "0.7.0",
-//    "duration": 0.6, "fs": 16000, "tab": "tracks",
+//    "duration": 2, "fs": 16000, "tab": "tracks",
 //    "tracks": {"mode": "klatt", "params": {...}},
 //    "painted": {"f_lo": 100, "f_hi": 6400, ..., "levels": "..."},
 //    "blobs": {"carrier": "tones", ..., "items": [{"rate": 4, ...}]},

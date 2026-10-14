@@ -184,7 +184,7 @@ For the tab's own source (E1), it builds the syllable train with
 (b) the Speech tab's current sound;
 (c) a recording opened from a file (and from the microphone later).
 *Recommended:* all three, with (a) as the default. The Speech tab's
-default is a single 0.6 s vowel, which has little modulation to edit, so
+default is a single 0.6 s word, which has little modulation to edit, so
 (a) makes the first Play worth hearing. It also needs no license and
 follows the page's duration, so no other tab is stretched.
 

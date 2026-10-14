@@ -38,8 +38,8 @@ test("opening refuses what is not a document, and tidies what is", () => {
 });
 
 test("stretching the page stretches what the Draw speech tab drew", () => {
-  const page = stretchPage(defaultPage(), 1.2);
-  assert.equal(page.duration, 1.2);
+  const page = stretchPage(defaultPage(), 4);
+  assert.equal(page.duration, 4);
   assert.deepEqual(page.tracks.params.F3[0], defaultPage().tracks.params.F3[0].map((t) => t * 2));
 });
 

@@ -495,7 +495,7 @@ def main() -> None:
             example = page_document_in(page)["blobs"]
             start = example["items"]
             assert len(start) == 1 and start[0]["rate"] > 0 and start[0]["density"] > 0, start  # one blob, upper right
-            expect(page.locator("#tab-blobs .coarse")).to_be_visible()  # 0.6 s is under 2 s
+            expect(page.locator("#tab-blobs .coarse")).to_be_hidden()  # the starting 2 s is not under 2 s
             # The example keeps to one band round 500 Hz; the steps below start
             # from the same blob with no bands.
             assert example["bands"] == [{"points": [[0, 500]], "width": 2, "level": 0}], example["bands"]
@@ -629,26 +629,27 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=60_000)
             page.click("#tab-blobs .add-band")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert bands_now() == [{"points": [[0, 500], [0.6, 500]], "width": 1, "level": 0}], bands_now()
+            span = page_document_in(page)["duration"]  # the page's starting duration
+            assert bands_now() == [{"points": [[0, 500], [span, 500]], "width": 1, "level": 0}], bands_now()
             stft = page.locator("#tab-blobs canvas.stft").bounding_box()
             s_left, s_right = stft["x"] + 52, stft["x"] + stft["width"] - 10
             s_top, s_bottom = stft["y"] + 6, stft["y"] + stft["height"] - 20
 
             def sx(t):
-                return s_left + t / 0.6 * (s_right - s_left)
+                return s_left + t / span * (s_right - s_left)
 
             def sy(hz):
                 return s_bottom - math.log2(hz / 100) / 6 * (s_bottom - s_top)
 
-            gesture([(sx(0.6), sy(500)), (sx(0.6), sy(2000))])
+            gesture([(sx(span), sy(500)), (sx(span), sy(2000))])
             end = bands_now()[0]["points"][-1]
-            assert end[0] == 0.6 and abs(math.log2(end[1] / 2000)) < 0.1, bands_now()
+            assert end[0] == span and abs(math.log2(end[1] / 2000)) < 0.1, bands_now()
             expect(page.locator("#tab-blobs .band-motion")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
-            gesture([(sx(0.3), sy(1000))])
+            gesture([(sx(span / 2), sy(1000))])
             assert len(bands_now()[0]["points"]) == 3, bands_now()
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.mouse.move(sx(0.3), stft["y"] - 30)
+            page.mouse.move(sx(span / 2), stft["y"] - 30)
             page.keyboard.press("Delete")
             assert len(bands_now()[0]["points"]) == 2, bands_now()
             expect(status).to_contain_text("Made", timeout=60_000)
@@ -773,7 +774,7 @@ def main() -> None:
             assert heard.n_samples == 24000 and abs(np.corrcoef(heard.data[:, 0], np.interp(np.arange(24000) / 16000, t, tone))[0, 1]) > 0.99
             print("edit: a WAV file opened as the source, set the duration to 1.5 s, was heard, saved, and left out of the link")
             page.keyboard.press("Control+z")
-            assert page_document_in(page)["duration"] == 0.6 and page_document_in(page)["edit"]["source"] == "speech"
+            assert page_document_in(page)["duration"] == 2 and page_document_in(page)["edit"]["source"] == "speech"
             print("edit: Undo takes the recording away again")
 
             # The Erase spectrogram tab (mask.md): it starts on the syllable

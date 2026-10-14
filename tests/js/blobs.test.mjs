@@ -106,9 +106,9 @@ test("bands are checked", () => {
 
 test("stretching the page stretches the bands with it", () => {
   const page = defaultPage();
-  page.blobs = { ...page.blobs, bands: [{ points: [[0, 500], [0.3, 800], [0.6, 500]], width: 1, level: 0 }] };
-  const longer = stretchPage(page, 1.2);
-  assert.deepEqual(longer.blobs.bands[0].points, [[0, 500], [0.6, 800], [1.2, 500]]);
+  page.blobs = { ...page.blobs, bands: [{ points: [[0, 500], [1, 800], [2, 500]], width: 1, level: 0 }] };
+  const longer = stretchPage(page, 4);
+  assert.deepEqual(longer.blobs.bands[0].points, [[0, 500], [2, 800], [4, 500]]);
   assert.deepEqual(longer.blobs.items, page.blobs.items);
 });
 

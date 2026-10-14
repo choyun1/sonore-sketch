@@ -97,8 +97,8 @@ carrier:
 
 The peak of one random draw wanders within the blob's width (a
 `rate_width` of 0.5 octave puts one standard deviation at 5.7–11.3 Hz for
-an 8 Hz blob), so these are not errors. At the page's default 0.6 s the
-grid itself is coarse: there are only a few rate cells below 8 Hz (B8).
+an 8 Hz blob), so these are not errors. At 0.6 s (the page's default until
+2026-10-14; it is now 2 s) the grid itself is coarse: there are only a few rate cells below 8 Hz (B8).
 
 **B-M3. Depth: the default fits; much deeper does not.** [measure] At 3 s,
 rng 1, the default `rms_depth` of 0.2 fits; the largest that fits is 0.342
@@ -272,7 +272,7 @@ the same axes, computed in the same worker call;
 result. It costs one analysis (B-M1: 0.3–1.1 s natively) after each Play.
 
 **B8. Short durations.**
-The page's default 0.6 s gives a rate step of 1.67 Hz, coarse below 8 Hz
+The page's default 0.6 s (2 s since 2026-10-14) gives a rate step of 1.67 Hz, coarse below 8 Hz
 (B-M2).
 (a) leave it, since the drawn picture is on the same grid and shows the
 coarseness;

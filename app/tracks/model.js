@@ -64,9 +64,14 @@ export const DEFAULTS = {
   B1: 60, B2: 90, B3: 150, B4: 200, B5: 250,
 };
 
+// The page's starting duration [s] (Cho, 2026-10-14: 2 s, up from 0.6 s).
+export const DEFAULT_DURATION = 2;
+
 // A first drawing to hear at once: sonore saying its name, /sɔnɔʁ/, with the
 // tracks of "sonore says its name" in sonore's gallery
-// (docs/gallery/voice/formants.py), read off a recording of the word. Only
+// (docs/gallery/voice/formants.py), read off a recording of the word. The
+// word keeps its own 0.6 s at the start of the page's 2 s, so it is heard
+// at the speed it was spoken; changing the duration stretches it. Only
 // The /s/ is frication (AF) through the high parallel formants, the
 // voiceless /ʁ/ aspiration (AH), and the /n/ opens the nasal zero (FNZ); all
 // of these can be drawn. The parallel formants' levels (A4-A6, F6, B6) and the
@@ -76,7 +81,7 @@ export function defaultDocument() {
   return {
     trackdraw: FORMAT,
     sonore: SONORE_VERSION,
-    duration: 0.6,
+    duration: DEFAULT_DURATION,
     fs: 16000,
     mode: "klatt",
     params: {

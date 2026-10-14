@@ -94,7 +94,7 @@ test("the page keeps the painting in its own section", () => {
 test("Reset resets the tab shown and the duration, and keeps the other tab", () => {
   const page = withTabState(stretchPage(defaultPage(), 1.2), "painted", { ...tabState(defaultPage(), "painted"), carrier: "noise" });
   const reset = resetTab(page, "tracks");
-  assert.equal(reset.duration, 0.6);
+  assert.equal(reset.duration, 2);
   assert.deepEqual(reset.tracks, defaultPage().tracks);
   assert.equal(reset.painted.carrier, "noise");
 });

@@ -205,8 +205,8 @@ and #67), so E10 needed nothing more here.
   the page around it (the duration box, the waveform, the status line)
   work on the page's duration, so a fixed 5 s render would have left the
   duration box doing nothing on this tab and the waveform at the wrong
-  length. The cost of following it: at the page's starting 0.6 s, a few
-  events and a noisier statistic. Sounds up to 3 s play on each change, as
+  length. The cost of following it: at the page's starting 0.6 s (2 s since
+  2026-10-14), a few events and a noisier statistic. Sounds up to 3 s play on each change, as
   on the other tabs. The sampling rate is the page's, 16 kHz.
 - **The sparsity curve uses 3 s renders,** not the gallery's 10 s or the
   5 s measured in V2: on its own, so it does not change with the duration.
@@ -275,7 +275,7 @@ in 1 Hz steps, half a second gray at each end at every rate, and each event
 blurred over about ±0.3 s; 0.5 s gives 4 to 64 Hz, 0.25 s gray and
 ±0.14 s. A 2 Hz floor is about the rate of a musical beat, and speech's
 rhythm peaks near 5 Hz (Ding et al., 2017), so the tab uses 1 s; but the
-page's sounds run from 0.05 to 30 s (0.6 s by default), and a 1 s window
+page's sounds run from 0.05 to 30 s (2 s by default; 0.6 s until 2026-10-14), and a 1 s window
 leaves a shorter sound all gray. So the window is a third of the sound, at
 most 1 s, and at least two cycles of 64 Hz; the slowest rate holds two
 cycles in it. [measure] 0.6 s: rates 10 to 64 Hz, valid from 0.1 to 0.5 s;
