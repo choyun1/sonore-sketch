@@ -10,7 +10,7 @@ remove them, and hear what is left (docs/design/tabs/mask.md)::
      "recording": {"name": "...", "fs": 16000, "pcm16": "<base64>"}}  # with source "file"
 
 The source (F2) is the Erase modulation tab's: a Klatt syllable train, the
-Draw speech tab's sound, or the page's recording (``edit.source``). The mask is a
+Draw speech tab's sound, or the page's recording (``sources.source``). The mask is a
 grid of cuts in dB, one byte a cell, stored as the other tabs store theirs:
 0 keeps a cell and ``-floor_db`` removes it. Its rows are equal steps of
 frequency from 0 Hz to Nyquist (F4), its columns equal fractions of
@@ -23,20 +23,19 @@ syllable train keep their seconds when the duration changes, and time past
 
 from __future__ import annotations
 
-import base64
-import binascii
 import math
-import zlib
 from collections.abc import Iterator, Mapping
 from typing import Any
 
 import numpy as np
 import sonore as so
 
-from . import edit
+from . import shared, sources
+from .shared import number
 
 FORMAT = 1
-SOURCES = edit.SOURCES  # F2: the Erase modulation tab's
+MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+SOURCES = sources.SOURCES  # F2: the Erase modulation tab's
 ROWS, COLUMNS = 256, 256
 FLOOR_DB = -60.0  # a cut this deep removes the cell
 WINDOW_S = 0.032  # F5: only a long window lets a painted cut come out as painted (F-M2, F-M3)
@@ -48,9 +47,9 @@ def check(state: Mapping[str, Any]) -> None:
     if state.get("mask") != FORMAT:
         raise ValueError(f"not an Erase spectrogram state of format {FORMAT}: 'mask' is {state.get('mask')!r}")
     duration, fs = state.get("duration"), state.get("fs")
-    if not edit._number(duration) or not 0 < duration <= edit.MAX_DURATION:
-        raise ValueError(f"'duration' must be a number of seconds in (0, {edit.MAX_DURATION:g}], not {duration!r}")
-    if not edit._number(fs) or fs <= 0:
+    if not number(duration) or not 0 < duration <= MAX_DURATION:
+        raise ValueError(f"'duration' must be a number of seconds in (0, {MAX_DURATION:g}], not {duration!r}")
+    if not number(fs) or fs <= 0:
         raise ValueError(f"'fs' must be a positive sampling rate, not {fs!r}")
     if state.get("source") not in SOURCES:
         raise ValueError(f"'source' must be one of {SOURCES}, not {state.get('source')!r}")
@@ -58,7 +57,7 @@ def check(state: Mapping[str, Any]) -> None:
     if shape != (ROWS, COLUMNS, FLOOR_DB, WINDOW_S):
         raise ValueError(f"the mask must be {ROWS} rows x {COLUMNS} columns with a floor of {FLOOR_DB:g} dB and a {WINDOW_S:g} s window")
     span = state.get("span")
-    if span is not None and not (edit._number(span) and span > 0):
+    if span is not None and not (number(span) and span > 0):
         raise ValueError(f"'span' must be a positive number of seconds, not {span!r}")
     cuts(state)  # decodes, and checks the size
 
@@ -69,20 +68,12 @@ def check(state: Mapping[str, Any]) -> None:
 def cuts(state: Mapping[str, Any]) -> np.ndarray:
     """The mask as cuts in dB, shape (rows, columns), rows from 0 Hz up: 0
     keeps, ``-floor_db`` removes."""
-    try:
-        # at most one cell too many, so a small text cannot inflate to fill the memory
-        raw = zlib.decompressobj().decompress(base64.b64decode(state.get("levels", ""), validate=True), ROWS * COLUMNS + 1)
-    except (binascii.Error, zlib.error, TypeError) as error:
-        raise ValueError(f"'levels' is not base64 of zlib-deflated bytes ({error})") from None
-    if len(raw) != ROWS * COLUMNS:
-        raise ValueError(f"'levels' holds {len(raw)} cells, not {ROWS} rows x {COLUMNS} columns")
-    return np.minimum(np.frombuffer(raw, dtype=np.uint8).reshape(ROWS, COLUMNS).astype(float), -FLOOR_DB)
+    return shared.cuts(state, ROWS, COLUMNS, FLOOR_DB)
 
 
 def encode(cut_db: np.ndarray) -> str:
     """``levels`` for a grid of cuts in dB, (rows, columns)."""
-    below = np.clip(np.round(np.asarray(cut_db, dtype=float)), 0, -FLOOR_DB)
-    return base64.b64encode(zlib.compress(below.astype(np.uint8).tobytes(), 9)).decode()
+    return shared.encode_cuts(cut_db, FLOOR_DB)
 
 
 def row_frequencies(fs: float) -> np.ndarray:
@@ -90,16 +81,16 @@ def row_frequencies(fs: float) -> np.ndarray:
     return (np.arange(ROWS) + 0.5) / ROWS * fs / 2
 
 
-def _weights(x: np.ndarray, centers: np.ndarray) -> np.ndarray:
-    """Linear interpolation from values at ``centers`` to ``x`` as a matrix
-    (len(x), len(centers)), holding the ends beyond the outer centers."""
-    position = np.clip(np.interp(x, centers, np.arange(centers.size)), 0, centers.size - 1)
-    i0 = np.minimum(np.floor(position).astype(int), centers.size - 2)
-    w = position - i0
-    out = np.zeros((x.size, centers.size))
-    out[np.arange(x.size), i0] = 1 - w
-    out[np.arange(x.size), i0 + 1] += w
-    return out
+def _weights(points: np.ndarray, centers: np.ndarray) -> np.ndarray:
+    """Linear interpolation from values at ``centers`` to ``points`` as a matrix
+    (len(points), len(centers)), holding the ends beyond the outer centers."""
+    position = np.clip(np.interp(points, centers, np.arange(centers.size)), 0, centers.size - 1)
+    center_below = np.minimum(np.floor(position).astype(int), centers.size - 2)
+    weight = position - center_below
+    matrix = np.zeros((points.size, centers.size))
+    matrix[np.arange(points.size), center_below] = 1 - weight
+    matrix[np.arange(points.size), center_below + 1] += weight
+    return matrix
 
 
 def gains(cut_db: np.ndarray, f: np.ndarray, t: np.ndarray, span: float, fs: float) -> np.ndarray:
@@ -124,7 +115,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     STFT, the result's STFT)``, both with the mask's window and on one
     scale (the result's before it is normalized to RMS 1)."""
     check(state)
-    original = edit.source(state, silent="there is nothing to erase")
+    original = sources.source(state, silent="there is nothing to erase")
     yield 1 / 3
     analysis = frame().analyze(original)
     duration, fs = float(state["duration"]), float(state["fs"])
@@ -141,12 +132,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
 
 def synthesize(state: Mapping[str, Any]) -> so.Sound:
     """The sound ``state`` describes."""
-    work = steps(state)
-    while True:
-        try:
-            next(work)
-        except StopIteration as done:
-            return done.value[0]
+    return shared.finish(steps(state))[0]
 
 
 def pictures(source: so.STFT, result: so.STFT, max_windows: int = 1200) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -155,27 +141,27 @@ def pictures(source: so.STFT, result: so.STFT, max_windows: int = 1200) -> tuple
     at ``PICTURE_FLOOR_DB`` below the loudest of the two and 255 at it:
     both on one scale, so what was taken out is darker in the result."""
     def magnitude(stft):
-        m = np.abs(stft.data[0])
-        step = max(1, math.ceil(m.shape[1] / max_windows))
-        return m[:, ::step], step
+        every_window = np.abs(stft.data[0])
+        step = max(1, math.ceil(every_window.shape[1] / max_windows))
+        return every_window[:, ::step], step
 
-    (a, step), (b, _) = magnitude(source), magnitude(result)
-    peak = max(a.max(), b.max(), 1e-12)
+    (source_magnitude, step), (result_magnitude, _) = magnitude(source), magnitude(result)
+    peak = max(source_magnitude.max(), result_magnitude.max(), 1e-12)
 
-    def picture(m, stft):
-        level = 20 * np.log10(np.maximum(m, 1e-12) / peak)
+    def picture(shown, stft):
+        level = 20 * np.log10(np.maximum(shown, 1e-12) / peak)
         scaled = np.round(255 * (1 - np.clip(level, PICTURE_FLOOR_DB, 0) / PICTURE_FLOOR_DB))
         return {
             "data": np.ascontiguousarray(scaled, dtype=np.uint8).tobytes(),
-            "n_freqs": int(m.shape[0]),
-            "n_windows": int(m.shape[1]),
+            "n_freqs": int(shown.shape[0]),
+            "n_windows": int(shown.shape[1]),
             "f_max": float(stft.f[-1]),
             "t_start": float(stft.t[0]),
             "t_step": float(stft.t[step] - stft.t[0]) if stft.t.size > step else float(stft.t[1] - stft.t[0]),
             "floor_db": PICTURE_FLOOR_DB,
         }
 
-    return picture(a, source), picture(b, result)
+    return picture(source_magnitude, source), picture(result_magnitude, result)
 
 
 # The mask the tab starts from: nothing cut, so the first Play is the source.

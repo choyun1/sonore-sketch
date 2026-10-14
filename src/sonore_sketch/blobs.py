@@ -29,13 +29,15 @@ so each constrains the other (``_toward_blobs``; tools/measure_loop.py).
 
 from __future__ import annotations
 
-import math
 import re
 from collections.abc import Iterator, Mapping
 from typing import Any
 
 import numpy as np
 import sonore as so
+
+from . import shared
+from .shared import number
 
 FORMAT = 1
 MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
@@ -52,40 +54,36 @@ BAND_FLOOR_DB = -60.0  # what lies outside every band (K2)
 BAND_WINDOW_S = 0.02  # the STFT the bands are applied on (K1)
 
 
-def _number(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
-
-
 def check(state: Mapping[str, Any]) -> None:
     """Raise ``ValueError`` saying what is wrong with ``state``, if anything."""
     if state.get("blobs") != FORMAT:
         raise ValueError(f"not a Draw modulation state of format {FORMAT}: 'blobs' is {state.get('blobs')!r}")
     duration, fs = state.get("duration"), state.get("fs")
-    if not _number(duration) or not 0 < duration <= MAX_DURATION:
+    if not number(duration) or not 0 < duration <= MAX_DURATION:
         raise ValueError(f"'duration' must be a number of seconds in (0, {MAX_DURATION:g}], not {duration!r}")
-    if not _number(fs) or fs <= 0:
+    if not number(fs) or fs <= 0:
         raise ValueError(f"'fs' must be a positive sampling rate, not {fs!r}")
     f_lo, f_hi = state.get("f_lo"), state.get("f_hi")
-    if not (_number(f_lo) and _number(f_hi) and 0 < f_lo < f_hi < fs / 2):
+    if not (number(f_lo) and number(f_hi) and 0 < f_lo < f_hi < fs / 2):
         raise ValueError(f"the frequency range must have 0 < f_lo < f_hi < fs/2 = {fs / 2:g} Hz, not {f_lo!r}-{f_hi!r}")
     if not (isinstance(state.get("bands_per_octave"), int) and state["bands_per_octave"] >= 1):
         raise ValueError("'bands_per_octave' must be a whole number of at least 1")
     if state.get("carrier", "tones") not in CARRIERS:
         raise ValueError(f"'carrier' must be one of {CARRIERS}, not {state.get('carrier')!r}")
     f0 = state.get("f0", 100)
-    if state.get("carrier") == "harmonic" and not (_number(f0) and 20 <= f0 <= f_hi):
+    if state.get("carrier") == "harmonic" and not (number(f0) and 20 <= f0 <= f_hi):
         raise ValueError(f"'f0' must be a frequency from 20 Hz up to f_hi for the harmonic carrier, not {f0!r}")
     iterations = state.get("iterations", 0)
     if not (isinstance(iterations, int) and 0 <= iterations <= MAX_ITERATIONS):
         raise ValueError(f"'iterations' must be a whole number from 0 to {MAX_ITERATIONS}, not {iterations!r}")
     depth = state.get("rms_depth", 0.2)
-    if not (_number(depth) and 0 < depth <= 1):
+    if not (number(depth) and 0 < depth <= 1):
         raise ValueError(f"'rms_depth' must be a number in (0, 1], not {depth!r}")
     items = state.get("items")
     if not isinstance(items, list) or len(items) > MAX_BLOBS:
         raise ValueError(f"'items' must be a list of at most {MAX_BLOBS} blobs")
     for i, item in enumerate(items):
-        if not isinstance(item, Mapping) or not all(_number(item.get(key)) for key in ITEM_KEYS):
+        if not isinstance(item, Mapping) or not all(number(item.get(key)) for key in ITEM_KEYS):
             raise ValueError(f"blob {i + 1} must give a number for each of {', '.join(ITEM_KEYS)}")
         if item["rate"] == 0 or item["rate_width"] <= 0 or item["density_width"] <= 0:
             raise ValueError(f"blob {i + 1} needs a nonzero rate and positive widths")
@@ -98,31 +96,35 @@ def check(state: Mapping[str, Any]) -> None:
         _check_band(band, i, duration, f_lo, f_hi)
 
 
-def _check_band(band: Any, i: int, duration: float, f_lo: float, f_hi: float) -> None:
-    name = f"band {i + 1}"
+def _check_band(band: Any, index: int, duration: float, f_lo: float, f_hi: float) -> None:
+    name = f"band {index + 1}"
     if not isinstance(band, Mapping):
         raise ValueError(f"{name} must be an object with points, width and level")
     width, level = band.get("width"), band.get("level", 0)
-    if not (_number(width) and BAND_WIDTHS[0] - 1e-9 <= width <= BAND_WIDTHS[1]):
+    if not (number(width) and BAND_WIDTHS[0] - 1e-9 <= width <= BAND_WIDTHS[1]):
         raise ValueError(f"{name}'s width must be from 1/6 to {BAND_WIDTHS[1]:g} octaves, not {width!r}")
-    if not (_number(level) and BAND_LEVELS[0] <= level <= BAND_LEVELS[1]):
+    if not (number(level) and BAND_LEVELS[0] <= level <= BAND_LEVELS[1]):
         raise ValueError(f"{name}'s level must be from {BAND_LEVELS[0]:g} to {BAND_LEVELS[1]:g} dB, not {level!r}")
     points = band.get("points")
-    if not (isinstance(points, list) and points and all(isinstance(p, (list, tuple)) and len(p) == 2 and all(_number(v) for v in p) for p in points)):
+    if not (
+        isinstance(points, list)
+        and points
+        and all(isinstance(point, (list, tuple)) and len(point) == 2 and all(number(value) for value in point) for point in points)
+    ):
         raise ValueError(f"{name} needs a list of [time, Hz] points")
-    times = [p[0] for p in points]
-    if any(b <= a for a, b in zip(times, times[1:])) or times[0] < 0 or times[-1] > duration + 1e-9:
+    times = [point[0] for point in points]
+    if any(later <= earlier for earlier, later in zip(times, times[1:])) or times[0] < 0 or times[-1] > duration + 1e-9:
         raise ValueError(f"{name}'s times must increase, within 0 to {duration:g} s")
-    if any(not f_lo <= p[1] <= f_hi for p in points):
+    if any(not f_lo <= point[1] <= f_hi for point in points):
         raise ValueError(f"{name}'s center must stay within {f_lo:g}-{f_hi:g} Hz")
 
 
 def band_centers(points: list, t: np.ndarray) -> np.ndarray:
     """A band's center [Hz] at times ``t``: its points interpolated in log
     frequency, held past the first and the last."""
-    times = np.array([p[0] for p in points], float)
-    hz = np.array([p[1] for p in points], float)
-    return 2 ** np.interp(t, times, np.log2(hz))
+    times = np.array([point[0] for point in points], float)
+    centers = np.array([point[1] for point in points], float)
+    return 2 ** np.interp(t, times, np.log2(centers))
 
 
 def band_gain(bands: list, freqs: np.ndarray, t: np.ndarray) -> np.ndarray:
@@ -179,12 +181,7 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     """The sound ``state`` describes. A depth one draw cannot reach is
     sonore's ``ValueError``, which names the depth that fits; when that is
     within 10% of the depth asked, the draw is heard at it instead."""
-    work = steps(state)
-    while True:
-        try:
-            next(work)
-        except StopIteration as done:
-            return done.value
+    return shared.finish(steps(state))
 
 
 def steps(state: Mapping[str, Any]) -> Iterator[float]:
@@ -222,20 +219,9 @@ def steps(state: Mapping[str, Any]) -> Iterator[float]:
     drawn = target(carried) if iterations else None
     for i in range(iterations):
         # with bands, back and forth between the blobs and the bands; without, to_sound's own iterations
-        sound = band_limit(_toward_blobs(sound, drawn, bands), bands) if bands else _toward_drawn(sound, drawn)
+        sound = band_limit(_toward_blobs(sound, drawn, bands), bands) if bands else shared.toward(sound, drawn)
         yield (i + 2) / (iterations + 1)
     return sound.normalize() if sound.rms > 0 else sound
-
-
-def _toward_drawn(sound: so.Sound, drawn: so.ModulationSpectrum) -> so.Sound:
-    """One of ``to_sound``'s own iterations (sonore, ``iterations``):
-    keep the sound's fine structure and modulation phase, impose the drawn
-    magnitudes. Taken here one at a time so the page can show its progress;
-    the result is the same as ``to_sound(iterations=n)``."""
-    subbands = drawn._analysis.filterbank.analyze(sound)
-    envelopes = drawn._rebuild(drawn._modulation_phase(subbands), quiet=True)
-    out = (envelopes * subbands.tfs()).to_sound()
-    return so.Sound(out.data[: sound.n_samples], sound.fs)
 
 
 def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) -> so.Sound:
@@ -249,14 +235,14 @@ def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) ->
     and its filterbank, which ``to_sound`` uses for its own iterations."""
     bank = drawn._analysis.filterbank
     subbands = bank.analyze(sound)
-    env = subbands.envelopes(fs=ENV_FS).data.mean(axis=2)[:, 1:-1]  # (time, band), edges dropped
-    gain = band_gain(bands, bank.cfs[1:-1], np.arange(env.shape[0]) / ENV_FS)
+    envelopes = subbands.envelopes(fs=ENV_FS).data.mean(axis=2)[:, 1:-1]  # (time, band), edges dropped
+    gain = band_gain(bands, bank.cfs[1:-1], np.arange(envelopes.shape[0]) / ENV_FS)
     weight = gain / gain.max()
-    relative = env / np.maximum(gain, 10 ** (BAND_FLOOR_DB / 20))
+    relative = envelopes / np.maximum(gain, 10 ** (BAND_FLOOR_DB / 20))
     relative = relative / (np.sum(weight * relative) / np.sum(weight))  # mean 1 within the bands
     phase = np.angle(np.fft.fft2((weight * (relative - 1)).T))
     rebuilt = drawn._mean + np.real(np.fft.ifft2(drawn._magnitude * np.exp(1j * phase)))
-    values = np.zeros((env.shape[0], bank.n_filters))
+    values = np.zeros((envelopes.shape[0], bank.n_filters))
     values[:, 1:-1] = gain * np.maximum(rebuilt.T, 0)
     out = (so.Envelopes(values, ENV_FS, bank) * subbands.tfs()).to_sound()
     return so.Sound(out.data[: sound.n_samples], sound.fs)
@@ -316,15 +302,15 @@ def measured(sound: so.Sound, state: Mapping[str, Any]) -> so.ModulationSpectrum
     bank = so.cosine_filterbank(
         f_lo=float(state["f_lo"]), f_hi=float(state["f_hi"]), spacing=1 / int(state["bands_per_octave"]), scale="octave"
     )
-    env = bank.analyze(sound.mono()).envelopes(fs=ENV_FS).data.mean(axis=2)[:, 1:-1]  # (time, band), edges dropped
+    envelopes = bank.analyze(sound.mono()).envelopes(fs=ENV_FS).data.mean(axis=2)[:, 1:-1]  # (time, band), edges dropped
     if state.get("bands"):
-        t = np.arange(env.shape[0]) / ENV_FS
+        t = np.arange(envelopes.shape[0]) / ENV_FS
         gain = band_gain(state["bands"], bank.cfs[1:-1], t)
         weight = gain / gain.max()
-        relative = env / np.maximum(gain, 10 ** (BAND_FLOOR_DB / 20))
+        relative = envelopes / np.maximum(gain, 10 ** (BAND_FLOOR_DB / 20))
         mean = np.sum(weight * relative) / np.sum(weight)
-        env = weight * (relative / mean - 1)
-    return so.ModulationSpectrum.from_array(env.T, dt=1 / ENV_FS, dx=bank.spacing, spectral_unit=f"cyc/{bank.unit}")
+        envelopes = weight * (relative / mean - 1)
+    return so.ModulationSpectrum.from_array(envelopes.T, dt=1 / ENV_FS, dx=bank.spacing, spectral_unit=f"cyc/{bank.unit}")
 
 
 def measured_picture(spectrum: so.ModulationSpectrum) -> dict[str, Any]:
@@ -332,18 +318,18 @@ def measured_picture(spectrum: so.ModulationSpectrum) -> dict[str, Any]:
     ``MEASURED_FLOOR_DB`` below the peak and 255 at it, the peak taken away
     from rate 0 (the long-term spectrum, which the plane does not show).
     Rows are densities from 0 up, columns rates from the most negative."""
-    rates = np.abs(spectrum.w_t) <= MEASURED_RATE_MAX
-    densities = spectrum.w_f <= MEASURED_DENSITY_MAX + 1e-9
-    level = spectrum.level[np.ix_(densities, rates)]
-    w_t = spectrum.w_t[rates]
-    peak = level[:, np.abs(w_t) > 0].max()
+    rate_shown = np.abs(spectrum.w_t) <= MEASURED_RATE_MAX
+    density_shown = spectrum.w_f <= MEASURED_DENSITY_MAX + 1e-9
+    level = spectrum.level[np.ix_(density_shown, rate_shown)]
+    rates = spectrum.w_t[rate_shown]
+    peak = level[:, np.abs(rates) > 0].max()
     scaled = np.round(255 * (1 - np.clip(level - peak, MEASURED_FLOOR_DB, 0) / MEASURED_FLOOR_DB))
     return {
         "data": np.ascontiguousarray(scaled, dtype=np.uint8).tobytes(),
         "n_densities": int(level.shape[0]),
         "n_rates": int(level.shape[1]),
-        "rate_first": float(w_t[0]),
-        "rate_step": float(w_t[1] - w_t[0]),
+        "rate_first": float(rates[0]),
+        "rate_step": float(rates[1] - rates[0]),
         "density_step": float(spectrum.w_f[1]),
         "floor_db": MEASURED_FLOOR_DB,
     }
