@@ -78,11 +78,11 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
         <p class="hint">Paint on the spectrogram to erase that part of the sound; right-drag restores it. Harmonics are the evenly spaced lines, so one is a straight stroke. Space plays.</p>
       </aside>
     </div>`;
-  const $ = (selector) => root.querySelector(selector);
-  const canvas = $("canvas.filter-plane");
+  const query = (selector) => root.querySelector(selector);
+  const canvas = query("canvas.filter-plane");
   const ui = {
-    size: $(".size"), softness: $(".softness"), cut: $(".cut"),
-    result: $("canvas.filter-result"), wave: $("canvas.wave"),
+    size: query(".size"), softness: query(".softness"), cut: query(".cut"),
+    result: query("canvas.filter-result"), wave: query("canvas.wave"),
   };
   for (const input of root.querySelectorAll('input[name="mask-mode"]')) input.addEventListener("change", () => (mode = input.value));
   function setMode(next) {
@@ -113,7 +113,8 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   }
 
   // The source's identity: its picture is kept while only the mask changes.
-  const sourceKey = (s) => JSON.stringify([s.source, s.duration, s.fs, s.speech ?? null, s.recording?.pcm16.length ?? 0, s.recording?.name ?? ""]);
+  const sourceKey = (tabState) =>
+    JSON.stringify([tabState.source, tabState.duration, tabState.fs, tabState.speech ?? null, tabState.recording?.pcm16.length ?? 0, tabState.recording?.name ?? ""]);
 
   const showSettings = attachSourceControls(root, { state: () => state, commit, openRecording, hasRecording, log });
 
@@ -133,35 +134,35 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
       x: (t) => x0 + (t / duration) * (x1 - x0),
       y: (f) => y1 - (f / nyquist) * (y1 - y0),
       // a pixel's place on the mask, in cells: [row from 0 Hz, column]
-      cell: (px, py) => [((y1 - py) / (y1 - y0)) * ROWS, ((px - x0) / (x1 - x0)) * COLUMNS],
+      cell: (x, y) => [((y1 - y) / (y1 - y0)) * ROWS, ((x - x0) / (x1 - x0)) * COLUMNS],
     };
   }
 
   // A spectrogram (`shown`, in the mask's STFT) darkened where `mask` cuts,
   // into `image`, one pixel per CSS pixel of the plot.
-  function picture(g, shown, mask, image) {
-    const width = Math.max(1, Math.round(g.x1 - g.x0));
-    const height = Math.max(1, Math.round(g.y1 - g.y0));
+  function picture(plot, shown, mask, image) {
+    const width = Math.max(1, Math.round(plot.x1 - plot.x0));
+    const height = Math.max(1, Math.round(plot.y1 - plot.y0));
     image.width = width;
     image.height = height;
     const context = image.getContext("2d");
     const pixels = context.createImageData(width, height);
     const floor = magma(0);
-    const rowOf = Int32Array.from({ length: height }, (_, py) => Math.min(ROWS - 1, Math.max(0, Math.floor(((height - py - 0.5) / height) * ROWS))));
-    const binOf = Int32Array.from({ length: height }, (_, py) =>
-      shown ? Math.round((((height - py - 0.5) / height) * g.nyquist / shown.fMax) * (shown.nFreqs - 1)) : -1,
+    const maskRowOf = Int32Array.from({ length: height }, (_, pixelY) => Math.min(ROWS - 1, Math.max(0, Math.floor(((height - pixelY - 0.5) / height) * ROWS))));
+    const binOf = Int32Array.from({ length: height }, (_, pixelY) =>
+      shown ? Math.round((((height - pixelY - 0.5) / height) * plot.nyquist / shown.fMax) * (shown.nFreqs - 1)) : -1,
     );
-    for (let px = 0; px < width; px++) {
-      const t = ((px + 0.5) / width) * g.duration;
-      const column = Math.min(COLUMNS - 1, Math.floor(((px + 0.5) / width) * COLUMNS));
+    for (let pixelX = 0; pixelX < width; pixelX++) {
+      const t = ((pixelX + 0.5) / width) * plot.duration;
+      const column = Math.min(COLUMNS - 1, Math.floor(((pixelX + 0.5) / width) * COLUMNS));
       const timeWindow = shown ? Math.round((t - shown.tStart) / shown.tStep) : -1;
       const inside = shown && timeWindow >= 0 && timeWindow < shown.nWindows;
-      for (let py = 0; py < height; py++) {
-        const bin = binOf[py];
+      for (let pixelY = 0; pixelY < height; pixelY++) {
+        const bin = binOf[pixelY];
         const color = inside && bin >= 0 && bin < shown.nFreqs ? magma(shown.data[bin * shown.nWindows + timeWindow] / 255) : floor;
-        const cut = mask ? Math.min(mask[rowOf[py] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
+        const cut = mask ? Math.min(mask[maskRowOf[pixelY] * COLUMNS + column], -FLOOR_DB) / -FLOOR_DB : 0;
         const keep = 1 - 0.6 * cut; // erased cells stay readable underneath
-        const i = 4 * (py * width + px);
+        const i = 4 * (pixelY * width + pixelX);
         pixels.data[i] = color[0] * keep;
         pixels.data[i + 1] = color[1] * keep;
         pixels.data[i + 2] = color[2] * keep;
@@ -173,32 +174,32 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   }
 
   // The mask's outline: cell edges where the cut crosses OUTLINE_DB.
-  function outline(context, g, mask) {
-    const columnX = (c) => g.x0 + (c / COLUMNS) * (g.x1 - g.x0);
-    const rowY = (r) => g.y1 - (r / ROWS) * (g.y1 - g.y0);
+  function outline(context, plot, mask) {
+    const columnX = (column) => plot.x0 + (column / COLUMNS) * (plot.x1 - plot.x0);
+    const rowY = (row) => plot.y1 - (row / ROWS) * (plot.y1 - plot.y0);
     drawMaskOutline(context, mask, ROWS, COLUMNS, OUTLINE_DB, columnX, rowY);
   }
 
-  function axes(context, target, g) {
-    drawFrame(context, target, g);
-    const fStep = FREQUENCY_STEPS.find((s) => ((g.y1 - g.y0) * s) / g.nyquist >= 28) ?? 5000;
+  function axes(context, target, plot) {
+    drawFrame(context, target, plot);
+    const frequencyStep = FREQUENCY_STEPS.find((step) => ((plot.y1 - plot.y0) * step) / plot.nyquist >= 28) ?? 5000;
     const frequencies = [];
-    for (let f = 0; f <= g.nyquist + 1e-9; f += fStep) frequencies.push(f);
-    drawValueTicks(context, g, frequencies, g.y, frequencyLabel);
-    drawAxisName(context, g, "Hz");
-    drawTimeTicks(context, g, g.duration, 5);
-    if (playhead !== null) drawPlayhead(context, g, g.x(playhead), "#ffffff");
+    for (let f = 0; f <= plot.nyquist + 1e-9; f += frequencyStep) frequencies.push(f);
+    drawValueTicks(context, plot, frequencies, plot.y, frequencyLabel);
+    drawAxisName(context, plot, "Hz");
+    drawTimeTicks(context, plot, plot.duration, 5);
+    if (playhead !== null) drawPlayhead(context, plot, plot.x(playhead), "#ffffff");
   }
 
   // The pictures are redrawn only when what they show changes, not for the playhead.
-  const image = document.createElement("canvas");
+  const planeImage = document.createElement("canvas");
   const resultImage = document.createElement("canvas");
   const drawn = new Map(); // image -> [shown, mask, width, height, duration, fs]
-  function cached(g, shown, mask, target) {
-    const key = [shown, mask, Math.round(g.x1 - g.x0), Math.round(g.y1 - g.y0), g.duration, g.nyquist];
+  function cached(plot, shown, mask, target) {
+    const key = [shown, mask, Math.round(plot.x1 - plot.x0), Math.round(plot.y1 - plot.y0), plot.duration, plot.nyquist];
     const last = drawn.get(target);
-    if (!last || key.some((k, i) => k !== last[i])) {
-      picture(g, shown, mask, target);
+    if (!last || key.some((part, i) => part !== last[i])) {
+      picture(plot, shown, mask, target);
       drawn.set(target, key);
     }
     return target;
@@ -207,17 +208,17 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   function render() {
     if (!state) return;
     const context = fitCanvasInCssPixels(canvas);
-    const g = geometry();
-    context.clearRect(0, 0, g.width, g.height);
+    const plot = geometry();
+    context.clearRect(0, 0, plot.width, plot.height);
     const mask = stroke?.preview ?? bytes;
     context.imageSmoothingEnabled = false;
-    context.drawImage(cached(g, source?.picture ?? null, mask, image), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-    axes(context, canvas, g);
+    context.drawImage(cached(plot, source?.picture ?? null, mask, planeImage), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
+    axes(context, canvas, plot);
     if (mask) {
       context.strokeStyle = "rgba(255, 255, 255, 0.85)";
-      outline(context, g, mask);
+      outline(context, plot, mask);
     }
-    drawTitle(context, g, source ? "The source's spectrogram; what is erased is darkened and outlined" : "The source's spectrogram: Play to see it");
+    drawTitle(context, plot, source ? "The source's spectrogram; what is erased is darkened and outlined" : "The source's spectrogram: Play to see it");
     if (pointer) drawBrush(context, pointer, Number(ui.size.value));
   }
 
@@ -227,21 +228,21 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
     const target = ui.result;
     const context = fitCanvasInCssPixels(target);
     if (!state) return;
-    const g = geometry(target);
-    context.clearRect(0, 0, g.width, g.height);
+    const plot = geometry(target);
+    context.clearRect(0, 0, plot.width, plot.height);
     const shown = sound?.resultStft ?? null;
     context.imageSmoothingEnabled = false;
-    context.drawImage(cached(g, shown, null, resultImage), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
-    axes(context, target, g);
+    context.drawImage(cached(plot, shown, null, resultImage), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
+    axes(context, target, plot);
     // on the duration shown: the result keeps its own seconds, as its spectrogram does
     const mask = resultMask && retime(resultMask.bytes, resultMask.duration, state.duration);
     if (mask && shown) {
       context.strokeStyle = "rgba(255, 255, 255, 0.6)";
       context.setLineDash([3, 3]);
-      outline(context, g, mask);
+      outline(context, plot, mask);
       context.setLineDash([]);
     }
-    drawTitle(context, g, shown ? "The result's spectrogram; what was erased is outlined" : "The result's spectrogram: Play to hear it");
+    drawTitle(context, plot, shown ? "The result's spectrogram; what was erased is outlined" : "The result's spectrogram: Play to hear it");
   }
 
   function renderWave() {
@@ -257,18 +258,18 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
 
   const local = (event) => pointerPosition(canvas, event);
 
-  function brush(g) {
+  function brush(plot) {
     const radius = Number(ui.size.value) / 2;
     return {
-      rRow: Math.max(0.5, (radius / (g.y1 - g.y0)) * ROWS),
-      rColumn: Math.max(0.5, (radius / (g.x1 - g.x0)) * COLUMNS),
+      rowRadius: Math.max(0.5, (radius / (plot.y1 - plot.y0)) * ROWS),
+      columnRadius: Math.max(0.5, (radius / (plot.x1 - plot.x0)) * COLUMNS),
       softness: Number(ui.softness.value),
     };
   }
 
   function dabAt(at) {
-    const { rRow, rColumn, softness } = brush(geometry());
-    dab(stroke.weights, ROWS, COLUMNS, at[0], at[1], rRow, rColumn, softness);
+    const { rowRadius, columnRadius, softness } = brush(geometry());
+    dab(stroke.weights, ROWS, COLUMNS, at[0], at[1], rowRadius, columnRadius, softness);
   }
 
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
@@ -288,11 +289,11 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   canvas.addEventListener("pointermove", (event) => {
     pointer = local(event);
     if (stroke) {
-      const { rRow, rColumn } = brush(geometry());
+      const { rowRadius, columnRadius } = brush(geometry());
       const moves = event.getCoalescedEvents?.() ?? [event];
       for (const move of moves.length ? moves : [event]) {
         const at = geometry().cell(...local(move));
-        for (const center of dabsAlong(stroke.last, at, rRow, rColumn)) dabAt(center);
+        for (const center of dabsAlong(stroke.last, at, rowRadius, columnRadius)) dabAt(center);
         stroke.last = at;
       }
       stroke.preview = applyCut(bytes, stroke.weights, stroke.target);
@@ -307,7 +308,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
     if (!stroke) return;
     const next = stroke.preview;
     stroke = null;
-    if (event.type === "pointercancel" || next.every((b, i) => b === bytes[i])) return render();
+    if (event.type === "pointercancel" || next.every((cell, i) => cell === bytes[i])) return render();
     bytes = next;
     renderAll();
     commitBytes(next);

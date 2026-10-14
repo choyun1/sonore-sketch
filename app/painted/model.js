@@ -44,7 +44,7 @@ export function octaves({ f_lo, f_hi }) {
 
 function toBase64(bytes) {
   let binary = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  for (let start = 0; start < bytes.length; start += 0x8000) binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
   return btoa(binary);
 }
 
@@ -82,7 +82,7 @@ export async function encodeLevels(bytes) {
 export async function decodeLevels(text, size) {
   let bytes;
   try {
-    bytes = await through(new DecompressionStream("deflate"), Uint8Array.from(atob(text), (c) => c.charCodeAt(0)), size);
+    bytes = await through(new DecompressionStream("deflate"), Uint8Array.from(atob(text), (letter) => letter.charCodeAt(0)), size);
   } catch (error) {
     if (error instanceof RangeError) throw new Error(`the painting holds more than ${size} cells`);
     throw new Error("the painting's levels are not base64 of deflated bytes");
@@ -138,46 +138,46 @@ export function blank(section) {
 }
 
 export function isSilent(bytes, section) {
-  return bytes.every((b) => b >= -section.floor_db);
+  return bytes.every((level) => level >= -section.floor_db);
 }
 
 // --- the brush -------------------------------------------------------------------
 
-// A brush's weight at normalized distance d from its center (1 at the rim):
+// A brush's weight at normalized `distance` from its center (1 at the rim):
 // 1 inside, falling to 0 at the rim over the outer `softness` of the radius.
-export function brushWeight(d, softness) {
-  if (d >= 1) return 0;
+export function brushWeight(distance, softness) {
+  if (distance >= 1) return 0;
   const inner = 1 - Math.min(1, Math.max(0, softness));
-  if (d <= inner) return 1;
-  return 0.5 * (1 + Math.cos((Math.PI * (d - inner)) / (1 - inner)));
+  if (distance <= inner) return 1;
+  return 0.5 * (1 + Math.cos((Math.PI * (distance - inner)) / (1 - inner)));
 }
 
-// Add one dab at (row, column), radius rRow x rColumn cells, to a stroke's
-// weights: each cell keeps the largest weight any dab gave it, so going over
-// a cell twice in one stroke does not paint it twice.
-export function dab(weights, nRows, nColumns, row, column, rRow, rColumn, softness) {
-  const r0 = Math.max(0, Math.floor(row - rRow));
-  const r1 = Math.min(nRows - 1, Math.ceil(row + rRow));
-  const c0 = Math.max(0, Math.floor(column - rColumn));
-  const c1 = Math.min(nColumns - 1, Math.ceil(column + rColumn));
-  for (let r = r0; r <= r1; r++) {
-    for (let c = c0; c <= c1; c++) {
-      const d = Math.hypot((r + 0.5 - row) / rRow, (c + 0.5 - column) / rColumn);
-      const w = brushWeight(d, softness);
-      const i = r * nColumns + c;
-      if (w > weights[i]) weights[i] = w;
+// Add one dab at (centerRow, centerColumn), radius rowRadius x columnRadius
+// cells, to a stroke's weights: each cell keeps the largest weight any dab
+// gave it, so going over a cell twice in one stroke does not paint it twice.
+export function dab(weights, nRows, nColumns, centerRow, centerColumn, rowRadius, columnRadius, softness) {
+  const firstRow = Math.max(0, Math.floor(centerRow - rowRadius));
+  const lastRow = Math.min(nRows - 1, Math.ceil(centerRow + rowRadius));
+  const firstColumn = Math.max(0, Math.floor(centerColumn - columnRadius));
+  const lastColumn = Math.min(nColumns - 1, Math.ceil(centerColumn + columnRadius));
+  for (let row = firstRow; row <= lastRow; row++) {
+    for (let column = firstColumn; column <= lastColumn; column++) {
+      const distance = Math.hypot((row + 0.5 - centerRow) / rowRadius, (column + 0.5 - centerColumn) / columnRadius);
+      const weight = brushWeight(distance, softness);
+      const i = row * nColumns + column;
+      if (weight > weights[i]) weights[i] = weight;
     }
   }
 }
 
-// Dab centers from a to b ([row, column]), `spacing` apart in the brush's own
-// normalized units, not including a (already dabbed).
-export function dabsAlong(a, b, rRow, rColumn, spacing = 0.25) {
-  const distance = Math.hypot((b[0] - a[0]) / rRow, (b[1] - a[1]) / rColumn);
-  const n = Math.max(1, Math.ceil(distance / spacing));
-  return Array.from({ length: n }, (_, k) => {
-    const f = (k + 1) / n;
-    return [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])];
+// Dab centers from `from` to `to` ([row, column]), `spacing` apart in the
+// brush's own normalized units, not including `from` (already dabbed).
+export function dabsAlong(from, to, rowRadius, columnRadius, spacing = 0.25) {
+  const distance = Math.hypot((to[0] - from[0]) / rowRadius, (to[1] - from[1]) / columnRadius);
+  const count = Math.max(1, Math.ceil(distance / spacing));
+  return Array.from({ length: count }, (_, k) => {
+    const fraction = (k + 1) / count;
+    return [from[0] + fraction * (to[0] - from[0]), from[1] + fraction * (to[1] - from[1])];
   });
 }
 
@@ -192,8 +192,8 @@ export function applyStroke(bytes, weights, target) {
 
 // The number typed in a field, or `fallback` when it holds none (so 0 stays 0).
 export function typedNumber(text, fallback) {
-  const n = String(text).trim() === "" ? NaN : Number(text);
-  return Number.isFinite(n) ? n : fallback;
+  const number = String(text).trim() === "" ? NaN : Number(text);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 // A stroke on a mask of cuts (dB below 0, as bytes): cutting (target above 0)
@@ -214,14 +214,14 @@ export function resampleRows(bytes, from, to) {
   const { columns } = from;
   const floor = -to.floor_db;
   const out = new Uint8Array(newRows * columns).fill(floor);
-  for (let r = 0; r < newRows; r++) {
-    const x = Math.log2(to.f_lo / from.f_lo) + ((r + 0.5) / newRows) * octaves(to); // octaves above old f_lo
-    const position = (x / octaves(from)) * oldRows - 0.5; // in old rows
+  for (let row = 0; row < newRows; row++) {
+    const aboveOldLow = Math.log2(to.f_lo / from.f_lo) + ((row + 0.5) / newRows) * octaves(to); // octaves above old f_lo
+    const position = (aboveOldLow / octaves(from)) * oldRows - 0.5; // in old rows
     if (position < -0.5 || position > oldRows - 0.5) continue;
-    const i = Math.min(oldRows - 2, Math.max(0, Math.floor(position)));
-    const w = Math.min(1, Math.max(0, position - i));
-    for (let c = 0; c < columns; c++) {
-      out[r * columns + c] = Math.round(bytes[i * columns + c] * (1 - w) + bytes[(i + 1) * columns + c] * w);
+    const below = Math.min(oldRows - 2, Math.max(0, Math.floor(position)));
+    const weight = Math.min(1, Math.max(0, position - below));
+    for (let column = 0; column < columns; column++) {
+      out[row * columns + column] = Math.round(bytes[below * columns + column] * (1 - weight) + bytes[(below + 1) * columns + column] * weight);
     }
   }
   return out;

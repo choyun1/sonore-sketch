@@ -45,25 +45,25 @@ export function defaultPage() {
 
 // A document from a file or a link, as version 2; throws an Error saying what
 // is wrong with it.
-export function upgrade(doc) {
-  if (doc?.trackdraw === tracks.FORMAT) {
-    const { sonore, duration, fs, mode = "klatt", params = {} } = doc;
+export function upgrade(opened) {
+  if (opened?.trackdraw === tracks.FORMAT) {
+    const { sonore, duration, fs, mode = "klatt", params = {} } = opened;
     return {
       app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
       tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
       mask: mask.defaultSection(),
     };
   }
-  if (doc?.app !== APP || doc.version !== VERSION) {
+  if (opened?.app !== APP || opened.version !== VERSION) {
     throw new Error(`not a sonore-sketch document of version ${VERSION}, or a TrackDraw document of format ${tracks.FORMAT}`);
   }
   // A tab added since the document was saved starts from its default.
   return {
-    ...doc,
-    painted: doc.painted ?? painted.defaultSection(),
-    blobs: doc.blobs ?? blobs.defaultSection(),
-    edit: doc.edit ?? edit.defaultSection(),
-    mask: doc.mask ?? mask.defaultSection(),
+    ...opened,
+    painted: opened.painted ?? painted.defaultSection(),
+    blobs: opened.blobs ?? blobs.defaultSection(),
+    edit: opened.edit ?? edit.defaultSection(),
+    mask: opened.mask ?? mask.defaultSection(),
   };
 }
 
@@ -129,8 +129,8 @@ export function withRecording(page, recording, seconds, tab = "edit") {
 }
 
 // Check and tidy a document from a file or a link (upgrading it if old).
-export function openDocument(doc) {
-  const page = upgrade(doc);
+export function openDocument(opened) {
+  const page = upgrade(opened);
   const state = tracks.tidyDocument(tracks.check(tabState(page, "tracks")));
   painted.check(tabState(page, "painted"));
   blobs.check(tabState(page, "blobs"));

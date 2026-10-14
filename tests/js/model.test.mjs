@@ -50,7 +50,7 @@ test("point edits: grab within tolerance, insert in order, move between neighbor
   const pts = [[0, 1], [0.2, 2], [0.4, 3]];
   assert.equal(nearestPoint(pts, 0.21, 0.02), 1);
   assert.equal(nearestPoint(pts, 0.3, 0.02), -1);
-  const { pts: added, index } = insertPoint(pts, 0.3, 9);
+  const { breakpoints: added, index } = insertPoint(pts, 0.3, 9);
   assert.equal(index, 2);
   assert.deepEqual(added.map(([t]) => t), [0, 0.2, 0.3, 0.4]);
   // Kept 0.1 ms inside its neighbors: sonore needs times to increase.

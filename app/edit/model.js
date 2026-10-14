@@ -41,14 +41,14 @@ export function defaultSection() {
 // --- the grid ---------------------------------------------------------------------
 
 // A column's center rate [Hz]: the negative side, 0 for the center column, the positive side.
-export function columnRate(c) {
-  if (c === SIDE) return 0;
-  const k = c > SIDE ? c - SIDE - 1 : SIDE - 1 - c;
-  const magnitude = RATE_MIN * 2 ** ((k + 0.5) / COLUMNS_PER_OCTAVE);
-  return c > SIDE ? magnitude : -magnitude;
+export function columnRate(column) {
+  if (column === SIDE) return 0;
+  const fromCenter = column > SIDE ? column - SIDE - 1 : SIDE - 1 - column; // columns out from the center one
+  const magnitude = RATE_MIN * 2 ** ((fromCenter + 0.5) / COLUMNS_PER_OCTAVE);
+  return column > SIDE ? magnitude : -magnitude;
 }
 
-export const rowDensity = (r) => (r + 0.5) * DENSITY_STEP;
+export const rowDensity = (row) => (row + 0.5) * DENSITY_STEP;
 
 // --- presets (E6) ------------------------------------------------------------------
 
@@ -61,9 +61,9 @@ export function blank() {
 // Keep rates below `rate` Hz: cut every faster column.
 export function keepBelow(rate) {
   const bytes = blank();
-  for (let c = 0; c < COLUMNS; c++) {
-    if (Math.abs(columnRate(c)) <= rate) continue;
-    for (let r = 0; r < ROWS; r++) bytes[r * COLUMNS + c] = REMOVED;
+  for (let column = 0; column < COLUMNS; column++) {
+    if (Math.abs(columnRate(column)) <= rate) continue;
+    for (let row = 0; row < ROWS; row++) bytes[row * COLUMNS + column] = REMOVED;
   }
   return bytes;
 }
@@ -72,16 +72,16 @@ export function keepBelow(rate) {
 // one side of the plane, above the first row (density 0 has no direction).
 export function removeSweeps(direction) {
   const bytes = blank();
-  for (let c = 0; c < COLUMNS; c++) {
-    const rate = columnRate(c);
+  for (let column = 0; column < COLUMNS; column++) {
+    const rate = columnRate(column);
     if (direction === "down" ? rate <= 0 : rate >= 0) continue;
-    for (let r = 1; r < ROWS; r++) bytes[r * COLUMNS + c] = REMOVED;
+    for (let row = 1; row < ROWS; row++) bytes[row * COLUMNS + column] = REMOVED;
   }
   return bytes;
 }
 
 export function isBlank(bytes) {
-  return bytes.every((b) => b === 0);
+  return bytes.every((cut) => cut === 0);
 }
 
 // --- checking --------------------------------------------------------------------

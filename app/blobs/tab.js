@@ -79,10 +79,10 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   let state = null;
   let selected = null; // index of the selected blob
   let drag = null; // {kind, index, items, changed, added} while a gesture lasts
-  let fits = null; // the depth sonore said fits, after it refused this one
-  let band = null; // {index, point} of the selected band (point: index or null)
+  let fittingDepth = null; // the depth sonore said fits, after it refused this one
+  let selectedBand = null; // {index, point} of the selected band (point: index or null)
   let bandDrag = null; // {kind, index, point, bands, changed, ...} while a gesture on the spectrogram lasts
-  let focus = "blob"; // what Delete removes: the selected "blob" or "band"
+  let deleteTarget = "blob"; // what Delete removes: the selected "blob" or "band"
 
   root.innerHTML = `
     <div class="blobs-body">
@@ -127,7 +127,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
         </fieldset>
         <fieldset><legend>Sound</legend>
           <label class="field" title="What carries the modulation: log-spaced tones (clearest), a harmonic complex on F0 (pitched), or noise (adds modulation of its own)">Carrier
-            <select class="carrier">${CARRIERS.map((c) => `<option value="${c}">${c}</option>`).join("")}</select></label>
+            <select class="carrier">${CARRIERS.map((carrier) => `<option value="${carrier}">${carrier}</option>`).join("")}</select></label>
           <label class="field f0-field" title="The harmonic complex's fundamental">F0 <input type="number" class="f0" min="20" max="1000" step="1"> Hz</label>
           <label class="field" title="How deep the modulation is: the envelopes' rms about their mean, relative to it">Depth <input type="number" class="depth" min="0.01" max="1" step="0.01"></label>
           <button type="button" class="use-depth" hidden></button>
@@ -139,15 +139,15 @@ export function createBlobsTab(root, { commit: commitDocument }) {
         <p class="hint">Click to add a blob, drag to move it, drag its squares to change its width and height. Space plays.</p>
       </aside>
     </div>`;
-  const $ = (selector) => root.querySelector(selector);
-  const canvas = $("canvas.plane");
+  const query = (selector) => root.querySelector(selector);
+  const canvas = query("canvas.plane");
   const ui = {
-    count: $(".blob-count"), edit: $(".blob-edit"), rate: $(".rate"), density: $(".density"),
-    rateWidth: $(".rate-width"), densityWidth: $(".density-width"), level: $(".level"), remove: $(".delete"),
-    carrier: $(".carrier"), f0: $(".f0"), f0Field: $(".f0-field"), stft: $("canvas.stft"), depth: $(".depth"), useDepth: $(".use-depth"), seed: $(".seed"), iterations: $(".iterations"), iterationsField: $(".iterations-field"),
-    newDraw: $(".new-draw"), coarse: $(".coarse"),
-    bandCount: $(".band-count"), bandEdit: $(".band-edit"), bandWidth: $(".band-width"), bandLevel: $(".band-level"),
-    removeBand: $(".delete-band"), addBand: $(".add-band"), bandMotion: $(".band-motion"), wave: $("canvas.wave"),
+    count: query(".blob-count"), edit: query(".blob-edit"), rate: query(".rate"), density: query(".density"),
+    rateWidth: query(".rate-width"), densityWidth: query(".density-width"), level: query(".level"), remove: query(".delete"),
+    carrier: query(".carrier"), f0: query(".f0"), f0Field: query(".f0-field"), stft: query("canvas.stft"), depth: query(".depth"), useDepth: query(".use-depth"), seed: query(".seed"), iterations: query(".iterations"), iterationsField: query(".iterations-field"),
+    newDraw: query(".new-draw"), coarse: query(".coarse"),
+    bandCount: query(".band-count"), bandEdit: query(".band-edit"), bandWidth: query(".band-width"), bandLevel: query(".band-level"),
+    removeBand: query(".delete-band"), addBand: query(".add-band"), bandMotion: query(".band-motion"), wave: query("canvas.wave"),
   };
 
   // The bands' drawing tools, as on the Draw speech tab: Point moves breakpoints
@@ -155,7 +155,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   // Line and Freehand draw a stroke that replaces the band's track over its
   // span, on the band pressed in, or make a new band when pressed outside.
   let bandTool = "point";
-  const toolBox = $(".band-tools");
+  const toolBox = query(".band-tools");
   for (const { id, label, key, title } of BAND_TOOLS) {
     const node = document.createElement("label");
     node.className = "band-tool";
@@ -180,14 +180,14 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   // --- the side panel ------------------------------------------------------------
 
   function showSettings() {
-    const list = items();
-    if (selected !== null && selected >= list.length) selected = list.length ? list.length - 1 : null;
-    const blob = selected === null ? null : list[selected];
+    const blobList = items();
+    if (selected !== null && selected >= blobList.length) selected = blobList.length ? blobList.length - 1 : null;
+    const blob = selected === null ? null : blobList[selected];
     ui.edit.hidden = !blob;
     ui.count.textContent =
-      list.length >= MAX_BLOBS
-        ? `${list.length} of ${MAX_BLOBS} blobs: delete one to add another.`
-        : `${list.length} of ${MAX_BLOBS} blobs.${blob ? "" : " Click a blob to edit it, or empty space to add one."}`;
+      blobList.length >= MAX_BLOBS
+        ? `${blobList.length} of ${MAX_BLOBS} blobs: delete one to add another.`
+        : `${blobList.length} of ${MAX_BLOBS} blobs.${blob ? "" : " Click a blob to edit it, or empty space to add one."}`;
     if (blob) {
       ui.rate.value = blob.rate;
       ui.density.value = blob.density;
@@ -202,11 +202,11 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     ui.seed.value = state.seed;
     ui.iterations.value = state.iterations ?? 0;
     ui.iterationsField.hidden = state.carrier === "harmonic" && !state.bands?.length;
-    ui.useDepth.hidden = fits === null;
-    if (fits !== null) ui.useDepth.textContent = `Use depth ${fits}`;
+    ui.useDepth.hidden = fittingDepth === null;
+    if (fittingDepth !== null) ui.useDepth.textContent = `Use depth ${fittingDepth}`;
     const bandList = bands();
-    if (band !== null && !bandList[band.index]) band = null;
-    const chosen = band === null ? null : bandList[band.index];
+    if (selectedBand !== null && !bandList[selectedBand.index]) selectedBand = null;
+    const chosen = selectedBand === null ? null : bandList[selectedBand.index];
     ui.bandEdit.hidden = !chosen;
     ui.addBand.disabled = bandList.length >= MAX_BANDS;
     ui.bandCount.textContent = !bandList.length
@@ -216,7 +216,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
       ui.bandWidth.value = +chosen.width.toFixed(2);
       ui.bandLevel.value = chosen.level ?? 0;
     }
-    ui.bandMotion.hidden = !bandList.some((b) => b.points.some(([, f]) => f !== b.points[0][1]));
+    ui.bandMotion.hidden = !bandList.some((band) => band.points.some(([, f]) => f !== band.points[0][1]));
     const { rateStep } = grid(state);
     ui.coarse.hidden = state.duration >= COARSE_BELOW_S;
     ui.coarse.textContent = `At ${state.duration} s, rates come in steps of ${+rateStep.toFixed(2)} Hz, coarse below about 8 Hz; ${COARSE_BELOW_S} s or more shows low rates finer.`;
@@ -229,7 +229,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
       if (!blob || !Number.isFinite(value) || (key === "rate" && value === 0)) return showSettings();
       const next = tidy(clamp(value));
       if (next === blob[key]) return showSettings();
-      commitItems(state.items.map((b, i) => (i === selected ? { ...b, [key]: next } : b)));
+      commitItems(state.items.map((item, i) => (i === selected ? { ...item, [key]: next } : item)));
     };
   }
   const fieldOf = { rate: "rate", density: "density", rate_width: "rateWidth", density_width: "densityWidth", level: "level" };
@@ -237,48 +237,48 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   ui.density.addEventListener("change", editSelected("density", clampDensity));
   ui.rateWidth.addEventListener("change", editSelected("rate_width", clampWidth));
   ui.densityWidth.addEventListener("change", editSelected("density_width", clampWidth));
-  ui.level.addEventListener("change", editSelected("level", (x) => Math.min(0, Math.max(-40, x))));
+  ui.level.addEventListener("change", editSelected("level", (level) => Math.min(0, Math.max(-40, level))));
   ui.remove.addEventListener("click", removeSelected);
 
   function editBand(key, clamp) {
     return () => {
-      const chosen = band && state.bands?.[band.index];
+      const chosen = selectedBand && state.bands?.[selectedBand.index];
       const value = Number(ui[key === "width" ? "bandWidth" : "bandLevel"].value);
       if (!chosen || !Number.isFinite(value)) return showSettings();
       const next = Math.round(clamp(value) * 100) / 100;
       if (next === (chosen[key] ?? 0)) return showSettings();
-      commitBands(state.bands.map((b, i) => (i === band.index ? { ...b, [key]: next } : b)));
+      commitBands(state.bands.map((band, i) => (i === selectedBand.index ? { ...band, [key]: next } : band)));
     };
   }
   ui.bandWidth.addEventListener("change", editBand("width", clampBandWidth));
   ui.bandLevel.addEventListener("change", editBand("level", clampBandLevel));
   ui.removeBand.addEventListener("click", () => {
-    focus = "band";
-    if (band) band.point = null;
+    deleteTarget = "band";
+    if (selectedBand) selectedBand.point = null;
     removeBandOrPoint();
   });
   ui.addBand.addEventListener("click", () => {
-    const list = state.bands ?? [];
-    if (list.length >= MAX_BANDS) return;
-    band = { index: list.length, point: null };
-    focus = "band";
-    commitBands([...list, newBand(list, state.duration)]);
+    const bandList = state.bands ?? [];
+    if (bandList.length >= MAX_BANDS) return;
+    selectedBand = { index: bandList.length, point: null };
+    deleteTarget = "band";
+    commitBands([...bandList, newBand(bandList, state.duration)]);
   });
 
   // Delete removes the selected breakpoint (a band keeps at least one), or,
   // with none selected, the band.
   function removeBandOrPoint() {
-    const list = state.bands ?? [];
-    const chosen = band && list[band.index];
+    const bandList = state.bands ?? [];
+    const chosen = selectedBand && bandList[selectedBand.index];
     if (!chosen) return false;
-    if (band.point !== null && chosen.points.length > 1) {
-      const points = chosen.points.filter((_, k) => k !== band.point);
-      band = { index: band.index, point: null };
-      commitBands(list.map((b, i) => (i === band.index ? { ...b, points } : b)));
+    if (selectedBand.point !== null && chosen.points.length > 1) {
+      const points = chosen.points.filter((_, pointIndex) => pointIndex !== selectedBand.point);
+      selectedBand = { index: selectedBand.index, point: null };
+      commitBands(bandList.map((band, i) => (i === selectedBand.index ? { ...band, points } : band)));
       return true;
     }
-    const next = list.filter((_, i) => i !== band.index);
-    band = null;
+    const next = bandList.filter((_, i) => i !== selectedBand.index);
+    selectedBand = null;
     commitBands(next);
     return true;
   }
@@ -296,7 +296,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     if (depth > 0 && depth <= 1 && depth !== state.rms_depth) commit({ ...state, rms_depth: depth });
     else showSettings();
   });
-  ui.useDepth.addEventListener("click", () => fits !== null && commit({ ...state, rms_depth: fits }));
+  ui.useDepth.addEventListener("click", () => fittingDepth !== null && commit({ ...state, rms_depth: fittingDepth }));
   ui.seed.addEventListener("change", () => {
     const seed = Math.round(Number(ui.seed.value));
     if (Number.isFinite(seed) && seed !== state.seed) commit({ ...state, seed });
@@ -319,6 +319,8 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   // --- the plane -------------------------------------------------------------------
 
+  // The plane's plot (x0 to x1, y0 to y1, xc the seam's middle): pixels to
+  // and from rate and density.
   function geometry() {
     const width = canvas.clientWidth || 600;
     const height = canvas.clientHeight || 300;
@@ -333,23 +335,23 @@ export function createBlobsTab(root, { commit: commitDocument }) {
       x: (rate) => (rate > 0 ? xc + SEAM + rateToUnit(rate) * half : xc - SEAM + rateToUnit(rate) * half),
       y: (density) => y1 - (density / DENSITY_MAX) * (y1 - y0),
       // the rate at a pixel; the seam's pixels go to the nearer side's 1 Hz
-      rate: (px) => (px >= xc ? unitToRate(Math.max(0, (px - xc - SEAM) / half)) : -unitToRate(Math.max(0, (xc - SEAM - px) / half))),
-      density: (py) => ((y1 - py) / (y1 - y0)) * DENSITY_MAX,
+      rate: (x) => (x >= xc ? unitToRate(Math.max(0, (x - xc - SEAM) / half)) : -unitToRate(Math.max(0, (xc - SEAM - x) / half))),
+      density: (y) => ((y1 - y) / (y1 - y0)) * DENSITY_MAX,
     };
   }
 
   // A blob's outline in pixels: center, the ellipse's extent, and its two handles.
-  function shape(g, blob) {
-    const xl = g.x(blob.rate * 2 ** -blob.rate_width);
-    const xr = g.x(blob.rate * 2 ** blob.rate_width);
+  function shape(plot, blob) {
+    const leftX = plot.x(blob.rate * 2 ** -blob.rate_width);
+    const rightX = plot.x(blob.rate * 2 ** blob.rate_width);
     return {
-      cx: g.x(blob.rate),
-      cy: g.y(blob.density),
-      ex: (xl + xr) / 2,
-      rx: Math.max(2, Math.abs(xr - xl) / 2),
-      ry: Math.max(2, (blob.density_width / DENSITY_MAX) * (g.y1 - g.y0)),
-      widthHandle: [xr, g.y(blob.density)],
-      heightHandle: [g.x(blob.rate), g.y(blob.density + blob.density_width)],
+      centerX: plot.x(blob.rate),
+      centerY: plot.y(blob.density),
+      ellipseX: (leftX + rightX) / 2,
+      radiusX: Math.max(2, Math.abs(rightX - leftX) / 2),
+      radiusY: Math.max(2, (blob.density_width / DENSITY_MAX) * (plot.y1 - plot.y0)),
+      widthHandle: [rightX, plot.y(blob.density)],
+      heightHandle: [plot.x(blob.rate), plot.y(blob.density + blob.density_width)],
     };
   }
 
@@ -357,46 +359,46 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   // The drawn spectrum, one pixel per CSS pixel of the plot, each pixel
   // showing the grid cell (rate, density) it falls in.
-  function picture(g) {
-    const width = Math.max(1, Math.round(g.x1 - g.x0));
-    const height = Math.max(1, Math.round(g.y1 - g.y0));
+  function picture(plot) {
+    const width = Math.max(1, Math.round(plot.x1 - plot.x0));
+    const height = Math.max(1, Math.round(plot.y1 - plot.y0));
     image.width = width;
     image.height = height;
     const context = image.getContext("2d");
     const pixels = context.createImageData(width, height);
     const { rateStep, densityStep, densities } = grid(state);
-    const list = items();
+    const blobList = items();
     // each pixel row's density cell, or -1 above the grid's last
-    const rowCell = Int32Array.from({ length: height }, (_, py) => {
-      const j = Math.round(g.density(g.y0 + py + 0.5) / densityStep);
-      return j < densities.length ? j : -1;
+    const densityCellOfRow = Int32Array.from({ length: height }, (_, pixelY) => {
+      const densityIndex = Math.round(plot.density(plot.y0 + pixelY + 0.5) / densityStep);
+      return densityIndex < densities.length ? densityIndex : -1;
     });
-    const columns = [];
+    const columnPowers = [];
     let peak = 0;
-    for (let px = 0; px < width; px++) {
-      const x = g.x0 + px + 0.5;
-      const k = Math.abs(x - g.xc) < SEAM ? 0 : Math.round(g.rate(x) / rateStep);
-      if (k === 0) {
-        columns.push(null);
+    for (let pixelX = 0; pixelX < width; pixelX++) {
+      const x = plot.x0 + pixelX + 0.5;
+      const rateIndex = Math.abs(x - plot.xc) < SEAM ? 0 : Math.round(plot.rate(x) / rateStep);
+      if (rateIndex === 0) {
+        columnPowers.push(null);
         continue;
       }
-      const column = densities.map((d) => power(list, k * rateStep, d));
-      for (const p of column) peak = Math.max(peak, p);
-      columns.push(column);
+      const powers = densities.map((density) => power(blobList, rateIndex * rateStep, density));
+      for (const cellPower of powers) peak = Math.max(peak, cellPower);
+      columnPowers.push(powers);
     }
     const floor = magma(0);
-    for (let px = 0; px < width; px++) {
-      const column = columns[px];
-      for (let py = 0; py < height; py++) {
-        const i = 4 * (py * width + px);
-        const j = rowCell[py];
+    for (let pixelX = 0; pixelX < width; pixelX++) {
+      const powers = columnPowers[pixelX];
+      for (let pixelY = 0; pixelY < height; pixelY++) {
+        const i = 4 * (pixelY * width + pixelX);
+        const densityIndex = densityCellOfRow[pixelY];
         let color = floor;
-        if (column && j >= 0 && peak > 0) {
-          const level = 10 * Math.log10(column[j] / peak);
+        if (powers && densityIndex >= 0 && peak > 0) {
+          const level = 10 * Math.log10(powers[densityIndex] / peak);
           color = magma(Math.max(0, 1 - level / FLOOR_DB));
         }
         pixels.data.set(color, i);
-        pixels.data[i + 3] = column || Math.abs(g.x0 + px + 0.5 - g.xc) >= SEAM ? 255 : 0;
+        pixels.data[i + 3] = powers || Math.abs(plot.x0 + pixelX + 0.5 - plot.xc) >= SEAM ? 255 : 0;
       }
     }
     context.putImageData(pixels, 0, 0);
@@ -406,40 +408,40 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   function render() {
     if (!state) return;
     const context = fitCanvasInCssPixels(canvas);
-    const g = geometry();
-    context.clearRect(0, 0, g.width, g.height);
+    const plot = geometry();
+    context.clearRect(0, 0, plot.width, plot.height);
     context.imageSmoothingEnabled = false;
-    context.drawImage(picture(g), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
+    context.drawImage(picture(plot), plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
 
     // axes and gridlines
-    drawFrame(context, canvas, g);
-    drawValueTicks(context, g, Array.from({ length: DENSITY_MAX + 1 }, (_, d) => d), g.y, (d) => `${d}`);
-    drawAxisName(context, g, "cyc/oct");
-    drawRateTicks(context, g, g.x);
-    drawRateAxisWords(context, g, g.xc);
+    drawFrame(context, canvas, plot);
+    drawValueTicks(context, plot, Array.from({ length: DENSITY_MAX + 1 }, (_, density) => density), plot.y, (density) => `${density}`);
+    drawAxisName(context, plot, "cyc/oct");
+    drawRateTicks(context, plot, plot.x);
+    drawRateAxisWords(context, plot, plot.xc);
 
     // the blobs
     items().forEach((blob, i) => {
-      const s = shape(g, blob);
+      const blobShape = shape(plot, blob);
       const chosen = i === selected;
       context.strokeStyle = chosen ? "rgba(255, 255, 255, 0.95)" : "rgba(255, 255, 255, 0.6)";
       context.lineWidth = chosen ? 2 : 1.25;
       context.setLineDash(chosen ? [] : [4, 3]);
       context.beginPath();
-      context.ellipse(s.ex, s.cy, s.rx, s.ry, 0, 0, 2 * Math.PI);
+      context.ellipse(blobShape.ellipseX, blobShape.centerY, blobShape.radiusX, blobShape.radiusY, 0, 0, 2 * Math.PI);
       context.stroke();
       context.setLineDash([]);
       context.fillStyle = chosen ? "#ffffff" : "rgba(255, 255, 255, 0.8)";
       context.beginPath();
-      context.arc(s.cx, s.cy, chosen ? 4.5 : 3.5, 0, 2 * Math.PI);
+      context.arc(blobShape.centerX, blobShape.centerY, chosen ? 4.5 : 3.5, 0, 2 * Math.PI);
       context.fill();
       if (chosen) {
         context.fillStyle = "#ffffff";
         context.strokeStyle = "#000000";
         context.lineWidth = 1;
-        for (const [hx, hy] of [s.widthHandle, s.heightHandle]) {
-          context.fillRect(hx - 4, hy - 4, 8, 8);
-          context.strokeRect(hx - 4 + 0.5, hy - 4 + 0.5, 7, 7);
+        for (const [handleX, handleY] of [blobShape.widthHandle, blobShape.heightHandle]) {
+          context.fillRect(handleX - 4, handleY - 4, 8, 8);
+          context.strokeRect(handleX - 4 + 0.5, handleY - 4 + 0.5, 7, 7);
         }
       }
     });
@@ -451,71 +453,71 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   // What is under the pointer: the selected blob's handles first, then the
   // nearest center, then the inside of the smallest outline.
-  function pick(g, [px, py]) {
-    const list = items();
-    const near = (x, y) => Math.hypot(px - x, py - y) <= PICK_PX;
-    if (selected !== null && list[selected]) {
-      const s = shape(g, list[selected]);
+  function pick(plot, [pointerX, pointerY]) {
+    const blobList = items();
+    const near = (x, y) => Math.hypot(pointerX - x, pointerY - y) <= PICK_PX;
+    if (selected !== null && blobList[selected]) {
+      const blobShape = shape(plot, blobList[selected]);
       // a handle held on the center by the plane's edge leaves the center to Move
-      const onCenter = (handle) => Math.hypot(handle[0] - s.cx, handle[1] - s.cy) <= PICK_PX;
-      if (near(...s.widthHandle) && !onCenter(s.widthHandle)) return { kind: "rate_width", index: selected };
-      if (near(...s.heightHandle) && !onCenter(s.heightHandle)) return { kind: "density_width", index: selected };
+      const onCenter = (handle) => Math.hypot(handle[0] - blobShape.centerX, handle[1] - blobShape.centerY) <= PICK_PX;
+      if (near(...blobShape.widthHandle) && !onCenter(blobShape.widthHandle)) return { kind: "rate_width", index: selected };
+      if (near(...blobShape.heightHandle) && !onCenter(blobShape.heightHandle)) return { kind: "density_width", index: selected };
     }
     let best = null;
-    list.forEach((blob, index) => {
-      const s = shape(g, blob);
-      const distance = Math.hypot(px - s.cx, py - s.cy);
+    blobList.forEach((blob, index) => {
+      const blobShape = shape(plot, blob);
+      const distance = Math.hypot(pointerX - blobShape.centerX, pointerY - blobShape.centerY);
       if (distance <= PICK_PX && (!best || distance < best.distance)) best = { kind: "move", index, distance };
     });
     if (best) return best;
     let inside = null;
-    list.forEach((blob, index) => {
-      const s = shape(g, blob);
-      const area = s.rx * s.ry;
-      if (((px - s.ex) / s.rx) ** 2 + ((py - s.cy) / s.ry) ** 2 <= 1 && (!inside || area < inside.area)) {
+    blobList.forEach((blob, index) => {
+      const blobShape = shape(plot, blob);
+      const area = blobShape.radiusX * blobShape.radiusY;
+      if (((pointerX - blobShape.ellipseX) / blobShape.radiusX) ** 2 + ((pointerY - blobShape.centerY) / blobShape.radiusY) ** 2 <= 1 && (!inside || area < inside.area)) {
         inside = { kind: "move", index, area };
       }
     });
     return inside;
   }
 
-  const inPlot = (g, [px, py]) => px >= g.x0 && px <= g.x1 && py >= g.y0 && py <= g.y1;
+  const inPlot = (plot, [x, y]) => x >= plot.x0 && x <= plot.x1 && y >= plot.y0 && y <= plot.y1;
 
   canvas.addEventListener("pointerdown", (event) => {
     if (!state || event.button !== 0) return;
-    const g = geometry();
+    const plot = geometry();
     const at = local(event);
-    if (!inPlot(g, at)) return;
+    if (!inPlot(plot, at)) return;
     event.preventDefault();
-    let hit = pick(g, at);
-    let list = state.items.map((blob) => ({ ...blob }));
+    let hit = pick(plot, at);
+    let blobList = state.items.map((blob) => ({ ...blob }));
     let added = false;
     if (!hit) {
-      if (list.length >= MAX_BLOBS) {
+      if (blobList.length >= MAX_BLOBS) {
         selected = null;
         showSettings();
         return render();
       }
-      list = [...list, { rate: tidy(clampRate(g.rate(at[0]))), density: tidy(clampDensity(g.density(at[1]))), ...NEW_BLOB }];
-      hit = { kind: "move", index: list.length - 1 };
+      blobList = [...blobList, { rate: tidy(clampRate(plot.rate(at[0]))), density: tidy(clampDensity(plot.density(at[1]))), ...NEW_BLOB }];
+      hit = { kind: "move", index: blobList.length - 1 };
       added = true;
     }
     canvas.setPointerCapture(event.pointerId);
     selected = hit.index;
-    focus = "blob";
-    const blob = list[hit.index];
+    deleteTarget = "blob";
+    const blob = blobList[hit.index];
     // a move keeps the blob's center where it was relative to the pointer
-    drag = { ...hit, items: list, added, changed: false, offset: [at[0] - g.x(blob.rate), at[1] - g.y(blob.density)] };
+    drag = { ...hit, items: blobList, added, changed: false, offset: [at[0] - plot.x(blob.rate), at[1] - plot.y(blob.density)] };
     showSettings();
     render();
   });
 
   canvas.addEventListener("pointermove", (event) => {
     if (!state) return;
-    const g = geometry();
+    const plot = geometry();
     const at = local(event);
     if (!drag) {
-      const hit = inPlot(g, at) ? pick(g, at) : null;
+      const hit = inPlot(plot, at) ? pick(plot, at) : null;
       canvas.style.cursor = !hit ? "crosshair" : hit.kind === "move" ? "grab" : hit.kind === "rate_width" ? "ew-resize" : "ns-resize";
       return;
     }
@@ -524,15 +526,15 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     if (drag.kind === "move") {
       const x = at[0] - drag.offset[0];
       const y = at[1] - drag.offset[1];
-      next = { ...blob, rate: tidy(clampRate(g.rate(x))), density: tidy(clampDensity(g.density(y))) };
+      next = { ...blob, rate: tidy(clampRate(plot.rate(x))), density: tidy(clampDensity(plot.density(y))) };
     } else if (drag.kind === "rate_width") {
-      const octaves = Math.abs(Math.log2(Math.abs(g.rate(at[0])) / Math.abs(blob.rate)));
+      const octaves = Math.abs(Math.log2(Math.abs(plot.rate(at[0])) / Math.abs(blob.rate)));
       next = { ...blob, rate_width: tidy(clampWidth(octaves)) };
     } else {
-      next = { ...blob, density_width: tidy(clampWidth(Math.abs(g.density(at[1]) - blob.density))) };
+      next = { ...blob, density_width: tidy(clampWidth(Math.abs(plot.density(at[1]) - blob.density))) };
     }
     if (next.rate !== blob.rate || next.density !== blob.density || next.rate_width !== blob.rate_width || next.density_width !== blob.density_width) {
-      drag.items = drag.items.map((b, i) => (i === drag.index ? next : b));
+      drag.items = drag.items.map((item, i) => (i === drag.index ? next : item));
       drag.changed = true;
       showSettings();
       render();
@@ -554,7 +556,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   // --- the result's measured modulation spectrum ---------------------------------------
 
-  const measuredCanvas = $("canvas.measured");
+  const measuredCanvas = query("canvas.measured");
   const MEASURED_MARGIN = { left: MARGIN.left, right: MARGIN.right, top: 6, bottom: 22 };
   const measuredImage = document.createElement("canvas");
   let measuredDrawn = { picture: null, key: "" };
@@ -566,44 +568,44 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     context.clearRect(0, 0, width, height);
     if (!state) return;
     // the plane's rate axis, at this canvas's height
-    const g = { ...geometry() };
+    const plane = { ...geometry() };
     const y0 = MEASURED_MARGIN.top;
     const y1 = height - MEASURED_MARGIN.bottom;
-    const yOf = (d) => y1 - (d / DENSITY_MAX) * (y1 - y0);
-    const picture = sound?.modulation ?? null;
-    const w = Math.max(1, Math.round(g.x1 - g.x0));
-    const h = Math.max(1, Math.round(y1 - y0));
-    const key = [w, h].join(" ");
-    if (measuredDrawn.picture !== picture || measuredDrawn.key !== key) {
-      measuredImage.width = w;
-      measuredImage.height = h;
-      const pixels = measuredImage.getContext("2d").createImageData(w, h);
+    const densityY = (density) => y1 - (density / DENSITY_MAX) * (y1 - y0);
+    const measured = sound?.modulation ?? null;
+    const imageWidth = Math.max(1, Math.round(plane.x1 - plane.x0));
+    const imageHeight = Math.max(1, Math.round(y1 - y0));
+    const key = [imageWidth, imageHeight].join(" ");
+    if (measuredDrawn.picture !== measured || measuredDrawn.key !== key) {
+      measuredImage.width = imageWidth;
+      measuredImage.height = imageHeight;
+      const pixels = measuredImage.getContext("2d").createImageData(imageWidth, imageHeight);
       const floor = magma(0);
-      for (let px = 0; px < w; px++) {
-        const x = g.x0 + px + 0.5;
-        const seam = Math.abs(x - g.xc) < SEAM;
-        const k = picture && !seam ? Math.round((g.rate(x) - picture.rateFirst) / picture.rateStep) : -1;
-        for (let py = 0; py < h; py++) {
-          const i = 4 * (py * w + px);
-          const j = picture ? Math.round(((1 - (py + 0.5) / h) * DENSITY_MAX) / picture.densityStep) : -1;
-          const inside = k >= 0 && k < (picture?.nRates ?? 0) && j >= 0 && j < picture.nDensities;
-          pixels.data.set(inside ? magma(picture.data[j * picture.nRates + k] / 255) : floor, i);
+      for (let pixelX = 0; pixelX < imageWidth; pixelX++) {
+        const x = plane.x0 + pixelX + 0.5;
+        const seam = Math.abs(x - plane.xc) < SEAM;
+        const rateIndex = measured && !seam ? Math.round((plane.rate(x) - measured.rateFirst) / measured.rateStep) : -1;
+        for (let pixelY = 0; pixelY < imageHeight; pixelY++) {
+          const i = 4 * (pixelY * imageWidth + pixelX);
+          const densityIndex = measured ? Math.round(((1 - (pixelY + 0.5) / imageHeight) * DENSITY_MAX) / measured.densityStep) : -1;
+          const inside = rateIndex >= 0 && rateIndex < (measured?.nRates ?? 0) && densityIndex >= 0 && densityIndex < measured.nDensities;
+          pixels.data.set(inside ? magma(measured.data[densityIndex * measured.nRates + rateIndex] / 255) : floor, i);
           pixels.data[i + 3] = seam ? 0 : 255;
         }
       }
       measuredImage.getContext("2d").putImageData(pixels, 0, 0);
-      measuredDrawn = { picture, key };
+      measuredDrawn = { picture: measured, key };
     }
     context.imageSmoothingEnabled = false;
-    context.drawImage(measuredImage, g.x0, y0, g.x1 - g.x0, y1 - y0);
+    context.drawImage(measuredImage, plane.x0, y0, plane.x1 - plane.x0, y1 - y0);
 
-    const plot = { x0: g.x0, x1: g.x1, y0, y1 };
+    const plot = { x0: plane.x0, x1: plane.x1, y0, y1 };
     drawFrame(context, measuredCanvas, plot);
-    drawValueTicks(context, plot, [0, 2, 4, 6], yOf, (d) => `${d}`);
-    drawRateTicks(context, plot, g.x);
+    drawValueTicks(context, plot, [0, 2, 4, 6], densityY, (density) => `${density}`);
+    drawRateTicks(context, plot, plane.x);
     drawTitle(
       context, plot,
-      !picture ? "Modulation spectrum: play to measure the result" : (state.bands ?? []).length ? "Modulation spectrum, measured within the bands" : "Modulation spectrum, measured",
+      !measured ? "Modulation spectrum: play to measure the result" : (state.bands ?? []).length ? "Modulation spectrum, measured within the bands" : "Modulation spectrum, measured",
     );
   }
 
@@ -612,47 +614,47 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   const STFT_MARGIN = { left: 52, right: 10, top: 6, bottom: 20 };
   let sound = null;
   let playhead = null;
-  const stftPlot = logSpectrogramPlot(ui.stft, STFT_MARGIN);
+  const stftPanel = logSpectrogramPlot(ui.stft, STFT_MARGIN);
 
   // The spectrogram panel's plot: pixels to and from time and frequency, on
   // the drawing's own time axis (a result of an older duration, not remade
   // above 3 s, shows at the drawing's times), the axis the bands are drawn on.
-  const stftGeometry = () => stftPlot.geometry(state.f_lo, state.f_hi, state.duration);
+  const stftGeometry = () => stftPanel.geometry(state.f_lo, state.f_hi, state.duration);
 
   function renderStft() {
-    const context = stftPlot.clear();
+    const context = stftPanel.clear();
     if (!state) return;
-    const sg = stftGeometry();
-    stftPlot.draw(context, sg, sound?.spectrogram, { named: true });
-    drawBands(context, sg);
-    if (playhead !== null) drawPlayhead(context, sg, sg.x(playhead), getComputedStyle(ui.stft).getPropertyValue("--accent").trim() || "#2e86ab");
+    const stftPlot = stftGeometry();
+    stftPanel.draw(context, stftPlot, sound?.spectrogram, { named: true });
+    drawBands(context, stftPlot);
+    if (playhead !== null) drawPlayhead(context, stftPlot, stftPlot.x(playhead), getComputedStyle(ui.stft).getPropertyValue("--accent").trim() || "#2e86ab");
   }
 
   // --- the bands, on the spectrogram ---------------------------------------------------
 
   // A band's center in pixels along the plot, every few pixels.
-  function bandPath(sg, b) {
+  function bandPath(stftPlot, band) {
     const path = [];
-    for (let px = sg.x0; px <= sg.x1 + 0.5; px += 3) {
-      const t = Math.min(state.duration, ((px - sg.x0) / (sg.x1 - sg.x0)) * sg.duration);
-      path.push([Math.min(px, sg.x1), bandCenter(b.points, t)]);
+    for (let x = stftPlot.x0; x <= stftPlot.x1 + 0.5; x += 3) {
+      const t = Math.min(state.duration, ((x - stftPlot.x0) / (stftPlot.x1 - stftPlot.x0)) * stftPlot.duration);
+      path.push([Math.min(x, stftPlot.x1), bandCenter(band.points, t)]);
     }
     return path;
   }
 
-  function drawBands(context, sg) {
-    const clampY = (v) => Math.min(sg.y1, Math.max(sg.y0, v));
+  function drawBands(context, stftPlot) {
+    const clampY = (y) => Math.min(stftPlot.y1, Math.max(stftPlot.y0, y));
     context.save();
     context.beginPath();
-    context.rect(sg.x0, sg.y0, sg.x1 - sg.x0, sg.y1 - sg.y0);
+    context.rect(stftPlot.x0, stftPlot.y0, stftPlot.x1 - stftPlot.x0, stftPlot.y1 - stftPlot.y0);
     context.clip();
-    bands().forEach((b, i) => {
-      const chosen = band?.index === i;
-      const path = bandPath(sg, b);
-      const half = b.width / 2;
+    bands().forEach((band, index) => {
+      const chosen = selectedBand?.index === index;
+      const path = bandPath(stftPlot, band);
+      const halfWidth = band.width / 2;
       context.beginPath();
-      path.forEach(([px, f], k) => context[k ? "lineTo" : "moveTo"](px, clampY(sg.y(f * 2 ** half))));
-      for (let k = path.length - 1; k >= 0; k--) context.lineTo(path[k][0], clampY(sg.y(path[k][1] * 2 ** -half)));
+      path.forEach(([x, f], step) => context[step ? "lineTo" : "moveTo"](x, clampY(stftPlot.y(f * 2 ** halfWidth))));
+      for (let step = path.length - 1; step >= 0; step--) context.lineTo(path[step][0], clampY(stftPlot.y(path[step][1] * 2 ** -halfWidth)));
       context.closePath();
       context.fillStyle = chosen ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.08)";
       context.fill();
@@ -662,15 +664,15 @@ export function createBlobsTab(root, { commit: commitDocument }) {
       context.stroke();
       context.setLineDash([]);
       context.beginPath();
-      path.forEach(([px, f], k) => context[k ? "lineTo" : "moveTo"](px, sg.y(f)));
+      path.forEach(([x, f], step) => context[step ? "lineTo" : "moveTo"](x, stftPlot.y(f)));
       context.strokeStyle = chosen ? "#ffffff" : "rgba(255, 255, 255, 0.75)";
       context.lineWidth = chosen ? 2 : 1.5;
       context.stroke();
-      b.points.forEach(([t, f], k) => {
-        const on = chosen && band.point === k;
+      band.points.forEach(([t, f], pointIndex) => {
+        const pointChosen = chosen && selectedBand.point === pointIndex;
         context.beginPath();
-        context.arc(sg.x(t), sg.y(f), on ? 5 : 4, 0, 2 * Math.PI);
-        context.fillStyle = on ? "#ffffff" : "rgba(0, 0, 0, 0.6)";
+        context.arc(stftPlot.x(t), stftPlot.y(f), pointChosen ? 5 : 4, 0, 2 * Math.PI);
+        context.fillStyle = pointChosen ? "#ffffff" : "rgba(0, 0, 0, 0.6)";
         context.fill();
         context.strokeStyle = "#ffffff";
         context.lineWidth = 1.5;
@@ -683,21 +685,21 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   // What is under the pointer on the spectrogram: a breakpoint (the
   // selected band's first), a band's center line, or the inside of a
   // band's strip (the narrowest).
-  function pickBand(sg, [px, py]) {
-    const list = bands();
-    const order = list.map((_, i) => i).sort((a, b) => (b === band?.index) - (a === band?.index));
+  function pickBand(stftPlot, [pointerX, pointerY]) {
+    const bandList = bands();
+    const order = bandList.map((_, i) => i).sort((a, b) => (b === selectedBand?.index) - (a === selectedBand?.index));
     for (const index of order) {
-      const k = list[index].points.findIndex(([t, f]) => Math.hypot(px - sg.x(t), py - sg.y(f)) <= PICK_PX);
-      if (k >= 0) return { kind: "point", index, point: k };
+      const pointIndex = bandList[index].points.findIndex(([t, f]) => Math.hypot(pointerX - stftPlot.x(t), pointerY - stftPlot.y(f)) <= PICK_PX);
+      if (pointIndex >= 0) return { kind: "point", index, point: pointIndex };
     }
-    const t = sg.t(px);
+    const t = stftPlot.t(pointerX);
     for (const index of order) {
-      if (Math.abs(py - sg.y(bandCenter(list[index].points, t))) <= 5) return { kind: "line", index };
+      if (Math.abs(pointerY - stftPlot.y(bandCenter(bandList[index].points, t))) <= 5) return { kind: "line", index };
     }
     let inside = null;
-    list.forEach((b, index) => {
-      const octaves = Math.abs(Math.log2(sg.f(py) / bandCenter(b.points, t)));
-      if (octaves <= b.width / 2 && (!inside || b.width < list[inside.index].width)) inside = { kind: "shift", index };
+    bandList.forEach((band, index) => {
+      const octaves = Math.abs(Math.log2(stftPlot.f(pointerY) / bandCenter(band.points, t)));
+      if (octaves <= band.width / 2 && (!inside || band.width < bandList[inside.index].width)) inside = { kind: "shift", index };
     });
     return inside;
   }
@@ -706,96 +708,96 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   // The plot, and a breakpoint's reach around it: the first and last
   // breakpoints sit on its edges.
-  const nearPlot = (sg, [px, py]) => px >= sg.x0 - PICK_PX && px <= sg.x1 + PICK_PX && py >= sg.y0 - PICK_PX && py <= sg.y1 + PICK_PX;
+  const nearPlot = (stftPlot, [x, y]) => x >= stftPlot.x0 - PICK_PX && x <= stftPlot.x1 + PICK_PX && y >= stftPlot.y0 - PICK_PX && y <= stftPlot.y1 + PICK_PX;
 
   ui.stft.addEventListener("pointerdown", (event) => {
     if (!state || event.button !== 0) return;
-    const sg = stftGeometry();
+    const stftPlot = stftGeometry();
     const at = stftLocal(event);
-    if (!nearPlot(sg, at)) return;
+    if (!nearPlot(stftPlot, at)) return;
     event.preventDefault();
-    const hit = pickBand(sg, at);
+    const hit = pickBand(stftPlot, at);
     if (bandTool !== "point") {
       // a stroke on the band pressed in, or a new band
-      const list = bands().map((b) => ({ ...b, points: b.points.map((p) => [...p]) }));
-      if (!hit && list.length >= MAX_BANDS) return;
-      const index = hit ? hit.index : list.length;
-      const from = [sg.t(at[0]), sg.f(at[1])];
+      const bandList = bands().map((band) => ({ ...band, points: band.points.map((breakpoint) => [...breakpoint]) }));
+      if (!hit && bandList.length >= MAX_BANDS) return;
+      const index = hit ? hit.index : bandList.length;
+      const from = [stftPlot.t(at[0]), stftPlot.f(at[1])];
       ui.stft.setPointerCapture(event.pointerId);
-      focus = "band";
-      band = { index, point: null };
-      const origin = hit ? list[index].points : null;
-      const next = [...list];
-      next[index] = { ...(origin ? list[index] : { width: 1, level: 0 }), points: strokeOnto(origin, [from]) };
+      deleteTarget = "band";
+      selectedBand = { index, point: null };
+      const origin = hit ? bandList[index].points : null;
+      const next = [...bandList];
+      next[index] = { ...(origin ? bandList[index] : { width: 1, level: 0 }), points: strokeOnto(origin, [from]) };
       bandDrag = { kind: bandTool, index, origin, stroke: [from], bands: next, added: !hit, changed: false, start: at };
       showSettings();
       return renderStft();
     }
     if (!hit) {
-      band = null;
+      selectedBand = null;
       showSettings();
       return renderStft();
     }
-    focus = "band";
-    let list = bands().map((b) => ({ ...b, points: b.points.map((p) => [...p]) }));
+    deleteTarget = "band";
+    let bandList = bands().map((band) => ({ ...band, points: band.points.map((breakpoint) => [...breakpoint]) }));
     let point = hit.kind === "point" ? hit.point : null;
     let added = false;
     if (hit.kind === "line") {
       // a new breakpoint on the line, where it was clicked
-      const t = tidyTime(sg.t(at[0]));
-      const points = list[hit.index].points;
-      if (!points.some(([pt]) => pt === t)) {
+      const t = tidyTime(stftPlot.t(at[0]));
+      const points = bandList[hit.index].points;
+      if (!points.some(([pointTime]) => pointTime === t)) {
         const f = tidyHz(bandCenter(points, t));
-        point = points.findIndex(([pt]) => pt > t);
+        point = points.findIndex(([pointTime]) => pointTime > t);
         if (point < 0) point = points.length;
         points.splice(point, 0, [t, f]);
         added = true;
       }
     }
     ui.stft.setPointerCapture(event.pointerId);
-    band = { index: hit.index, point };
-    bandDrag = { kind: point === null ? "shift" : "point", index: hit.index, point, bands: list, added, changed: false, start: at, origin: list[hit.index].points.map((p) => [...p]) };
+    selectedBand = { index: hit.index, point };
+    bandDrag = { kind: point === null ? "shift" : "point", index: hit.index, point, bands: bandList, added, changed: false, start: at, origin: bandList[hit.index].points.map((breakpoint) => [...breakpoint]) };
     showSettings();
     renderStft();
   });
 
   ui.stft.addEventListener("pointermove", (event) => {
     if (!state) return;
-    const sg = stftGeometry();
+    const stftPlot = stftGeometry();
     const at = stftLocal(event);
     if (!bandDrag) {
-      const hit = nearPlot(sg, at) ? pickBand(sg, at) : null;
+      const hit = nearPlot(stftPlot, at) ? pickBand(stftPlot, at) : null;
       ui.stft.style.cursor = bandTool !== "point" ? "crosshair" : !hit ? "default" : hit.kind === "point" ? "grab" : hit.kind === "line" ? "copy" : "ns-resize";
       return;
     }
     if (bandDrag.kind === "line" || bandDrag.kind === "freehand") {
-      const here = [sg.t(at[0]), sg.f(at[1])];
+      const here = [stftPlot.t(at[0]), stftPlot.f(at[1])];
       bandDrag.stroke = bandDrag.kind === "line" ? [bandDrag.stroke[0], here] : [...bandDrag.stroke, here];
       const points = strokeOnto(bandDrag.origin, bandDrag.stroke);
-      bandDrag.bands = bandDrag.bands.map((x, i) => (i === bandDrag.index ? { ...x, points } : x));
+      bandDrag.bands = bandDrag.bands.map((band, i) => (i === bandDrag.index ? { ...band, points } : band));
       bandDrag.changed = true;
       showSettings();
       return renderStft();
     }
     const { f_lo, f_hi } = state;
-    const b = bandDrag.bands[bandDrag.index];
+    const dragged = bandDrag.bands[bandDrag.index];
     let points;
     if (bandDrag.kind === "point") {
-      const k = bandDrag.point;
-      const before = k > 0 ? b.points[k - 1][0] + 0.001 : 0;
-      const after = k < b.points.length - 1 ? b.points[k + 1][0] - 0.001 : state.duration;
-      const t = tidyTime(Math.min(after, Math.max(before, sg.t(at[0]))));
-      points = b.points.map((p, i) => (i === k ? [t, tidyHz(sg.f(at[1]))] : p));
+      const pointIndex = bandDrag.point;
+      const before = pointIndex > 0 ? dragged.points[pointIndex - 1][0] + 0.001 : 0;
+      const after = pointIndex < dragged.points.length - 1 ? dragged.points[pointIndex + 1][0] - 0.001 : state.duration;
+      const t = tidyTime(Math.min(after, Math.max(before, stftPlot.t(at[0]))));
+      points = dragged.points.map((point, i) => (i === pointIndex ? [t, tidyHz(stftPlot.f(at[1]))] : point));
     } else {
       // the whole band, up or down in octaves, kept within the range
-      const octaves = Math.log2(sg.f(at[1]) / sg.f(bandDrag.start[1]));
-      const lo = Math.log2(f_lo / Math.min(...bandDrag.origin.map(([, f]) => f)));
-      const hi = Math.log2(f_hi / Math.max(...bandDrag.origin.map(([, f]) => f)));
-      const shift = Math.min(hi, Math.max(lo, octaves));
+      const octaves = Math.log2(stftPlot.f(at[1]) / stftPlot.f(bandDrag.start[1]));
+      const lowestShift = Math.log2(f_lo / Math.min(...bandDrag.origin.map(([, f]) => f)));
+      const highestShift = Math.log2(f_hi / Math.max(...bandDrag.origin.map(([, f]) => f)));
+      const shift = Math.min(highestShift, Math.max(lowestShift, octaves));
       points = bandDrag.origin.map(([t, f]) => [t, Math.min(f_hi, Math.max(f_lo, tidyHz(f * 2 ** shift)))]);
     }
-    if (points.some(([t, f], i) => t !== b.points[i][0] || f !== b.points[i][1])) {
-      bandDrag.bands = bandDrag.bands.map((x, i) => (i === bandDrag.index ? { ...x, points } : x));
+    if (points.some(([t, f], i) => t !== dragged.points[i][0] || f !== dragged.points[i][1])) {
+      bandDrag.bands = bandDrag.bands.map((band, i) => (i === bandDrag.index ? { ...band, points } : band));
       bandDrag.changed = true;
       showSettings();
       renderStft();
@@ -832,7 +834,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     figure: root.querySelector(".design-box .panel-stack"), // where the shell shows synthesis progress, over the plane
     ownWaveform: true, // drawn in the Result box above
     setDocument(next) {
-      fits = null; // a refusal is shown again if this drawing is refused again
+      fittingDepth = null; // a refusal is shown again if this drawing is refused again
       drag = null;
       bandDrag = null;
       state = next;
@@ -844,7 +846,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     setResult(next) {
       sound = next ?? null;
       if (sound) {
-        fits = null;
+        fittingDepth = null;
         showSettings();
       }
       renderMeasured();
@@ -862,15 +864,15 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     // refused too, the next refusal offers again.
     failed(message) {
       const depth = depthThatFits(message);
-      fits = depth === null ? null : Math.max(0.01, Math.floor((depth - 0.005) * 100) / 100);
+      fittingDepth = depth === null ? null : Math.max(0.01, Math.floor((depth - 0.005) * 100) / 100);
       showSettings();
     },
     blocked() {
       return state.items.length ? null : "No blobs yet: click the plane to add one.";
     },
     key(event) {
-      if (event.key === "Delete" || event.key === "Backspace") return focus === "band" ? removeBandOrPoint() : removeSelected();
-      const toolKey = !event.ctrlKey && !event.metaKey && BAND_TOOLS.find((t) => t.key === event.key.toLowerCase());
+      if (event.key === "Delete" || event.key === "Backspace") return deleteTarget === "band" ? removeBandOrPoint() : removeSelected();
+      const toolKey = !event.ctrlKey && !event.metaKey && BAND_TOOLS.find((tool) => tool.key === event.key.toLowerCase());
       if (toolKey) {
         bandTool = toolKey.id;
         toolBox.querySelector(`input[value="${bandTool}"]`).checked = true;
