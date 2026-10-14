@@ -55,7 +55,7 @@ export function createPathsTab(root, { commit, hasRecording }) {
           <button type="button" class="level" title="Put the whole path back at ear height">Elevation back to 0°</button>
         </fieldset>
         <p class="hint">Use headphones. Drag on the top view to draw where the sound goes: the speed you draw is the speed it moves, stretched to the duration. Drag on the elevation track below to raise or lower it. Space plays.</p>
-        <p class="hint">The head is MIT's KEMAR mannequin, measured at 1.4 m (the dashed ring); nearer and farther, only level and delay change. Elevation from a borrowed head is the weakest of the cues.</p>
+        <p class="hint">The head is MIT's KEMAR mannequin, measured at 1.4 m (the dashed ring); nearer and farther, only level and delay change. Expect height to come through weakly: it is heard through the shape of your own ears, and these are the mannequin's.</p>
       </aside>
     </div>`;
   const query = (selector) => root.querySelector(selector);
