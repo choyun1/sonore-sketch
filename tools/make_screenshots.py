@@ -1,8 +1,9 @@
 """Take the README's screenshots: Draw speech, Draw spectrogram and Draw path.
 
 Each tab is shown as it opens (its example), 1280 × 823, with the local
-engine, and saved to docs/screenshots/. Retake them when the header, the
-toolbar or a tab's example changes.
+engine, and saved to docs/screenshots/. Draw speech and Draw path are taken
+in the dark theme and Draw spectrogram in the light one, so the README shows
+both. Retake them when the header, the toolbar or a tab's example changes.
 
     pip install -e . playwright
     python tools/make_screenshots.py
@@ -24,7 +25,11 @@ from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 SETTLE_S = 12
-SHOTS = {"tracks": "draw-speech.png", "painted": "draw-spectrogram.png", "paths": "draw-path.png"}
+SHOTS = {
+    "tracks": ("draw-speech.png", "dark"),
+    "painted": ("draw-spectrogram.png", "light"),
+    "paths": ("draw-path.png", "dark"),
+}
 
 
 def free_port() -> int:
@@ -44,8 +49,8 @@ def main() -> None:
         time.sleep(2)
         with sync_playwright() as p:
             browser = p.chromium.launch(executable_path=args.chromium)
-            for tab, name in SHOTS.items():
-                page = browser.new_page(viewport={"width": 1280, "height": 823})
+            for tab, (name, theme) in SHOTS.items():
+                page = browser.new_page(viewport={"width": 1280, "height": 823}, color_scheme=theme)
                 page.goto(f"http://127.0.0.1:{port}/?engine=local")
                 page.wait_for_function("!document.querySelector('#play').disabled", timeout=120_000)
                 page.click(f"button[data-tab={tab}]")
