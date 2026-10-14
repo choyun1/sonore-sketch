@@ -74,7 +74,7 @@ test("the elevation track stretches with the duration; the stroke keeps its own 
 test("clear leaves no path and the elevation flat, and keeps the settings", async () => {
   const page = { ...defaultPage(), paths: { ...defaultSection(), room: "room", elevation: [[0, 1], [0, 30]] } };
   const cleared = await clearTab(page, "paths");
-  assert.deepEqual(cleared.paths, { source: "noise", room: "room", stroke: [], elevation: 0, speed: null });
+  assert.deepEqual(cleared.paths, { source: "noise", room: "room", stroke: [], elevation: 0, speed: null, smoothing: 0.15 });
 });
 
 test("bad states are refused", () => {
@@ -85,4 +85,5 @@ test("bad states are refused", () => {
   assert.throws(() => check({ ...good, elevation: [[0], [1, 2]] }), /elevation/);
   assert.throws(() => check({ ...good, speed: [[0, 1], [1, 0]] }), /speed/);
   assert.throws(() => check({ ...good, speed: [[0, 2], [1, 1]] }), /speed/);
+  assert.throws(() => check({ ...good, smoothing: 2 }), /smoothing/);
 });

@@ -101,6 +101,17 @@ def test_no_speed_track_keeps_the_drawings_timing():
     assert all(np.array_equal(a, b) for a, b in zip(paths.trajectory(state(stroke)), paths.trajectory(state(stroke, speed=None))))
 
 
+def test_the_shape_smoothing_takes_out_the_hands_wobble_and_keeps_straight_ends():
+    rng = np.random.default_rng(0)
+    wobbly = [[t, x, 1.5 + 0.05 * rng.standard_normal()] for t, x, _ in straight(-2, 1.5, 2, 1.5, seconds=2.0, n=121)]
+    _, timed = paths.smoothed(wobbly, 0)  # the 30 ms Gaussian alone
+    _, shaped = paths.smoothed(wobbly, 0.3)
+    assert np.std(shaped[:, 1] - 1.5) < np.std(timed[:, 1] - 1.5) / 2
+    _, line = paths.smoothed(straight(-2, 1.5, 2, 1.5), 0.3)
+    _, unshaped = paths.smoothed(straight(-2, 1.5, 2, 1.5), 0)
+    assert np.allclose(line, unshaped, atol=1e-9)  # mirrored at the ends, so a straight line stays put
+
+
 def test_the_elevation_track_lifts_the_path_on_its_sphere():
     times, points = paths.trajectory(state([[0, 0.0, 2.0]], elevation=[[0, 1], [0, 90]]))
     distance = np.linalg.norm(points, axis=1)
@@ -133,6 +144,8 @@ def test_handle_returns_both_ears():
     ({"speed": [[0, 1], [1, 0]]}, "'speed'"),
     ({"speed": [[0, 2], [1, 1]]}, "'speed'"),
     ({"speed": 1}, "'speed'"),
+    ({"smoothing": 1}, "'smoothing'"),
+    ({"smoothing": -0.1}, "'smoothing'"),
     ({"duration": 20}, "'duration'"),
 ])
 def test_bad_states_are_refused(changes, message):
@@ -144,7 +157,8 @@ def test_bad_states_are_refused(changes, message):
 def test_the_page_puts_the_path_in_time_as_python_does():
     # the dot and the marker follow app/paths/model.js's timeline, which must
     # match the path the sound takes
-    section = {"source": "noise", "room": "dry", "elevation": 0, "stroke": [[0.0, -2.0, 1.0], [0.8, -1.0, 1.5], [1.0, 2.0, 1.0]]}
+    section = {"source": "noise", "room": "dry", "elevation": 0, "smoothing": 0.3,
+               "stroke": [[0.0, -2.0, 1.0], [0.8, -1.0, 1.5], [1.0, 2.0, 1.0]]}
     script = (
         'import { timeline, withSpeed } from "./app/paths/model.js";'
         f"const section = withSpeed({json.dumps(section)}, {json.dumps([[0, 1], [0.3, 4], [1, 0.5]])});"
@@ -152,7 +166,7 @@ def test_the_page_puts_the_path_in_time_as_python_does():
     )
     root = Path(__file__).resolve().parent.parent
     out = json.loads(subprocess.run(["node", "--input-type=module", "-e", script], cwd=root, check=True, capture_output=True, text=True).stdout)
-    times, points = paths.trajectory(state(out["section"]["stroke"], duration=2.0, speed=out["section"]["speed"]))
+    times, points = paths.trajectory(state(out["section"]["stroke"], duration=2.0, speed=out["section"]["speed"], smoothing=0.3))
     page_times, page_points = np.asarray(out["path"]["times"]), np.asarray(out["path"]["points"])
     keep = np.append(True, np.diff(page_times) > 0)
     assert np.allclose(times, page_times[keep], atol=1e-9)
