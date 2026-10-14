@@ -71,6 +71,8 @@ def test_a_blank_painting_says_so():
         ({"carrier": "pink"}, "carrier"),
         ({"columns": 128}, "not 72 rows x 128 columns"),
         ({"levels": "%%%"}, "base64"),
+        ({"columns": 1 << 20}, "at most 1048576 cells"),
+        ({"levels": painted.encode_levels(np.zeros((72, 512)))}, "not 72 rows x 256 columns"),
     ],
 )
 def test_bad_states_are_refused(changes, message):

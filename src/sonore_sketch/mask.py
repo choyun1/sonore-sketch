@@ -70,7 +70,8 @@ def cuts(state: Mapping[str, Any]) -> np.ndarray:
     """The mask as cuts in dB, shape (rows, columns), rows from 0 Hz up: 0
     keeps, ``-floor_db`` removes."""
     try:
-        raw = zlib.decompress(base64.b64decode(state.get("levels", ""), validate=True))
+        # at most one cell too many, so a small text cannot inflate to fill the memory
+        raw = zlib.decompressobj().decompress(base64.b64decode(state.get("levels", ""), validate=True), ROWS * COLUMNS + 1)
     except (binascii.Error, zlib.error, TypeError) as error:
         raise ValueError(f"'levels' is not base64 of zlib-deflated bytes ({error})") from None
     if len(raw) != ROWS * COLUMNS:

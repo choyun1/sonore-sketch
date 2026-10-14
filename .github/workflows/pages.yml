@@ -1,11 +1,14 @@
 name: pages
 
-# Publish the page to GitHub Pages on every push to main, so it can be used
-# without running tools/serve.py. The page is static: index.html, app/, and
-# the Python package the Pyodide worker fetches (../src/sonore_sketch/*.py).
+# Publish the page to GitHub Pages once the tests pass on main, so it can be
+# used without running tools/serve.py and a broken main is never published.
+# The page is static: index.html, app/, and the Python package the Pyodide
+# worker fetches (../src/sonore_sketch/*.py).
 
 on:
-  push:
+  workflow_run:
+    workflows: [test]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -20,12 +23,16 @@ concurrency:
 
 jobs:
   deploy:
+    # after a test run, only a green one on a push to main (not a pull request's run)
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Collect the page's files
         run: |
           mkdir -p _site/src

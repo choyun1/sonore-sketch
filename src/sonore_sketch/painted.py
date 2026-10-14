@@ -31,6 +31,7 @@ import sonore as so
 FORMAT = 1
 MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 CARRIERS = ("tones", "harmonic", "noise")  # painted.md, P4
+MAX_CELLS = 1 << 20  # the page's grid is 72 x 256; a file asking for more is refused (app/painted/model.js)
 
 
 def rows(state: Mapping[str, Any]) -> int:
@@ -54,6 +55,8 @@ def check(state: Mapping[str, Any]) -> None:
     for name in ("rows_per_octave", "columns"):
         if not (isinstance(state.get(name), int) and state[name] >= 2):
             raise ValueError(f"'{name}' must be a whole number of at least 2")
+    if rows(state) * state["columns"] > MAX_CELLS:
+        raise ValueError(f"the painting may hold at most {MAX_CELLS} cells")
     floor = state.get("floor_db")
     if not (isinstance(floor, (int, float)) and -255 <= floor < 0):
         raise ValueError(f"'floor_db' must be a negative number of dB, at least -255, not {floor!r}")
@@ -69,7 +72,8 @@ def levels(state: Mapping[str, Any]) -> np.ndarray:
     """The painting as levels in dB, shape (rows, columns), rows from ``f_lo``
     up; silent cells are ``-inf``."""
     try:
-        raw = zlib.decompress(base64.b64decode(state.get("levels", ""), validate=True))
+        # at most one cell too many, so a small text cannot inflate to fill the memory
+        raw = zlib.decompressobj().decompress(base64.b64decode(state.get("levels", ""), validate=True), rows(state) * state["columns"] + 1)
     except (binascii.Error, zlib.error, TypeError) as error:
         raise ValueError(f"'levels' is not base64 of zlib-deflated bytes ({error})") from None
     shape = (rows(state), state["columns"])

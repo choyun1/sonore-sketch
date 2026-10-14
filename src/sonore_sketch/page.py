@@ -63,6 +63,8 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
         return state
+    if tab in TABS:
+        raise ValueError(f"the document has no {tab!r} section to make the sound from")
     raise ValueError(f"unknown tab {tab!r}; known: {sorted(TABS)}")
 
 

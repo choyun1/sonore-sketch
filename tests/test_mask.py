@@ -24,7 +24,7 @@ def band_level(sound, f_lo, f_hi, t_lo, t_hi):
     data = sound.data[int(t_lo * FS) : int(t_hi * FS), 0]
     spectrum = np.abs(np.fft.rfft(data * np.hanning(data.size))) ** 2
     f = np.fft.rfftfreq(data.size, 1 / FS)
-    return 10 * np.log10(spectrum[(f >= f_lo) & (f < f_hi)].mean())
+    return 10 * np.log10(max(spectrum[(f >= f_lo) & (f < f_hi)].mean(), 1e-30))  # a removed band can be exactly 0
 
 
 def test_the_grid_is_the_designs():

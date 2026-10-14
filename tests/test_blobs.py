@@ -147,6 +147,7 @@ def test_no_blobs_says_so():
         ({"items": [{"rate": 0, "density": 0, "rate_width": 0.5, "density_width": 0.25, "level": 0}]}, "nonzero rate"),
         ({"items": [{"rate": 4}]}, "a number for each"),
         ({"items": [dict(blobs.EXAMPLE_ITEMS[0])] * 9}, "at most 8"),
+        ({"items": [{**blobs.EXAMPLE_ITEMS[0], "level": 10}]}, "level must be from -40 to 0 dB"),
     ],
 )
 def test_bad_states_are_refused(changes, message):

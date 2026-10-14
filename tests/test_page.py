@@ -59,6 +59,17 @@ def test_the_worker_loads_every_dependency_sonore_needs_to_run():
     assert re.search(r'SONORE_WHEEL =\s*"https://files\.pythonhosted\.org/packages/[0-9a-f/]+/sonore-([^-]+)-py3-none-any\.whl"', worker).group(1) == version
 
 
+def test_the_sonore_version_is_the_same_everywhere():
+    # the worker installs it, documents are stamped with it, and pyproject.toml pins it (app.md, D5)
+    root = Path(__file__).resolve().parents[1]
+    worker = re.search(r'SONORE_VERSION = "([^"]+)"', (root / "app" / "worker.js").read_text()).group(1)
+    stamp = re.search(r'SONORE_VERSION = "([^"]+)"', (root / "app" / "tracks" / "model.js").read_text()).group(1)
+    pin = re.search(r'"sonore([<>=][^"]+)"', (root / "pyproject.toml").read_text()).group(1)
+    assert worker == stamp
+    major, minor = (int(part) for part in worker.split(".")[:2])
+    assert pin == f">={major}.{minor},<{major}.{minor + 1}"  # the minor version the page installs
+
+
 def test_the_page_colours_levels_with_matplotlibs_magma_as_sonore_does():
     matplotlib = pytest.importorskip("matplotlib")
     root = Path(__file__).resolve().parents[1]
@@ -83,6 +94,13 @@ def test_handle_steps_reports_progress_and_returns_handles_result():
     assert fractions == sorted(fractions) and 0 < fractions[0] and fractions[-1] < 1
     expected = page.handle({"tab": "blobs", "state": state})
     assert result["samples"] == expected["samples"] and "modulation" in result
+
+
+def test_a_document_without_its_tabs_section_says_so():
+    document = {**PAGE, "tab": "painted"}
+    document.pop("painted", None)
+    with pytest.raises(ValueError, match="no 'painted' section"):
+        page.synthesize(document)
 
 
 def test_only_links_to_other_sites_open_a_new_tab():

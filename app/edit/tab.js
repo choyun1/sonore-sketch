@@ -133,9 +133,11 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   }
 
   async function commitBytes(next) {
+    const before = state;
     const levels = await encodeLevels(next);
     remember(levels, next);
-    commit({ ...state, levels });
+    // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
+    if (state === before) commit({ ...state, levels });
   }
 
   async function load(next) {

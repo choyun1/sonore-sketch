@@ -4,7 +4,9 @@ import { test } from "node:test";
 import { defaultPage, openDocument, resetTab, stretchPage, tabState, withTabState } from "../../app/document.js";
 import {
   EXAMPLE_LEVELS,
+  MAX_CELLS,
   applyStroke,
+  check,
   blank,
   brushWeight,
   dab,
@@ -26,7 +28,8 @@ test("levels round-trip through deflate and base64, and the size is checked", as
   const bytes = Uint8Array.from({ length: 72 * 256 }, (_, i) => i % 61);
   const text = await encodeLevels(bytes);
   assert.deepEqual(await decodeLevels(text, bytes.length), bytes);
-  await assert.rejects(decodeLevels(text, 10), /holds 18432 cells, not 10/);
+  await assert.rejects(decodeLevels(text, 10), /holds more than 10 cells/);
+  await assert.rejects(decodeLevels(await encodeLevels(bytes.subarray(0, 100)), 200), /holds 100 cells, not 200/);
   await assert.rejects(decodeLevels("not levels", 10), /not base64 of deflated bytes/);
 });
 
@@ -94,4 +97,12 @@ test("Reset resets the tab shown and the duration, and keeps the other tab", () 
   assert.equal(reset.duration, 0.6);
   assert.deepEqual(reset.tracks, defaultPage().tracks);
   assert.equal(reset.painted.carrier, "noise");
+});
+
+test("a file or link cannot freeze the tab or fill the memory", () => {
+  const section = { ...defaultSection(), carrier: "harmonic" };
+  assert.throws(() => check({ ...section, f0: -150 }), /f0 must be a positive frequency/);
+  assert.throws(() => check({ ...section, f0: 0 }), /f0 must be a positive frequency/);
+  assert.doesNotThrow(() => check({ ...section, carrier: "tones", f0: -150 }));
+  assert.throws(() => check({ ...section, columns: MAX_CELLS }), /at most 1048576 cells/);
 });

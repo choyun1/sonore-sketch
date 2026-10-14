@@ -13,6 +13,7 @@ import { replaceSpan, simplify } from "../tracks/model.js";
 
 export const FORMAT = 1;
 export const CARRIERS = ["tones", "harmonic", "noise"];
+export const BLOB_LEVEL_MIN = -40; // dB, as the Level field allows (sonore_sketch.blobs.BLOB_LEVELS)
 export const MAX_BLOBS = 8;
 export const ENV_FS = 1000; // sonore's envelope rate for from_blobs
 
@@ -205,6 +206,7 @@ export function check(state) {
   items.forEach((item, i) => {
     if (!ITEM_KEYS.every((key) => Number.isFinite(item?.[key]))) throw new Error(`blob ${i + 1} must give a number for each of ${ITEM_KEYS.join(", ")}`);
     if (item.rate === 0 || item.rate_width <= 0 || item.density_width <= 0) throw new Error(`blob ${i + 1} needs a nonzero rate and positive widths`);
+    if (!(item.level >= BLOB_LEVEL_MIN && item.level <= 0)) throw new Error(`blob ${i + 1}'s level must be from ${BLOB_LEVEL_MIN} to 0 dB`);
   });
   const { bands = [], duration } = state;
   if (!Array.isArray(bands) || bands.length > MAX_BANDS) throw new Error(`bands must be a list of at most ${MAX_BANDS} bands`);

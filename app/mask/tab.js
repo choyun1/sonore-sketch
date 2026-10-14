@@ -95,8 +95,11 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
   }
 
   async function commitBytes(next) {
+    const before = state;
     const levels = await encodeLevels(next);
     remember(levels, next);
+    // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
+    if (state !== before) return;
     // `bytes` are on the duration's columns (load retimes them), so the span goes
     const { span: _span, ...rest } = state;
     commit({ ...rest, levels });
