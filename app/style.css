@@ -322,14 +322,20 @@ canvas.measured {
 /* the Scatter events tab */
 .events-body { display: flex; gap: 12px; align-items: flex-start; }
 .events-body .side { width: 200px; }
-.events-area { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; gap: 8px; }
+.events-area {
+  flex: 1; min-width: 0; position: relative;
+  display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 8px; align-items: start;
+}
+/* the rate track, the spectrogram and the pooled picture share one time axis; the band x rate picture stands beside them */
+.events-area > canvas.rate, .events-area > canvas.stft, .events-area > canvas.mod-pooled { grid-column: 1; }
+.events-area > canvas.mod-frame { grid-column: 2; grid-row: 2 / span 2; height: 100%; min-height: 388px; }
+.events-area > .hint { grid-column: 1 / -1; }
 .events-area canvas.stft { margin-top: 0; height: 190px; }
 canvas.rate {
   display: block; width: 100%; height: 140px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
   cursor: crosshair; touch-action: none;
 }
-.events-plots { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
 canvas.mod-pooled { cursor: crosshair; touch-action: none; }
 .events-area canvas.stft { cursor: crosshair; }
 .side .knob .ends { flex-basis: 100%; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: -4px; }
@@ -347,5 +353,6 @@ canvas.mod-pooled, canvas.mod-frame {
 @media (max-width: 720px) {
   .events-body { flex-direction: column-reverse; }
   .events-body .side { width: 100%; }
-  .events-plots { grid-template-columns: 1fr; }
+  .events-area { grid-template-columns: minmax(0, 1fr); }
+  .events-area > canvas.mod-frame { grid-column: 1; grid-row: auto; height: 260px; min-height: 0; }
 }

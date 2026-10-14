@@ -69,11 +69,9 @@ export function createEventsTab(root, { commit }) {
       <div class="events-area">
         <canvas class="rate" aria-label="Events per second over time, from 1 to 1000 on a log axis; draw to change it"></canvas>
         <canvas class="stft" aria-label="The result's spectrogram"></canvas>
-        <div class="events-plots">
-          <canvas class="mod-pooled" aria-label="The modulation spectrogram: modulation depth by rate over time, pooled over frequency bands; click to choose a moment"></canvas>
-          <canvas class="mod-frame" aria-label="Modulation depth by frequency band and rate at one moment"></canvas>
-        </div>
-        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, up to 64 times a second, over time. Every rate is measured over the same window, a third of the sound long and at most 1 s; the slowest rate shown holds two cycles in it (2 Hz from a 3 s sound on). Left: pooled over frequency bands. Right: each band at one moment, which follows the sound as it plays; click the spectrogram or the left picture to choose the moment. Brighter is deeper, over the top 30 dB; gray cells cannot be measured (a rate faster than the band is wide, a rate too slow for the window, or half a window at each end, where the window runs off the sound). Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
+        <canvas class="mod-pooled" aria-label="The modulation spectrogram: modulation depth by rate over time, pooled over frequency bands; click to choose a moment"></canvas>
+        <canvas class="mod-frame" aria-label="Modulation depth by frequency band and rate at one moment"></canvas>
+        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, up to 64 times a second, over time. Every rate is measured over the same window, a third of the sound long and at most 1 s; the slowest rate shown holds two cycles in it (2 Hz from a 3 s sound on). Under the spectrogram, on the same time axis: pooled over frequency bands. Beside them: each band at one moment, which follows the sound as it plays; click the spectrogram or the pooled picture to choose the moment. Brighter is deeper, over the top 30 dB; gray cells cannot be measured (a rate faster than the band is wide, a rate too slow for the window, or half a window at each end, where the window runs off the sound). Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
       </div>
       <aside class="side">
         <fieldset><legend>Event</legend>

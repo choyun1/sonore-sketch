@@ -281,6 +281,11 @@ most 1 s, and at least two cycles of 64 Hz; the slowest rate holds two
 cycles in it. [measure] 0.6 s: rates 10 to 64 Hz, valid from 0.1 to 0.5 s;
 3 s: 2 to 64 Hz, valid from 0.5 to 2.5 s.
 
+Cho also found the pooled picture hard to compare with the spectrogram, as
+it was narrower and its time axis did not line up. It now runs under the
+spectrogram at its full width, on the same time axis, and the band by rate
+picture stands in its own column beside the two.
+
 ## References
 
 - Ding, N., Patel, A. D., Chen, L., Butler, H., Luo, C., & Poeppel, D.
