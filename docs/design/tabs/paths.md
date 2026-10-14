@@ -42,6 +42,14 @@ a 4-core Linux cloud container, so it is not an independent check),
   (needs `h5py`); `so.HRIRSet(irs, positions, fs)` builds a set from plain
   arrays, which needs nothing beyond NumPy. `HRIRSet.at` interpolates over
   directions, elevation included.
+- Since sonore PR #194 (after 0.6.0, so in the next release), `HRIRSet.at`
+  and so `move_sound` refuse directions in a gap in the measurements, such
+  as below the lowest measured elevation, instead of blending across it
+  (sonore's `docs/design/spatial/elevation.md`). MIT KEMAR has the same
+  hole as PKU-IOA: on sonore's main branch every elevation from −40° to 90°
+  in 1° steps, at every azimuth in 1° steps, renders, and −41° and below
+  is refused [measure: a sweep at 1.4 m]. So the tab keeps elevation
+  within −40° to 90°.
 - `so.load_hrirs()` downloads PKU-IOA from sofacoustics.org, which a page
   cannot use (next section).
 
@@ -74,8 +82,8 @@ rule that a saved drawing makes the same sound in Python does not allow.
 **So the recommendation is MIT KEMAR, served with the page,** converted
 once to a compressed `.npz` of float32 arrays (1.24 MB at its own 44.1 kHz
 and 512 taps [measure]), so the browser needs no `h5py`. It is the same
-KEMAR mannequin as PKU-IOA, measured at one distance, with the elevation
-range the sibling elevation work in sonore uses. What it lacks is distance:
+KEMAR mannequin as PKU-IOA, measured at one distance, with the same elevation
+range (−40° to 90°) that sonore's elevation design note works with. What it lacks is distance:
 nearer and farther than 1.4 m act through level (1/r) and travel time only,
 with none of the near-field changes PKU-IOA measures below about 50 cm.
 
@@ -213,8 +221,8 @@ set's IRs lack their travel time. Neither is needed first.
 ## Decisions
 
 **W1. How elevation is drawn.** This is the fork.
-(a) **Top view only**, at ear height. The simplest tab; elevation waits for
-the sonore elevation work.
+(a) **Top view only**, at ear height. The simplest tab; elevation is left
+to sonore's gallery (the Up and down section on Binaural cues).
 (b) **Top view plus an elevation track** over time, as sketched. Reuses the
 Tracks primitive; one stroke and one track describe any path on the
 measured sphere.
