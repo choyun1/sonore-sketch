@@ -403,7 +403,8 @@ Five things to keep in step:
 Every tab is designed before it is built, in `docs/design/`: `app.md` for
 the page as a whole, and `tabs/` for each tab (`tracks.md` for Draw speech,
 `painted.md` for Draw spectrogram, `blobs.md` and `bands.md` for Draw modulation,
-`mask.md` for Erase spectrogram, `edit.md` for Erase modulation).
+`mask.md` for Erase spectrogram, `edit.md` for Erase modulation), and
+`paths.md` for a proposed Draw path tab, not built yet.
 Each records the measurements behind it, made by the scripts in `tools/`,
 and the decisions Cho made.
 
