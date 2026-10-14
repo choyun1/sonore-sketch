@@ -117,7 +117,8 @@ const history = new History(initial);
 // What Reset goes back to: the page as it opened, or as a file or link last opened it.
 let opened = initial;
 const hasRecording = () => Boolean(history.present.recording);
-const commitFrom = (id) => (state) => change(withTabState(history.present, id, state));
+// `play`: hear this edit whatever its length and Auto-play (New draw asks to hear another draw)
+const commitFrom = (id) => (state, { play = false } = {}) => change(withTabState(history.present, id, state), { play });
 const tabs = {
   tracks: createTracksTab(byId("tab-tracks"), { commit: commitFrom("tracks") }),
   painted: createPaintedTab(byId("tab-painted"), { commit: commitFrom("painted"), log }),
@@ -196,11 +197,11 @@ function show() {
   window.history.replaceState(null, "", `${location.pathname}${location.search}#state=${encodeState(linked())}`);
 }
 
-// An edit has ended: keep it, and hear it if it is short enough.
-function change(page) {
+// An edit has ended: keep it, and hear it if it is short enough (or if asked to).
+function change(page, { play = false } = {}) {
   history.push(page);
   show();
-  afterChange();
+  afterChange({ play });
 }
 
 // A drawing from a file or a link: it opens on the tab it was saved on, and is synthesized once, there.
@@ -212,9 +213,12 @@ function openOnItsTab(page) {
   afterChange();
 }
 
-function afterChange() {
+function afterChange({ play = false } = {}) {
+  // the sound playing is the old drawing's: stop it rather than let it play under the new pictures
+  player.stop();
   const short = history.present.duration <= AUTOPLAY_MAX_S;
-  if (short) synthesize({ play: ui.autoplay.checked });
+  if (play) synthesize({ play: true });
+  else if (short) synthesize({ play: ui.autoplay.checked });
   // a synthesis under way for the old drawing starts again on the new one
   else if (ready && running) synthesize({ play: running.play });
   else if (ready) status("Press Play to hear the change.");

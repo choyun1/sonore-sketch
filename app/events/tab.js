@@ -35,6 +35,7 @@ import {
   knobLabel,
   knobName,
   knobShown,
+  rateAt,
   ratePoints,
   toSlider,
   withRate,
@@ -49,6 +50,7 @@ const MOD_TICKS = [2, 4, 8, 16, 32, 64]; // Hz, the modulation rates' axis
 const F_LOW = 100; // Hz, the spectrogram's lowest frequency
 const FREQUENCY_TICKS = [100, 200, 500, 1000, 2000, 5000];
 const INVALID = "rgba(128, 128, 128, 0.35)"; // a cell the modulation spectrogram cannot trust
+const RATE_MARK = "rgba(255, 255, 255, 0.85)"; // the drawn rate, dashed over the modulation pictures
 
 const EVENT_KNOBS = KNOBS.filter((entry) => entry.events !== null);
 const COPY_KNOBS = KNOBS.filter((entry) => entry.events === null);
@@ -71,7 +73,7 @@ export function createEventsTab(root, { commit }) {
         <canvas class="stft" aria-label="The result's spectrogram"></canvas>
         <canvas class="mod-pooled" aria-label="The modulation spectrogram: modulation depth by rate over time, pooled over frequency bands; click to choose a moment"></canvas>
         <canvas class="mod-frame" aria-label="Modulation depth by frequency band and rate at one moment"></canvas>
-        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, up to 64 times a second, over time. Every rate is measured over the same window, a third of the sound long and at most 1 s; the slowest rate shown holds two cycles in it (2 Hz from a 3 s sound on). Under the spectrogram, on the same time axis: pooled over frequency bands. Beside them: each band at one moment, which follows the sound as it plays; click the spectrogram or the pooled picture to choose the moment. Brighter is deeper, over the top 30 dB. The gray ends of the pooled picture cannot be measured: there the window runs off the sound, so near the ends the band picture shows the nearest moment that was. Events that stand apart modulate deeply at many rates; regular ones put a peak at their rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
+        <p class="hint">The modulation spectrogram (sonore's ModulationSpectrogram): how deeply the sound's envelope rises and falls at each rate, up to 64 times a second, over time. Every rate is measured over the same window, a third of the sound long and at most 1 s; the slowest rate shown holds two cycles in it (2 Hz from a 3 s sound on). Under the spectrogram, on the same time axis: pooled over frequency bands. Beside them: each band at one moment, which follows the sound as it plays; click the spectrogram or the pooled picture to choose the moment. Brighter is deeper, over the top 30 dB. The gray ends of the pooled picture cannot be measured: there the window runs off the sound, so near the ends the band picture shows the nearest moment that was. The dashed line is the rate you drew. Events that stand apart modulate deeply at many rates; regular ones (Regularity toward 64) put a peak on the dashed line, and fainter ones at its multiples; random ones (Regularity 1) put none there, since random timing spreads its modulation over every rate; many overlapping ones leave the shallow, even modulation of noise. It leaves out the fine structure, and rates above 64 Hz.</p>
       </div>
       <aside class="side">
         <fieldset><legend>Event</legend>
@@ -83,7 +85,7 @@ export function createEventsTab(root, { commit }) {
         </fieldset>
         <fieldset><legend>Copies</legend>
           ${COPY_KNOBS.map(knobField).join("")}
-          <button type="button" class="draw" title="Draw new times, levels and pitches with the same settings">New draw</button>
+          <button type="button" class="draw" title="Draw new times, levels and pitches with the same settings, and hear them">New draw</button>
           <button type="button" class="flat" title="Set the rate back to ${DEFAULT_RATE} events per second throughout">Rate back to ${DEFAULT_RATE}/s</button>
         </fieldset>
         <p class="hint">Drag on the rate track to draw how many events come each second. The sliders apply when you let go. Space plays.</p>
@@ -130,7 +132,7 @@ export function createEventsTab(root, { commit }) {
       commit(changed);
     });
   }
-  ui.draw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }));
+  ui.draw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
   ui.flat.addEventListener("click", () => commit({ ...state, rate: DEFAULT_RATE }));
 
   // --- the rate track ------------------------------------------------------------------
@@ -276,6 +278,25 @@ export function createEventsTab(root, { commit }) {
     context.fillText(text, plot.x0, plot.y0 - 6);
   }
 
+  // The drawn rate, dashed over the pooled picture on its own time and rate
+  // axes: where a peak lands when the timing is regular. Rates past the
+  // picture's top run off it.
+  function drawRateTrack(context, plot) {
+    const points = ratePoints(state, state.duration);
+    const ends = [[0, points[0][1]], ...points, [state.duration, points[points.length - 1][1]]];
+    context.save();
+    context.beginPath();
+    context.rect(plot.x0, plot.y0, plot.x1 - plot.x0, plot.y1 - plot.y0);
+    context.clip();
+    context.strokeStyle = RATE_MARK;
+    context.lineWidth = 1.5;
+    context.setLineDash([4, 3]);
+    context.beginPath();
+    ends.forEach(([t, rate], i) => (i ? context.lineTo(plot.x(t), plot.y(rate)) : context.moveTo(plot.x(t), plot.y(rate))));
+    context.stroke();
+    context.restore();
+  }
+
   function renderPooled() {
     const context = fitCanvasInCssPixels(pooled);
     const plot = pooledPlot();
@@ -300,6 +321,7 @@ export function createEventsTab(root, { commit }) {
     drawAxisName(context, plot, "rate, Hz");
     drawTimeTicks(context, plot, plot.duration, 4);
     title(context, plot, "Modulation depth, pooled over bands");
+    drawRateTrack(context, plot);
     const at = shownTime();
     drawPlayhead(context, plot, plot.x(at), playhead !== null ? style("--error", "#d1495b") : style("--accent", "#2e86ab"));
   }
@@ -353,7 +375,21 @@ export function createEventsTab(root, { commit }) {
     context.textBaseline = "top";
     for (const rate of MOD_TICKS.filter((rate) => rate >= plot.low && rate <= plot.high)) context.fillText(`${rate}`, plot.x(rate), plot.y1 + 4);
     context.fillText("rate, Hz", (plot.x0 + plot.x1) / 2, plot.y1 + 18);
-    title(context, plot, `By band at ${at.toFixed(2)} s`);
+    // the drawn rate at this moment, dashed where it falls on the rate axis
+    const rate = rateAt(state, state.duration, Math.min(at, state.duration));
+    if (rate >= plot.low && rate <= plot.high) {
+      const lineX = Math.round(plot.x(rate)) + 0.5;
+      context.save();
+      context.strokeStyle = RATE_MARK;
+      context.lineWidth = 1.5;
+      context.setLineDash([4, 3]);
+      context.beginPath();
+      context.moveTo(lineX, plot.y0);
+      context.lineTo(lineX, plot.y1);
+      context.stroke();
+      context.restore();
+    }
+    title(context, plot, `By band at ${at.toFixed(2)} s, ${Number(rate.toPrecision(3))} events/s`);
   }
 
   // A click or drag on the spectrogram or the pooled picture chooses the moment shown.
