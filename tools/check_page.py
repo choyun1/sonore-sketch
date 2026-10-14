@@ -368,14 +368,55 @@ def main() -> None:
             # The arrow keys, Home and End move between the tabs (the WAI-ARIA tabs
             # pattern), and only the tab shown is in the Tab order.
             page.keyboard.press("ArrowLeft")  # from the first tab round to the last
-            expect(page.locator("#tab-edit")).to_be_visible()
-            assert page.evaluate("document.activeElement.dataset.tab") == "edit"
+            expect(page.locator("#tab-paths")).to_be_visible()
+            assert page.evaluate("document.activeElement.dataset.tab") == "paths"
             page.keyboard.press("Home")
             expect(page.locator("#tab-tracks")).to_be_visible()
             assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "tracks"
-            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 4
+            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 5
             expect(status).to_contain_text("Made", timeout=60_000)
             print("tabs: the arrow keys and Home move between the tabs")
+
+            # The Draw path tab: the example plays; a stroke on the top view
+            # replaces the path and is heard; a stroke on the elevation track
+            # lifts it; Clear leaves nothing to hear; Undo brings it back.
+            page.click(".tabs [data-tab=paths]")
+            expect(page.locator("#tab-paths")).to_be_visible()
+            expect(status).to_contain_text("Made", timeout=60_000)
+            example_path = page_document_in(page)["paths"]
+            view = page.locator("canvas.top-view").bounding_box()
+            middle_x, middle_y = view["x"] + view["width"] / 2, view["y"] + view["height"] / 2
+            page.mouse.move(middle_x - 120, middle_y - 60)
+            page.mouse.down()
+            for step in range(1, 31):
+                page.mouse.move(middle_x - 120 + 8 * step, middle_y - 60 - 2 * step)
+                page.wait_for_timeout(10)
+            page.mouse.up()
+            drawn = page_document_in(page)["paths"]["stroke"]
+            assert len(drawn) >= 20 and drawn != example_path["stroke"], drawn[:3]
+            assert drawn[0][1] < 0 < drawn[-1][1] and drawn[-1][2] > drawn[0][2] > 0, (drawn[0], drawn[-1])  # left to right, ahead, moving away
+            assert all(later[0] >= earlier[0] for earlier, later in zip(drawn, drawn[1:]))
+            expect(status).to_contain_text("Made", timeout=120_000)
+            lift = page.locator("canvas.elevation").bounding_box()
+            page.mouse.move(lift["x"] + 60, lift["y"] + lift["height"] - 40)
+            page.mouse.down()
+            page.mouse.move(lift["x"] + lift["width"] / 2, lift["y"] + 12, steps=10)
+            page.mouse.up()
+            elevation = page_document_in(page)["paths"]["elevation"]
+            assert isinstance(elevation, list) and max(elevation[1]) > 45, elevation
+            expect(status).to_contain_text("Made", timeout=120_000)
+            from sonore_sketch import page as page_module  # the Python half hears what the page wrote
+
+            heard = page_module.handle({"tab": "paths", "state": page_module.tab_state(page_document_in(page), "paths")})
+            assert "samples_right" in heard and heard["fs"] == 32000
+            page.click("#clear")
+            expect(status).to_contain_text("No path yet")
+            page.keyboard.press("Control+z")
+            assert page_document_in(page)["paths"]["stroke"] == drawn
+            expect(status).to_contain_text("Made", timeout=120_000)
+            page.click(".tabs [data-tab=tracks]")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("paths: a stroke and an elevation are drawn and heard in two ears; Clear and Undo work")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore

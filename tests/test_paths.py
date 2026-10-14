@@ -1,0 +1,103 @@
+"""The Draw path tab's Python half (docs/design/tabs/paths.md)."""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+import sonore as so
+
+from sonore_sketch import paths
+from sonore_sketch.page import handle
+
+
+def state(stroke, **changes):
+    return {"paths": 1, "sonore": "0.6.0", "duration": 1.0, "fs": 16000, "source": "noise", "room": "dry",
+            "stroke": stroke, "elevation": 0, **changes}
+
+
+def straight(x0, y0, x1, y1, seconds=1.0, n=61):
+    return [[seconds * i / (n - 1), x0 + (x1 - x0) * i / (n - 1), y0 + (y1 - y0) * i / (n - 1)] for i in range(n)]
+
+
+def test_the_hrirs_have_their_travel_time_put_back():
+    # MIT KEMAR's files start about 0.6 ms before the sound reaches the ears;
+    # 1.4 m at 343 m/s is 4.08 ms more (paths.md, W-M1)
+    onsets = paths.hrirs()._onset_times(paths.hrirs().positions)
+    assert 4.5e-3 < onsets.min() < onsets.max() < 5.5e-3
+
+
+def test_the_path_renders_in_two_channels_at_the_tabs_rate():
+    sound = paths.synthesize(state(straight(-2, 1, 2, 1)))
+    assert sound.n_channels == 2 and sound.fs == paths.FS
+    assert 1.0 <= sound.duration < 1.05  # and the last sound's travel time and the HRIRs' length
+
+
+def test_a_source_on_the_right_is_louder_in_the_right_ear():
+    sound = paths.synthesize(state([[0, 1.5, 0.0]]))  # one point: a still source
+    left, right = np.sqrt(np.mean(sound.data**2, axis=0))
+    assert 20 * np.log10(right / left) > 6
+
+
+def test_a_path_close_to_the_head_renders():
+    # without the travel time put back, move_sound refuses anything nearer than about 1.2 m
+    sound = paths.synthesize(state(straight(-1, 0.3, 1, 0.3)))
+    assert np.all(np.isfinite(sound.data)) and sound.rms > 0
+
+
+def test_the_stroke_is_stretched_to_the_duration_and_keeps_its_pace():
+    # drawn slowly for the first half of the stroke's time and fast after: the
+    # first 1 m takes 0.8 s of drawing, the next 3 m 0.2 s
+    stroke = [[0.0, -2.0, 1.0], [0.8, -1.0, 1.0], [1.0, 2.0, 1.0]]
+    times, points = paths.trajectory(state(stroke, duration=2.0))
+    assert times[-1] == pytest.approx(2.0)
+    assert points[np.searchsorted(times, 0.8)][0] == pytest.approx(-1.5, abs=0.02)  # still in the slow part
+    assert points[np.searchsorted(times, 1.8)][0] == pytest.approx(0.5, abs=0.05)  # halfway through the fast part
+
+
+def test_smoothing_takes_out_the_pointers_steps_but_keeps_the_path():
+    rng = np.random.default_rng(0)
+    true = straight(-2, 1.5, 2, 1.5, seconds=2.0, n=121)
+    jittered = [[t, x + rng.normal(0, 0.01), y] for t, x, y in true]
+    times, points = paths.smoothed(jittered)
+    speed = np.hypot(*np.diff(points, axis=0).T) / np.diff(times)
+    drawn = np.asarray(jittered)
+    raw_speed = np.hypot(*np.diff(drawn[:, 1:], axis=0).T) / np.diff(drawn[:, 0])
+    # the true speed is 2 m/s throughout
+    assert np.std(speed[10:-10] - 2.0) < np.std(raw_speed[5:-5] - 2.0) / 4
+    assert np.max(np.abs(points[:, 1] - 1.5)) < 1e-9
+
+
+def test_the_elevation_track_lifts_the_path_on_its_sphere():
+    times, points = paths.trajectory(state([[0, 0.0, 2.0]], elevation=[[0, 1], [0, 90]]))
+    distance = np.linalg.norm(points, axis=1)
+    assert np.allclose(distance, 2.0)
+    assert points[0, 2] == pytest.approx(0, abs=1e-9)
+    assert points[-1, 2] == pytest.approx(2.0, abs=1e-6)  # straight up at the end
+
+
+def test_the_path_keeps_out_of_the_head_and_within_the_measured_elevations():
+    times, points = paths.trajectory(state([[0, 0.0, 0.01]], elevation=-80))
+    _, elevation, _ = so.rect_to_hcc(*points.T)
+    assert np.all(np.linalg.norm(points, axis=1) >= paths.MIN_DISTANCE - 1e-9)
+    assert np.all(elevation >= -40 - 1e-9)
+
+
+def test_handle_returns_both_ears():
+    result = handle({"tab": "paths", "state": state(straight(-2, 1, 2, 1))})
+    left = np.frombuffer(result["samples"], dtype="<f4")
+    right = np.frombuffer(result["samples_right"], dtype="<f4")
+    assert result["fs"] == paths.FS and left.shape == right.shape and not np.allclose(left, right)
+
+
+@pytest.mark.parametrize("changes, message", [
+    ({"stroke": []}, "no path drawn yet"),
+    ({"stroke": [[0, 1, 1], [-1, 1, 1]]}, "must not go back"),
+    ({"stroke": [[0, 1]]}, r"\[t, x, y\]"),
+    ({"source": "drums"}, "'source'"),
+    ({"room": "hall"}, "'room'"),
+    ({"elevation": [[0], [1, 2]]}, "'elevation'"),
+    ({"duration": 20}, "'duration'"),
+])
+def test_bad_states_are_refused(changes, message):
+    with pytest.raises(ValueError, match=message):
+        paths.synthesize({**state(straight(-1, 1, 1, 1)), **changes})

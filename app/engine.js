@@ -7,7 +7,8 @@
 // Pyodide CDN (?engine=local).
 //
 // All resolve a request {tab, state} to
-// {fs, samples: Float32Array, synthesisSeconds, spectrogram: {...}}, on the
+// {fs, samples: Float32Array, right: Float32Array or null (the right ear, on
+// the Draw path tab, when samples is the left), synthesisSeconds, spectrogram: {...}}, on the
 // Draw modulation tab modulation: {...}, and on the Erase modulation tab
 // modulation, sourceModulation: {...} (modulationPicture) and clipped (a
 // fraction), and on the Erase spectrogram tab sourceStft, resultStft: {...}
@@ -167,6 +168,7 @@ export function readResult(body) {
   return {
     fs: body.fs,
     samples: new Float32Array(bytesFromBase64(body.samples).buffer),
+    right: body.samples_right ? new Float32Array(bytesFromBase64(body.samples_right).buffer) : null,
     synthesisSeconds: body.synthesis_s,
     spectrogram: readPicture(body.spectrogram, spectrogramPicture),
     sourceStft: body.source_stft && readPicture(body.source_stft, spectrogramPicture),

@@ -29,6 +29,7 @@ export const TAB_NAMES = {
   "erase-spectrogram": "mask",
   "draw-modulation": "blobs",
   "erase-modulation": "edit",
+  "draw-path": "paths",
 };
 
 // The tab id a location hash names, or null if it names none.

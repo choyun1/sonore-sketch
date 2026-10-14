@@ -16,11 +16,11 @@ from typing import Any
 import numpy as np
 import sonore as so
 
-from . import blobs, edit, mask, painted, shared, tracks
+from . import blobs, edit, mask, painted, paths, shared, tracks
 
 TABS = {
     "tracks": tracks.synthesize, "painted": painted.synthesize, "mask": mask.synthesize,
-    "blobs": blobs.synthesize, "edit": edit.synthesize,
+    "blobs": blobs.synthesize, "edit": edit.synthesize, "paths": paths.synthesize,
 }
 
 # The page's document (docs/design/tabs/painted.md, "Data model"), as
@@ -54,6 +54,14 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         return {"painted": painted.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["painted"]}
     if tab == "blobs" and "blobs" in page:
         return {"blobs": blobs.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["blobs"]}
+    if tab == "paths" and "paths" in page:
+        # the source's own drawing goes with the state, as on the Erase tabs
+        state = {"paths": paths.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["paths"]}
+        if state.get("source") == "speech":
+            state["speech"] = page["tracks"]
+        if state.get("source") == "file" and "recording" in page:
+            state["recording"] = page["recording"]
+        return state
     if tab in ("edit", "mask") and tab in page:
         # the source's own drawing goes with the state: the Draw speech tab's, or the page's recording
         section_format = edit.FORMAT if tab == "edit" else mask.FORMAT
@@ -106,7 +114,9 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     """Synthesize ``request["state"]`` with the tab ``request["tab"]``.
 
     Returns the sampling rate, the samples as little-endian float32 bytes
-    (sonore's level: RMS 1), a spectrogram (:func:`spectrogram`), and the
+    (sonore's level: RMS 1; for a sound with two channels, the Draw path
+    tab's, the left ear's, and the right ear's as ``samples_right``), a
+    spectrogram (:func:`spectrogram`, of the channels' mean), and the
     seconds synthesis took; on the Draw modulation tab also the result's measured
     modulation spectrum (``blobs.measured_picture``), and on the Erase
     modulation tab the source's and the result's (``edit.plane_picture``)
@@ -138,10 +148,12 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[float]:
     elapsed = time.perf_counter() - start
     result = {
         "fs": float(sound.fs),
-        "samples": np.ascontiguousarray(sound.mono().data[:, 0], dtype="<f4").tobytes(),
+        "samples": np.ascontiguousarray(sound.data[:, 0] if sound.n_channels == 2 else sound.mono().data[:, 0], dtype="<f4").tobytes(),
         "spectrogram": spectrogram(sound),
         "synthesis_s": elapsed,
     }
+    if sound.n_channels == 2:  # the Draw path tab's two ears
+        result["samples_right"] = np.ascontiguousarray(sound.data[:, 1], dtype="<f4").tobytes()
     if tab == "blobs":  # the result's measured modulation spectrum, for under the plane (blobs.md, B7)
         result["modulation"] = blobs.measured_picture(blobs.measured(sound, request["state"]))
     if tab == "edit":  # the source's modulation spectrum and the result's, on the plane (edit.md, E7, E9)

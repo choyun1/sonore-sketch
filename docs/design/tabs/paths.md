@@ -5,7 +5,9 @@ or a pen, on a picture of the room seen from above, and hear it move, in
 headphones, through sonore's `move_sound`.
 
 Status: decided (2026-10-14). Cho chose W1 (b), the top view with an
-elevation track, and accepted W2–W6 as recommended. Nothing is built.
+elevation track, and accepted W2–W6 as recommended. Built
+(2026-10-14): steps 1 to 4 of the order of work, on the same pull
+request as this document.
 
 This project is AI-assisted: the document and `tools/measure_paths.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -193,9 +195,10 @@ stroke. The HRIR file is 1.2 MB, fetched once when the tab opens.
 
 ### Data model
 
-`{"path": 1, "sonore": "0.6.0", "duration": 3.0, "fs": 32000, "stroke":
-[[t, x, y], ...], "elevation": breakpoints, "source": ..., "room": ...}`.
-The raw stroke is stored (times in the stroke's own seconds, meters), not
+`{"paths": 1, "sonore": "0.6.0", "duration": 3.0, "fs": 16000, "source":
+"noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0 or
+[times, degrees]}`. As built, the page's `fs` stays the page's, and the
+tab renders at 32 kHz whatever it says (W5). The raw stroke is stored (times in the stroke's own seconds, meters), not
 the smoothed one, so the smoothing can change without breaking saved
 drawings.
 
@@ -206,9 +209,10 @@ smooth the stroke (resample every 10 ms, Gaussian SD 30 ms), stretch it to
 the duration, combine with the elevation track into `(times, points)`,
 keep it at least 25 cm from the head center [estimate: a little more than
 KEMAR's head radius, so the path never passes through the head], and call
-`so.move_sound` with the padded MIT KEMAR set. Scale the result by one
-fixed gain rather than normalizing it, so a near pass is louder than a far
-one, and limit only if it would clip.
+`so.move_sound` with the padded MIT KEMAR set. The source is at RMS 1 and
+the result is not normalized, so a near pass is louder than a far one;
+the page scales both ears by one gain to a peak of −1 dBFS when it plays
+or saves the sound, as it does every tab's.
 
 ### Changes sonore needs
 
@@ -260,8 +264,11 @@ timing; speed is half of what a moving sound is.
 
 ## Order of work
 
-1. `tools/make_hrirs.py`: MIT KEMAR SOFA to `app/hrirs/mit-kemar.npz`,
-   with its citation and the MIT terms next to it.
+1. `tools/make_hrirs.py`: MIT KEMAR SOFA to
+   `src/sonore_sketch/data/mit_kemar.npz`, with its citation and the MIT
+   terms next to it. It sits in the package so that Python, the local
+   engine and the synthesis server find it; the worker fetches it the
+   first time the tab makes a sound.
 2. `sonore_sketch.paths` and its tests: stroke to `(times, points)`,
    smoothing, the head limit, `move_sound`.
 3. The top view, playback with the moving dot.

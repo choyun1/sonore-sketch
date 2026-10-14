@@ -14,6 +14,7 @@ import { createBlobsTab } from "./blobs/tab.js";
 import { createEditTab } from "./edit/tab.js";
 import { createMaskTab } from "./mask/tab.js";
 import { createPaintedTab } from "./painted/tab.js";
+import { createPathsTab } from "./paths/tab.js";
 import { SONORE_VERSION, clampDuration } from "./tracks/model.js";
 import { createTracksTab } from "./tracks/tab.js";
 
@@ -133,6 +134,7 @@ const tabs = {
     hasRecording,
     log,
   }),
+  paths: createPathsTab(byId("tab-paths"), { commit: commitFrom("paths"), hasRecording }),
 };
 // The tab shown is not an edit (undo does not switch tabs); it is saved with
 // the document, so a link opens on the tab it was made on.
@@ -345,7 +347,7 @@ function showResult() {
 let ticking = false; // one playhead loop, however often a sound is restarted
 
 function start(sound) {
-  player.play(sound.samples, sound.fs);
+  player.play(sound.samples, sound.fs, sound.right);
   ui.play.textContent = "■ Stop";
   if (ticking) return;
   ticking = true;
@@ -422,7 +424,7 @@ ui.save.addEventListener("click", () => {
 // The sound of the drawing shown: made first if the last one is of an older drawing.
 ui.wav.addEventListener("click", async () => {
   const sound = result?.page === history.present ? result.sound : await synthesize({ play: false });
-  if (sound) download(wavBlob(sound.samples, sound.fs), "sketch.wav");
+  if (sound) download(wavBlob(sound.samples, sound.fs, sound.right), "sketch.wav");
 });
 ui.open.addEventListener("click", () => ui.file.click());
 ui.file.addEventListener("change", async () => {
