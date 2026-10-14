@@ -8,7 +8,11 @@
 // track runs along the path from its start to its end (W7), and the spot
 // under the pointer is marked on the path. The elevation track is drawn
 // freehand over the page's time, like a track on the Draw speech tab. Both
-// tracks replace what a stroke passes over.
+// tracks replace what a stroke passes over. Each has its own color, used
+// wherever it shows: the path is blue, speed orange (its track, its axis
+// name and the ring it puts on the path), elevation green (its track, its
+// axis name and the angle by the moving dot); the playhead is red on all
+// three.
 
 import { drawAxisName, drawBorder, drawPlayhead, drawTimeTicks, drawValueTicks, fitCanvasInCssPixels, pointerPosition } from "../plot.js";
 import { replaceSpan, simplify } from "../tracks/model.js";
@@ -227,7 +231,7 @@ export function createPathsTab(root, { commit, hasRecording }) {
     const marked = shaping ? shaping[shaping.length - 1][0] : hover;
     if (marked !== null && path?.points.length && !drawing) {
       const [px, py] = plot.toPixels(pointAlong(path, marked));
-      context.strokeStyle = ink;
+      context.strokeStyle = style("--speed", "#b8620f");
       context.lineWidth = 2;
       context.beginPath();
       context.arc(px, py, 8, 0, 2 * Math.PI);
@@ -242,6 +246,8 @@ export function createPathsTab(root, { commit, hasRecording }) {
       context.fill();
       const elevation = elevationAt(state, state.duration, playhead);
       if (elevation) {
+        context.fillStyle = style("--elevation", "#2f8545");
+        context.font = "bold 12px system-ui, sans-serif";
         context.textAlign = "left";
         context.textBaseline = "middle";
         context.fillText(`${Math.round(elevation)}°`, px + 10, py);
@@ -310,7 +316,9 @@ export function createPathsTab(root, { commit, hasRecording }) {
     drawValueTicks(context, plot, ticks.map((speed) => speed / average), plot.y, (relative) => `${Number((relative * average).toPrecision(2))}`, {
       gridColor: style("--grid", "#eeece6"),
     });
+    context.fillStyle = style("--speed", "#b8620f");
     drawAxisName(context, plot, "speed, m/s");
+    context.fillStyle = style("--muted", "#6b7280");
     context.textAlign = "center";
     context.textBaseline = "top";
     for (const fraction of [0, 0.25, 0.5, 0.75, 1]) {
@@ -320,14 +328,14 @@ export function createPathsTab(root, { commit, hasRecording }) {
     if (!state.stroke.length) return;
     const points = speedPoints(state);
     const shown = shaping ? replaceSpan(points, [...shaping].sort((a, b) => a[0] - b[0])) : points;
-    context.strokeStyle = style("--accent", "#2e86ab");
+    context.strokeStyle = style("--speed", "#b8620f");
     context.lineWidth = 2;
     context.beginPath();
     const ends = [[0, shown[0][1]], ...shown, [1, shown[shown.length - 1][1]]];
     ends.forEach(([fraction, speed], i) => (i ? context.lineTo(plot.x(fraction), plot.y(speed)) : context.moveTo(plot.x(fraction), plot.y(speed))));
     context.stroke();
     const marked = shaping ? shaping[shaping.length - 1][0] : hover;
-    if (marked !== null) drawPlayhead(context, plot, plot.x(marked), style("--ink", "#1d232b"));
+    if (marked !== null) drawPlayhead(context, plot, plot.x(marked), style("--speed", "#b8620f"));
     if (playhead !== null && path?.points.length) drawPlayhead(context, plot, plot.x(positionAt(path, playhead).along), style("--error", "#d1495b"));
   }
 
@@ -395,11 +403,13 @@ export function createPathsTab(root, { commit, hasRecording }) {
     context.clearRect(0, 0, plot.width, plot.height);
     drawBorder(context, track, plot);
     drawValueTicks(context, plot, ELEVATION_TICKS, plot.y, (degrees) => `${degrees}°`, { gridColor: style("--grid", "#eeece6") });
+    context.fillStyle = style("--elevation", "#2f8545");
     drawAxisName(context, plot, "elevation");
+    context.fillStyle = style("--muted", "#6b7280");
     drawTimeTicks(context, plot, state.duration, 5);
     const points = elevationPoints(state, state.duration);
     const shown = lifting ? replaceSpan(points, [...lifting].sort((a, b) => a[0] - b[0])) : points;
-    context.strokeStyle = style("--accent", "#2e86ab");
+    context.strokeStyle = style("--elevation", "#2f8545");
     context.lineWidth = 2;
     context.beginPath();
     const ends = [[0, shown[0][1]], ...shown, [state.duration, shown[shown.length - 1][1]]];
