@@ -1,4 +1,4 @@
-// The Painted tab: paint level on time x log-frequency and hear a sound
+// The Draw spectrogram tab: paint level on time x log-frequency and hear a sound
 // whose spectrotemporal envelope is the painting (docs/design/tabs/painted.md).
 //
 // The grid is drawn on a canvas as an image, one pixel per cell, scaled to

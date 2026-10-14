@@ -75,11 +75,11 @@ export function retime(bytes, span, duration) {
 // the same in Python.
 export function check(state) {
   const { source, rows, columns, floor_db, window, levels } = state;
-  if (!SOURCES.includes(source)) throw new Error(`the filter source must be one of ${SOURCES.join(", ")}`);
+  if (!SOURCES.includes(source)) throw new Error(`the Erase spectrogram source must be one of ${SOURCES.join(", ")}`);
   if (rows !== ROWS || columns !== COLUMNS || floor_db !== FLOOR_DB || window !== WINDOW_S) {
-    throw new Error(`the filter mask must be ${ROWS} rows x ${COLUMNS} columns with a floor of ${FLOOR_DB} dB and a ${WINDOW_S} s window`);
+    throw new Error(`the Erase spectrogram mask must be ${ROWS} rows x ${COLUMNS} columns with a floor of ${FLOOR_DB} dB and a ${WINDOW_S} s window`);
   }
-  if (typeof levels !== "string") throw new Error("the filter mask's levels must be text");
-  if (state.span !== undefined && !(typeof state.span === "number" && state.span > 0)) throw new Error("the filter mask's span must be a positive number of seconds");
+  if (typeof levels !== "string") throw new Error("the Erase spectrogram mask's levels must be text");
+  if (state.span !== undefined && !(typeof state.span === "number" && state.span > 0)) throw new Error("the Erase spectrogram mask's span must be a positive number of seconds");
   return state;
 }

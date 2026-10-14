@@ -213,9 +213,9 @@ def recording(state: Mapping[str, Any]) -> so.Sound:
     return so.Sound(samples, fs)
 
 
-def source(state: Mapping[str, Any], silent: str = "there is no modulation to edit") -> so.Sound:
-    """The sound the tab edits, at the page's duration and rate (the Filter
-    recording tab takes its source here too, saying ``silent`` when it is)."""
+def source(state: Mapping[str, Any], silent: str = "there is no modulation to erase") -> so.Sound:
+    """The sound the tab erases from, at the page's duration and rate (the
+    Erase spectrogram tab takes its source here too, saying ``silent`` when it is)."""
     duration, fs = float(state["duration"]), float(state["fs"])
     kind = state["source"]
     if kind == "syllables":

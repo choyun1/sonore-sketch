@@ -56,10 +56,10 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
       </div>
       <aside class="side">
         <fieldset><legend>Source</legend>
-          <select class="source" title="The sound you filter">
+          <select class="source" title="The sound you erase from">
             ${Object.entries(SOURCE_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
           </select>
-          <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to filter; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
+          <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to erase from; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
           <input type="file" class="audio-file" accept="audio/*" hidden>
           <p class="hint recording-note"></p>
         </fieldset>
@@ -111,7 +111,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
       try {
         decoded = await decodeLevels(next.levels, ROWS * COLUMNS);
       } catch (error) {
-        log?.error(`could not read the filter mask: ${error.message}`);
+        log?.error(`could not read the Erase spectrogram mask: ${error.message}`);
         decoded = blank();
       }
       remember(next.levels, decoded);
@@ -390,6 +390,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
     if (!state || !bytes || event.button > 2 || event.button === 1) return;
     event.preventDefault();
     canvas.setPointerCapture(event.pointerId);
+    // the brush's modes are the Draw spectrogram tab's: "paint" erases, "erase" restores
     const restore = mode === "erase" || event.button === 2;
     const cut = Math.min(-1, Math.max(FLOOR_DB, typedNumber(ui.cut.value, FLOOR_DB)));
     const at = geometry().cell(...local(event));
@@ -462,7 +463,7 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
       renderAll();
     },
     blocked() {
-      if (state.source === "file" && !state.recording) return "No recording: open an audio file (Source) to filter one.";
+      if (state.source === "file" && !state.recording) return "No recording: open an audio file (Source) to erase from.";
       return null;
     },
     key(event) {

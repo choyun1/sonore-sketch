@@ -1,4 +1,4 @@
-"""The Tracks tab's document, and the sound it describes.
+"""The Draw speech tab's document, and the sound it describes.
 
 A document is plain data (docs/design/tabs/tracks.md, D5)::
 

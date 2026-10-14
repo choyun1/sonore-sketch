@@ -59,7 +59,7 @@ def _number(value: Any) -> bool:
 def check(state: Mapping[str, Any]) -> None:
     """Raise ``ValueError`` saying what is wrong with ``state``, if anything."""
     if state.get("blobs") != FORMAT:
-        raise ValueError(f"not a Modulation state of format {FORMAT}: 'blobs' is {state.get('blobs')!r}")
+        raise ValueError(f"not a Draw modulation state of format {FORMAT}: 'blobs' is {state.get('blobs')!r}")
     duration, fs = state.get("duration"), state.get("fs")
     if not _number(duration) or not 0 < duration <= MAX_DURATION:
         raise ValueError(f"'duration' must be a number of seconds in (0, {MAX_DURATION:g}], not {duration!r}")
@@ -114,7 +114,7 @@ def _check_band(band: Any, i: int, duration: float, f_lo: float, f_hi: float) ->
     if any(b <= a for a, b in zip(times, times[1:])) or times[0] < 0 or times[-1] > duration + 1e-9:
         raise ValueError(f"{name}'s times must increase, within 0 to {duration:g} s")
     if any(not f_lo <= p[1] <= f_hi for p in points):
-        raise ValueError(f"{name}'s centre must stay within {f_lo:g}-{f_hi:g} Hz")
+        raise ValueError(f"{name}'s center must stay within {f_lo:g}-{f_hi:g} Hz")
 
 
 def band_centres(points: list, t: np.ndarray) -> np.ndarray:

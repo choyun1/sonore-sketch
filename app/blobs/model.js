@@ -220,7 +220,7 @@ export function check(state) {
     if (points.some(([t], k) => t < 0 || (duration !== undefined && t > duration + 1e-9) || (k > 0 && t <= points[k - 1][0]))) {
       throw new Error(`band ${i + 1}'s times must increase, within the duration`);
     }
-    if (points.some(([, f]) => f < f_lo || f > f_hi)) throw new Error(`band ${i + 1}'s centre must stay within ${f_lo}-${f_hi} Hz`);
+    if (points.some(([, f]) => f < f_lo || f > f_hi)) throw new Error(`band ${i + 1}'s center must stay within ${f_lo}-${f_hi} Hz`);
   });
   return state;
 }

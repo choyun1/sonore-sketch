@@ -120,17 +120,17 @@ export function checkRecording(recording) {
 // the same in Python.
 export function check(state) {
   const { source, carrier, iterations, seed = 1, f_lo, f_hi, bands_per_octave, columns, rows, floor_db, levels } = state;
-  if (!SOURCES.includes(source)) throw new Error(`the edit source must be one of ${SOURCES.join(", ")}`);
-  if (!CARRIERS.includes(carrier)) throw new Error(`the edit carrier must be one of ${CARRIERS.join(", ")}`);
+  if (!SOURCES.includes(source)) throw new Error(`the Erase modulation source must be one of ${SOURCES.join(", ")}`);
+  if (!CARRIERS.includes(carrier)) throw new Error(`the Erase modulation carrier must be one of ${CARRIERS.join(", ")}`);
   if (!(Number.isInteger(iterations) && iterations >= 0 && iterations <= MAX_ITERATIONS)) {
     throw new Error(`iterations must be a whole number from 0 to ${MAX_ITERATIONS}`);
   }
   if (!Number.isInteger(seed)) throw new Error("seed must be a whole number");
-  if (!(f_lo > 0 && f_hi > f_lo)) throw new Error("the edit tab's frequency range must have 0 < f_lo < f_hi");
+  if (!(f_lo > 0 && f_hi > f_lo)) throw new Error("the Erase modulation tab's frequency range must have 0 < f_lo < f_hi");
   if (!(Number.isInteger(bands_per_octave) && bands_per_octave >= 1)) throw new Error("bands_per_octave must be a whole number of at least 1");
   if (columns !== COLUMNS || rows !== ROWS || floor_db !== FLOOR_DB) {
-    throw new Error(`the edit mask must be ${COLUMNS} columns x ${ROWS} rows with a floor of ${FLOOR_DB} dB`);
+    throw new Error(`the Erase modulation mask must be ${COLUMNS} columns x ${ROWS} rows with a floor of ${FLOOR_DB} dB`);
   }
-  if (typeof levels !== "string") throw new Error("the edit mask's levels must be text");
+  if (typeof levels !== "string") throw new Error("the Erase modulation mask's levels must be text");
   return state;
 }
