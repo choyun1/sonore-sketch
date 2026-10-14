@@ -4,7 +4,10 @@ A proposed tab: draw where a sound goes around the listener with the mouse
 or a pen, on a picture of the room seen from above, and hear it move, in
 headphones, through sonore's `move_sound`.
 
-Status: proposed (2026-10-14), for Cho to decide. Nothing is built.
+Status: W1 decided (2026-10-14): Cho chose (b), the top view with an
+elevation track. W2–W6 stand at their recommendations, which Cho was told
+would be followed unless he said otherwise; he has not confirmed them one
+by one. Nothing is built.
 
 This project is AI-assisted: the document and `tools/measure_paths.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -232,6 +235,7 @@ first stroke's points, which is hard to make feel right.
 *Recommended:* (b), built after (a): the top view first, the track as the
 next step. Elevation is the least reliable cue here (W-M4), so it should not
 hold the rest of the tab back, but a track is cheap once the tab exists.
+*Decided (2026-10-14):* (b).
 
 **W2. Which HRIRs.** MIT KEMAR served with the page, SADIE II, PKU-IOA
 from the server only, or a spherical head. *Recommended:* MIT KEMAR, for
