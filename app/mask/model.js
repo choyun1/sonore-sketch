@@ -9,13 +9,13 @@
 // the syllable train does not stretch with the duration, so neither do
 // erasures on them: a duration change sets `span` to the time the columns
 // held, and what lies past it is not erased (Cho, 2026-10-06). The source
-// is the Erase modulation tab's (F2), and so is the page's recording.
+// is one of the Erase modulation tab's (F2; sources.js), and so is the
+// page's recording.
 //
 // No DOM here, so this file runs under `node --test`.
 
-import { SOURCES } from "../edit/model.js";
+import { SOURCES } from "../sources.js";
 
-export { SOURCES };
 export const FORMAT = 1;
 export const ROWS = 256;
 export const COLUMNS = 256;

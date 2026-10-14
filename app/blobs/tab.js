@@ -19,7 +19,20 @@
 // (with bands, measured within them: bands.md, K7), above the page's waveform.
 
 import { magma } from "../colormap.js";
-import { drawWaveform, fitCanvas, niceStep } from "../plot.js";
+import {
+  drawAxisName,
+  drawFrame,
+  drawPlayhead,
+  drawRateAxisWords,
+  drawRateTicks,
+  drawTitle,
+  drawValueTicks,
+  drawWaveform,
+  fitCanvasInCssPixels,
+  logSpectrogramPlot,
+  pointerPosition,
+  soundSeconds,
+} from "../plot.js";
 import {
   BAND_WIDTH_MAX,
   BAND_WIDTH_MIN,
@@ -51,7 +64,6 @@ const MARGIN = { left: 52, right: 10, top: 8, bottom: 36 };
 const SEAM = 7; // half the gap between the two sides of the rate axis, px
 const FLOOR_DB = -40; // the picture's range below the drawing's peak
 const PICK_PX = 8;
-const RATE_TICKS = [1, 2, 4, 8, 16, 32, 64];
 const BAND_TOOLS = [
   { id: "point", label: "Point", key: "p", title: "Drag a breakpoint; click a band's line to add one; drag inside a band to move it (P)" },
   { id: "line", label: "Line", key: "l", title: "Press at one end and release at the other: a straight stretch of the band (L)" },
@@ -393,59 +405,18 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   function render() {
     if (!state) return;
-    const context = fitCanvas(canvas);
-    const ratio = canvas.width / (canvas.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const context = fitCanvasInCssPixels(canvas);
     const g = geometry();
-    const style = getComputedStyle(canvas);
-    const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
-    const line = style.getPropertyValue("--line").trim() || "#d5d9e0";
     context.clearRect(0, 0, g.width, g.height);
     context.imageSmoothingEnabled = false;
     context.drawImage(picture(g), g.x0, g.y0, g.x1 - g.x0, g.y1 - g.y0);
 
     // axes and gridlines
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.fillStyle = muted;
-    context.strokeStyle = line;
-    context.strokeRect(g.x0 + 0.5, g.y0 + 0.5, g.x1 - g.x0 - 1, g.y1 - g.y0 - 1);
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (let d = 0; d <= DENSITY_MAX; d++) {
-      const y = Math.round(g.y(d)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(g.x0, y);
-      context.lineTo(g.x1, y);
-      context.stroke();
-      context.fillText(`${d}`, g.x0 - 6, Math.min(Math.max(y, g.y0 + 5), g.y1 - 5));
-    }
-    context.save();
-    context.translate(12, (g.y0 + g.y1) / 2);
-    context.rotate(-Math.PI / 2);
-    context.textAlign = "center";
-    context.fillText("cyc/oct", 0, 0);
-    context.restore();
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    for (const sign of [-1, 1]) {
-      for (const r of RATE_TICKS) {
-        const x = Math.round(g.x(sign * r)) + 0.5;
-        context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-        context.beginPath();
-        context.moveTo(x, g.y0);
-        context.lineTo(x, g.y1);
-        context.stroke();
-        context.fillText(`${sign * r}`.replace("-", "−"), x, g.y1 + 4);
-      }
-    }
-    context.textAlign = "left";
-    context.fillText("← sweeps up", g.x0, g.y1 + 19);
-    context.textAlign = "center";
-    context.fillText("rate, Hz", g.xc, g.y1 + 19);
-    context.textAlign = "right";
-    context.fillText("sweeps down →", g.x1, g.y1 + 19);
+    drawFrame(context, canvas, g);
+    drawValueTicks(context, g, Array.from({ length: DENSITY_MAX + 1 }, (_, d) => d), g.y, (d) => `${d}`);
+    drawAxisName(context, g, "cyc/oct");
+    drawRateTicks(context, g, g.x);
+    drawRateAxisWords(context, g, g.xc);
 
     // the blobs
     items().forEach((blob, i) => {
@@ -476,10 +447,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
 
   // --- gestures --------------------------------------------------------------------
 
-  function local(event) {
-    const box = canvas.getBoundingClientRect();
-    return [event.clientX - box.left, event.clientY - box.top];
-  }
+  const local = (event) => pointerPosition(canvas, event);
 
   // What is under the pointer: the selected blob's handles first, then the
   // nearest center, then the inside of the smallest outline.
@@ -592,9 +560,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   let measuredDrawn = { picture: null, key: "" };
 
   function renderMeasured() {
-    const context = fitCanvas(measuredCanvas);
-    const ratio = measuredCanvas.width / (measuredCanvas.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const context = fitCanvasInCssPixels(measuredCanvas);
     const width = measuredCanvas.clientWidth || 600;
     const height = measuredCanvas.clientHeight || 160;
     context.clearRect(0, 0, width, height);
@@ -604,9 +570,6 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     const y0 = MEASURED_MARGIN.top;
     const y1 = height - MEASURED_MARGIN.bottom;
     const yOf = (d) => y1 - (d / DENSITY_MAX) * (y1 - y0);
-    const style = getComputedStyle(measuredCanvas);
-    const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
-    const line = style.getPropertyValue("--line").trim() || "#d5d9e0";
     const picture = sound?.modulation ?? null;
     const w = Math.max(1, Math.round(g.x1 - g.x0));
     const h = Math.max(1, Math.round(y1 - y0));
@@ -634,166 +597,35 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     context.imageSmoothingEnabled = false;
     context.drawImage(measuredImage, g.x0, y0, g.x1 - g.x0, y1 - y0);
 
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.strokeStyle = line;
-    context.strokeRect(g.x0 + 0.5, y0 + 0.5, g.x1 - g.x0 - 1, y1 - y0 - 1);
-    context.fillStyle = muted;
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const d of [0, 2, 4, 6]) {
-      const y = Math.round(yOf(d)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(g.x0, y);
-      context.lineTo(g.x1, y);
-      context.stroke();
-      context.fillText(`${d}`, g.x0 - 6, Math.min(Math.max(y, y0 + 5), y1 - 5));
-    }
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    for (const sign of [-1, 1]) {
-      for (const r of RATE_TICKS) {
-        const x = Math.round(g.x(sign * r)) + 0.5;
-        context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-        context.beginPath();
-        context.moveTo(x, y0);
-        context.lineTo(x, y1);
-        context.stroke();
-        context.fillText(`${sign * r}`.replace("-", "−"), x, y1 + 4);
-      }
-    }
-    context.textAlign = "left";
-    context.fillStyle = "rgba(255, 255, 255, 0.85)";
-    context.fillText(
+    const plot = { x0: g.x0, x1: g.x1, y0, y1 };
+    drawFrame(context, measuredCanvas, plot);
+    drawValueTicks(context, plot, [0, 2, 4, 6], yOf, (d) => `${d}`);
+    drawRateTicks(context, plot, g.x);
+    drawTitle(
+      context, plot,
       !picture ? "Modulation spectrum: play to measure the result" : (state.bands ?? []).length ? "Modulation spectrum, measured within the bands" : "Modulation spectrum, measured",
-      g.x0 + 6, y0 + 4,
     );
   }
 
   // --- the result's spectrogram ------------------------------------------------------
 
   const STFT_MARGIN = { left: 52, right: 10, top: 6, bottom: 20 };
-  const FREQUENCY_TICKS = [100, 200, 500, 1000, 2000, 5000];
   let sound = null;
   let playhead = null;
-  const stftImage = document.createElement("canvas");
-  let stftDrawn = { sound: null, key: "" };
+  const stftPlot = logSpectrogramPlot(ui.stft, STFT_MARGIN);
 
-  // The spectrogram as an image, one pixel per CSS pixel; kept until the
-  // sound or the size changes, so the playhead can move over it cheaply.
-  function paintStft(w, h, span, duration) {
-    const { f_lo } = state;
-    stftImage.width = w;
-    stftImage.height = h;
-    const pixels = stftImage.getContext("2d").createImageData(w, h);
-    const floor = magma(0);
-    for (let i = 0; i < pixels.data.length; i += 4) {
-      pixels.data.set(floor, i);
-      pixels.data[i + 3] = 255;
-    }
-    const picture = sound?.spectrogram;
-    if (picture) {
-      const { data, nFreqs, nWindows, fMax, tStart, tStep } = picture;
-      const bins = Int32Array.from({ length: h }, (_, py) => Math.round(((f_lo * 2 ** ((1 - (py + 0.5) / h) * span)) / fMax) * (nFreqs - 1)));
-      for (let px = 0; px < w; px++) {
-        const timeWindow = Math.round((((px + 0.5) / w) * duration - tStart) / tStep);
-        if (timeWindow < 0 || timeWindow >= nWindows) continue;
-        for (let py = 0; py < h; py++) {
-          const bin = bins[py];
-          if (bin < 0 || bin >= nFreqs) continue;
-          pixels.data.set(magma(data[bin * nWindows + timeWindow] / 255), 4 * (py * w + px));
-        }
-      }
-    }
-    stftImage.getContext("2d").putImageData(pixels, 0, 0);
-  }
-
-  // The spectrogram panel's plot: pixels to and from time and frequency.
-  // Its time axis is the sound's own duration while a new one is made, so
-  // the picture does not jump; the bands are drawn on the same axis.
-  function stftGeometry() {
-    const width = ui.stft.clientWidth || 600;
-    const height = ui.stft.clientHeight || 200;
-    const x0 = STFT_MARGIN.left;
-    const x1 = width - STFT_MARGIN.right;
-    const y0 = STFT_MARGIN.top;
-    const y1 = height - STFT_MARGIN.bottom;
-    const { f_lo, f_hi } = state;
-    // the drawing's own time axis: a result of an older duration (not remade above 3 s) shows at its own times
-    const duration = state.duration;
-    const span = Math.log2(f_hi / f_lo);
-    return {
-      width, height, x0, x1, y0, y1, duration, span,
-      x: (t) => x0 + (t / duration) * (x1 - x0),
-      y: (f) => y1 - (Math.log2(f / f_lo) / span) * (y1 - y0),
-      t: (px) => Math.min(state.duration, Math.max(0, ((px - x0) / (x1 - x0)) * duration)),
-      f: (py) => Math.min(f_hi, Math.max(f_lo, f_lo * 2 ** (((y1 - py) / (y1 - y0)) * span))),
-    };
-  }
+  // The spectrogram panel's plot: pixels to and from time and frequency, on
+  // the drawing's own time axis (a result of an older duration, not remade
+  // above 3 s, shows at the drawing's times), the axis the bands are drawn on.
+  const stftGeometry = () => stftPlot.geometry(state.f_lo, state.f_hi, state.duration);
 
   function renderStft() {
-    const context = fitCanvas(ui.stft);
-    const ratio = ui.stft.width / (ui.stft.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    context.clearRect(0, 0, ui.stft.clientWidth || 600, ui.stft.clientHeight || 200);
+    const context = stftPlot.clear();
     if (!state) return;
     const sg = stftGeometry();
-    const { x0, x1, y0, y1, duration, span, y } = sg;
-    const { f_lo, f_hi } = state;
-    const style = getComputedStyle(ui.stft);
-    const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
-    const line = style.getPropertyValue("--line").trim() || "#d5d9e0";
-    const w = Math.max(1, Math.round(x1 - x0));
-    const h = Math.max(1, Math.round(y1 - y0));
-    const key = [w, h, f_lo, f_hi, duration].join(" ");
-    if (stftDrawn.sound !== sound || stftDrawn.key !== key) {
-      paintStft(w, h, span, duration);
-      stftDrawn = { sound, key };
-    }
-    context.imageSmoothingEnabled = true;
-    context.drawImage(stftImage, x0, y0, x1 - x0, y1 - y0);
-
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.strokeStyle = line;
-    context.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0 - 1, y1 - y0 - 1);
-    context.fillStyle = muted;
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const f of FREQUENCY_TICKS.filter((f) => f >= f_lo && f <= f_hi)) {
-      const yy = Math.round(y(f)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(x0, yy);
-      context.lineTo(x1, yy);
-      context.stroke();
-      context.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, x0 - 6, Math.min(Math.max(yy, y0 + 5), y1 - 5));
-    }
-    context.save();
-    context.translate(12, (y0 + y1) / 2);
-    context.rotate(-Math.PI / 2);
-    context.textAlign = "center";
-    context.fillText("Hz", 0, 0);
-    context.restore();
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    const step = niceStep(duration, x1 - x0);
-    for (let k = 0; k * step <= duration + 1e-9; k++) {
-      const x = x0 + ((k * step) / duration) * (x1 - x0);
-      if (x < x1 - 24) context.fillText(`${+(k * step).toFixed(2)}`, x, y1 + 4);
-    }
-    context.textAlign = "right";
-    context.fillText("s", x1, y1 + 4);
+    stftPlot.draw(context, sg, sound?.spectrogram, { named: true });
     drawBands(context, sg);
-    if (playhead !== null) {
-      const x = Math.round(x0 + (playhead / duration) * (x1 - x0)) + 0.5;
-      context.strokeStyle = style.getPropertyValue("--accent").trim() || "#2e86ab";
-      context.beginPath();
-      context.moveTo(x, y0);
-      context.lineTo(x, y1);
-      context.stroke();
-    }
+    if (playhead !== null) drawPlayhead(context, sg, sg.x(playhead), getComputedStyle(ui.stft).getPropertyValue("--accent").trim() || "#2e86ab");
   }
 
   // --- the bands, on the spectrogram ---------------------------------------------------
@@ -870,10 +702,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     return inside;
   }
 
-  function stftLocal(event) {
-    const box = ui.stft.getBoundingClientRect();
-    return [event.clientX - box.left, event.clientY - box.top];
-  }
+  const stftLocal = (event) => pointerPosition(ui.stft, event);
 
   // The plot, and a breakpoint's reach around it: the first and last
   // breakpoints sit on its edges.
@@ -990,8 +819,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
   // panel's time axis (the page's own waveform strip is hidden on this tab).
   function renderWave() {
     // the drawing's duration, as the bands panel above it: an older, longer result shows at its own times
-    const duration = state?.duration ?? (sound ? sound.samples.length / sound.fs : 1);
-    drawWaveform(ui.wave, sound?.samples, sound?.fs, duration);
+    drawWaveform(ui.wave, sound, state?.duration ?? (sound ? soundSeconds(sound) : 1));
   }
 
   new ResizeObserver(render).observe(canvas);

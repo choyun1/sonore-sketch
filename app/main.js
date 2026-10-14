@@ -19,12 +19,12 @@ import { createTracksTab } from "./tracks/tab.js";
 
 const AUTOPLAY_MAX_S = 3; // longer sounds play on Play only (app.md, D10)
 
-const $ = (id) => document.getElementById(id);
+const byId = (id) => document.getElementById(id);
 const ui = {
-  play: $("play"), duration: $("duration"), autoplay: $("autoplay"), clear: $("clear"), reset: $("reset"), undo: $("undo"), redo: $("redo"),
-  open: $("open"), save: $("save"), link: $("link"), wav: $("wav"), file: $("file"),
-  status: $("status"), versions: $("versions"), waveform: $("waveform"),
-  log: $("log"), logToggle: $("log-toggle"), logLines: $("log-lines"), logCopy: $("log-copy"), logClear: $("log-clear"),
+  play: byId("play"), duration: byId("duration"), autoplay: byId("autoplay"), clear: byId("clear"), reset: byId("reset"), undo: byId("undo"), redo: byId("redo"),
+  open: byId("open"), save: byId("save"), link: byId("link"), wav: byId("wav"), file: byId("file"),
+  status: byId("status"), versions: byId("versions"), waveform: byId("waveform"),
+  log: byId("log"), logToggle: byId("log-toggle"), logLines: byId("log-lines"), logCopy: byId("log-copy"), logClear: byId("log-clear"),
 };
 
 // --- the log ---------------------------------------------------------------------
@@ -51,11 +51,11 @@ window.addEventListener("unhandledrejection", (event) =>
 // Loading the synthesizer takes several seconds on every visit (docs/design/app.md, M1): say so under the header, with a clock
 const loadStart = performance.now();
 const loadClock = setInterval(() => {
-  $("loading-time").textContent = `${((performance.now() - loadStart) / 1000).toFixed(0)} s`;
+  byId("loading-time").textContent = `${((performance.now() - loadStart) / 1000).toFixed(0)} s`;
 }, 1000);
 function loading(text, failed = false) {
-  $("loading-step").textContent = text.replace(/ \(\d+(\.\d+)? s\)$/, "");
-  $("loading").classList.toggle("failed", failed);
+  byId("loading-step").textContent = text.replace(/ \(\d+(\.\d+)? s\)$/, "");
+  byId("loading").classList.toggle("failed", failed);
   if (failed) {
     clearInterval(loadClock);
     ui.play.textContent = "▶ Play";
@@ -79,7 +79,7 @@ const engine = new LatestOnly(
       ui.play.disabled = false;
       ui.play.textContent = "▶ Play";
       clearInterval(loadClock);
-      $("loading").hidden = true;
+      byId("loading").hidden = true;
       status("Ready. Draw, then press Play.");
       synthesize({ play: false });
     },
@@ -115,16 +115,16 @@ let opened = initial;
 const hasRecording = () => Boolean(history.present.recording);
 const commitFrom = (id) => (state) => change(withTabState(history.present, id, state));
 const tabs = {
-  tracks: createTracksTab($("tab-tracks"), { commit: commitFrom("tracks") }),
-  painted: createPaintedTab($("tab-painted"), { commit: commitFrom("painted"), log }),
-  mask: createMaskTab($("tab-mask"), {
+  tracks: createTracksTab(byId("tab-tracks"), { commit: commitFrom("tracks") }),
+  painted: createPaintedTab(byId("tab-painted"), { commit: commitFrom("painted"), log }),
+  mask: createMaskTab(byId("tab-mask"), {
     commit: commitFrom("mask"),
     openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "mask")),
     hasRecording,
     log,
   }),
-  blobs: createBlobsTab($("tab-blobs"), { commit: commitFrom("blobs") }),
-  edit: createEditTab($("tab-edit"), {
+  blobs: createBlobsTab(byId("tab-blobs"), { commit: commitFrom("blobs") }),
+  edit: createEditTab(byId("tab-edit"), {
     commit: commitFrom("edit"),
     // a recording belongs to the page, and sets its duration (edit.md, E1)
     openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds)),
@@ -143,10 +143,10 @@ function showTab() {
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", String(active));
   }
-  for (const id of Object.keys(tabs)) $(`tab-${id}`).hidden = id !== tab.id;
+  for (const id of Object.keys(tabs)) byId(`tab-${id}`).hidden = id !== tab.id;
   // a tab that draws the result's waveform itself (the Draw modulation tab, in its Result box)
   document.querySelector("main > .result").hidden = Boolean(tab.ownWaveform);
-  $("tab-caption").textContent = tabButtons.find((b) => b.dataset.tab === tab.id)?.dataset.caption ?? "";
+  byId("tab-caption").textContent = tabButtons.find((b) => b.dataset.tab === tab.id)?.dataset.caption ?? "";
 }
 
 function switchTab(id, { synthesizes = true } = {}) {
@@ -285,7 +285,7 @@ function showResult() {
   const sound = result?.sound;
   const duration = result?.doc.duration ?? history.present.duration;
   tab.setResult(sound);
-  drawWaveform(ui.waveform, sound?.samples, sound?.fs, duration);
+  drawWaveform(ui.waveform, sound, duration);
   ui.wav.disabled = !sound;
 }
 

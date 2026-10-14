@@ -7,15 +7,24 @@
 // toward the brush's level by its weight when the stroke ends.
 
 import { magma } from "../colormap.js";
-import { fitCanvas, niceStep } from "../plot.js";
+import {
+  drawAxisName,
+  drawBrush,
+  drawFrame,
+  drawPlayhead,
+  drawTimeTicks,
+  drawValueTicks,
+  fitCanvasInCssPixels,
+  frequencyLabel,
+  pointerPosition,
+} from "../plot.js";
 import {
   CARRIERS,
+  LevelCache,
   applyStroke,
   blank,
   dab,
   dabsAlong,
-  decodeLevels,
-  encodeLevels,
   isSilent,
   octaves,
   resampleRows,
@@ -33,7 +42,7 @@ export function createPaintedTab(root, { commit, log }) {
   let pointer = null; // [x, y] of the brush outline, or null
   let playhead = null;
   let mode = "paint";
-  const cache = new Map();
+  const cache = new LevelCache(CACHE);
 
   root.innerHTML = `
     <div class="painted-body">
@@ -72,34 +81,19 @@ export function createPaintedTab(root, { commit, log }) {
 
   // --- the painting and its state ------------------------------------------------
 
-  function remember(levels, decoded) {
-    cache.delete(levels);
-    cache.set(levels, decoded);
-    if (cache.size > CACHE) cache.delete(cache.keys().next().value);
-  }
-
   // Commit `next` bytes (and any other changes) as a new state.
   async function commitBytes(next, changes = {}) {
     const before = state;
-    const levels = await encodeLevels(next);
-    remember(levels, next);
+    const levels = await cache.encode(next);
     // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
     if (state === before) commit({ ...state, ...changes, levels });
   }
 
   let loaded = Promise.resolve(); // the painting shown being read
   async function load(next) {
-    const size = rows(next) * next.columns;
-    let decoded = cache.get(next.levels);
-    if (!decoded) {
-      try {
-        decoded = await decodeLevels(next.levels, size);
-      } catch (error) {
-        log?.error(`could not read the painting: ${error.message}`);
-        decoded = blank(next);
-      }
-      remember(next.levels, decoded);
-    }
+    const decoded = await cache.decode(next.levels, rows(next) * next.columns, () => blank(next), (error) =>
+      log?.error(`could not read the painting: ${error.message}`),
+    );
     if (state === next) {
       bytes = decoded;
       render();
@@ -159,13 +153,8 @@ export function createPaintedTab(root, { commit, log }) {
 
   function render() {
     if (!state) return;
-    const context = fitCanvas(canvas);
-    const ratio = canvas.width / (canvas.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const context = fitCanvasInCssPixels(canvas);
     const g = geometry();
-    const style = getComputedStyle(canvas);
-    const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
-    const line = style.getPropertyValue("--line").trim() || "#d5d9e0";
     context.clearRect(0, 0, g.width, g.height);
 
     const shown = stroke?.preview ?? bytes;
@@ -207,61 +196,19 @@ export function createPaintedTab(root, { commit, log }) {
     }
 
     // axes
-    context.strokeStyle = line;
-    context.fillStyle = muted;
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.strokeRect(g.x0 + 0.5, g.y0 + 0.5, g.x1 - g.x0 - 1, g.y1 - g.y0 - 1);
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const f of FREQUENCY_TICKS.filter((f) => f >= state.f_lo && f <= state.f_hi)) {
-      const y = Math.round(g.y(f)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.18)"; // over the dark picture
-      context.beginPath();
-      context.moveTo(g.x0, y);
-      context.lineTo(g.x1, y);
-      context.stroke();
-      context.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, g.x0 - 6, y);
-    }
-    context.save();
-    context.translate(12, (g.y0 + g.y1) / 2);
-    context.rotate(-Math.PI / 2);
-    context.textAlign = "center";
-    context.fillText("Hz", 0, 0);
-    context.restore();
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    const step = niceStep(state.duration, g.x1 - g.x0);
-    for (let k = 0; k * step <= state.duration + 1e-9; k++) {
-      const x = g.x(k * step);
-      if (x < g.x1 - 24) context.fillText(`${+(k * step).toFixed(2)}`, x, g.y1 + 5); // room for "s"
-    }
-    context.textAlign = "right";
-    context.fillText("s", g.x1, g.y1 + 5);
+    drawFrame(context, canvas, g);
+    const ticks = FREQUENCY_TICKS.filter((f) => f >= state.f_lo && f <= state.f_hi);
+    drawValueTicks(context, g, ticks, g.y, frequencyLabel, { gridColor: "rgba(255, 255, 255, 0.18)", clamp: false }); // over the dark picture
+    drawAxisName(context, g, "Hz");
+    drawTimeTicks(context, g, state.duration, 5);
 
-    if (playhead !== null) {
-      context.strokeStyle = style.getPropertyValue("--accent").trim() || "#d1495b";
-      context.beginPath();
-      context.moveTo(Math.round(g.x(playhead)) + 0.5, g.y0);
-      context.lineTo(Math.round(g.x(playhead)) + 0.5, g.y1);
-      context.stroke();
-    }
-    if (pointer) {
-      context.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      context.setLineDash([3, 3]);
-      context.beginPath();
-      context.arc(pointer[0], pointer[1], Number(ui.size.value) / 2, 0, 2 * Math.PI);
-      context.stroke();
-      context.setLineDash([]);
-    }
+    if (playhead !== null) drawPlayhead(context, g, g.x(playhead), getComputedStyle(canvas).getPropertyValue("--accent").trim() || "#d1495b");
+    if (pointer) drawBrush(context, pointer, Number(ui.size.value));
   }
 
   // --- painting --------------------------------------------------------------------
 
-  function local(event) {
-    const box = canvas.getBoundingClientRect();
-    return [event.clientX - box.left, event.clientY - box.top];
-  }
+  const local = (event) => pointerPosition(canvas, event);
 
   function brush(g) {
     const radius = Number(ui.size.value) / 2;

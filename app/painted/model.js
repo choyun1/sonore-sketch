@@ -91,6 +91,48 @@ export async function decodeLevels(text, size) {
   return bytes;
 }
 
+// Grids already decoded (a painting, or an Erase tab's mask), by their
+// levels, so undo and redo are instant: the newest `limit` are kept.
+export class LevelCache {
+  constructor(limit) {
+    this.limit = limit;
+    this.decoded = new Map();
+  }
+
+  get(levels) {
+    return this.decoded.get(levels);
+  }
+
+  remember(levels, bytes) {
+    this.decoded.delete(levels);
+    this.decoded.set(levels, bytes);
+    if (this.decoded.size > this.limit) this.decoded.delete(this.decoded.keys().next().value);
+  }
+
+  // `bytes` as levels, kept.
+  async encode(bytes) {
+    const levels = await encodeLevels(bytes);
+    this.remember(levels, bytes);
+    return levels;
+  }
+
+  // The bytes of `levels` (`size` of them), kept; when they cannot be read,
+  // onError(error) is told and fallback() taken in their place.
+  async decode(levels, size, fallback, onError) {
+    let bytes = this.decoded.get(levels);
+    if (!bytes) {
+      try {
+        bytes = await decodeLevels(levels, size);
+      } catch (error) {
+        onError(error);
+        bytes = fallback();
+      }
+      this.remember(levels, bytes);
+    }
+    return bytes;
+  }
+}
+
 export function blank(section) {
   return new Uint8Array(rows(section) * section.columns).fill(-section.floor_db);
 }

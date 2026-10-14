@@ -14,8 +14,24 @@
 // axis, and its waveform.
 
 import { magma } from "../colormap.js";
-import { drawWaveform, fitCanvas, niceStep } from "../plot.js";
-import { applyCut, brushWeight, decodeLevels, encodeLevels, typedNumber } from "../painted/model.js";
+import {
+  drawAxisName,
+  drawBrush,
+  drawFrame,
+  drawMaskOutline,
+  drawRateAxisWords,
+  drawRateTicks,
+  drawTitle,
+  drawValueTicks,
+  drawWaveform,
+  fitCanvasInCssPixels,
+  logSpectrogramPlot,
+  pointerPosition,
+  soundSeconds,
+  drawPlayhead,
+} from "../plot.js";
+import { LevelCache, applyCut, brushWeight, typedNumber } from "../painted/model.js";
+import { attachSourceControls, sourceFieldset } from "../sources.js";
 import {
   CARRIERS,
   COARSE_BELOW_S,
@@ -23,27 +39,21 @@ import {
   DENSITY_MAX,
   FLOOR_DB,
   MAX_ITERATIONS,
-  MAX_RECORDING_S,
   RATE_MAX,
   RATE_MIN,
   ROWS,
   SIDE,
   blank,
-  encodePcm16,
   keepBelow,
-  pcm16Length,
   removeSweeps,
 } from "./model.js";
 
 const MARGIN = { left: 52, right: 10, top: 8, bottom: 36 };
 const STRIP = 8; // half the center strip's width, px
-const RATE_TICKS = [1, 2, 4, 8, 16, 32, 64];
 const CACHE = 200; // decoded masks kept, so undo and redo are instant
 const OUTLINE_DB = 30; // the mask's outline runs where the cut crosses this
-const SOURCE_LABELS = { syllables: "Syllable train", speech: "The Draw speech tab's sound", file: "A recording" };
 const CARRIER_LABELS = { source: "the source's own", tones: "tones", noise: "noise" };
 const STFT_MARGIN = { left: 52, right: 10, top: 6, bottom: 20 };
-const FREQUENCY_TICKS = [100, 200, 500, 1000, 2000, 5000];
 
 export function createEditTab(root, { commit, openRecording, hasRecording, log }) {
   let state = null;
@@ -55,7 +65,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   let sound = null;
   let source = null; // {key, picture}: the source's modulation spectrum, kept while only the mask changes
   let playhead = null;
-  const cache = new Map();
+  const cache = new LevelCache(CACHE);
 
   root.innerHTML = `
     <div class="edit-body">
@@ -77,14 +87,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
         </section>
       </div>
       <aside class="side">
-        <fieldset><legend>Source</legend>
-          <select class="source" title="The sound whose modulation you erase">
-            ${Object.entries(SOURCE_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
-          </select>
-          <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to erase from; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
-          <input type="file" class="audio-file" accept="audio/*" hidden>
-          <p class="hint recording-note"></p>
-        </fieldset>
+        ${sourceFieldset("The sound whose modulation you erase")}
         <fieldset><legend>Brush</legend>
           <label class="choice" title="Erase modulation where you paint (E)"><input type="radio" name="edit-mode" value="paint" checked> Erase <kbd>E</kbd></label>
           <label class="choice" title="Restore what was erased; right-drag restores too (R)"><input type="radio" name="edit-mode" value="erase"> Restore <kbd>R</kbd></label>
@@ -112,7 +115,6 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   const $ = (selector) => root.querySelector(selector);
   const canvas = $("canvas.mask-plane");
   const ui = {
-    source: $(".source"), openAudio: $(".open-audio"), audioFile: $(".audio-file"), recordingNote: $(".recording-note"),
     size: $(".size"), softness: $(".softness"), cut: $(".cut"),
     keepBelow: $(".keep-below"), keepRate: $(".keep-rate"), noDown: $(".no-down"), noUp: $(".no-up"),
     carrier: $(".carrier"), iterations: $(".iterations"), coarse: $(".coarse"), stft: $("canvas.result-stft"), wave: $("canvas.wave"),
@@ -126,31 +128,15 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
 
   // --- the mask and its state --------------------------------------------------------
 
-  function remember(levels, decoded) {
-    cache.delete(levels);
-    cache.set(levels, decoded);
-    if (cache.size > CACHE) cache.delete(cache.keys().next().value);
-  }
-
   async function commitBytes(next) {
     const before = state;
-    const levels = await encodeLevels(next);
-    remember(levels, next);
+    const levels = await cache.encode(next);
     // an undo, redo or opened file while encoding wins: the stroke was made on what it replaced
     if (state === before) commit({ ...state, levels });
   }
 
   async function load(next) {
-    let decoded = cache.get(next.levels);
-    if (!decoded) {
-      try {
-        decoded = await decodeLevels(next.levels, ROWS * COLUMNS);
-      } catch (error) {
-        log?.error(`could not read the mask: ${error.message}`);
-        decoded = blank();
-      }
-      remember(next.levels, decoded);
-    }
+    const decoded = await cache.decode(next.levels, ROWS * COLUMNS, blank, (error) => log?.error(`could not read the mask: ${error.message}`));
     if (state === next) {
       bytes = decoded;
       render();
@@ -161,27 +147,17 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   // The source's identity: its spectrum is kept while only the mask, the carrier or the iterations change.
   const sourceKey = (s) => JSON.stringify([s.source, s.duration, s.fs, s.f_lo, s.f_hi, s.bands_per_octave, s.speech ?? null, s.recording?.pcm16.length ?? 0, s.recording?.name ?? ""]);
 
+  // the Source controls, opening a recording among them (E1, c)
+  const showSource = attachSourceControls(root, { state: () => state, commit, openRecording, hasRecording, log });
+
   function showSettings() {
-    ui.source.value = state.source;
+    showSource();
     ui.carrier.value = state.carrier;
     ui.iterations.value = state.iterations;
-    const recording = state.recording;
-    ui.recordingNote.textContent =
-      state.source !== "file" ? "" : recording
-        ? `${recording.name}: ${(pcm16Length(recording.pcm16) / recording.fs).toFixed(2)} s, heard at ${state.duration} s.`
-        : "No recording yet: open an audio file. Links do not carry recordings, so open it again after following one.";
     ui.coarse.hidden = state.duration >= COARSE_BELOW_S;
     ui.coarse.textContent = `At ${state.duration} s, rates come in steps of ${+(1 / state.duration).toFixed(2)} Hz, coarse below about 8 Hz; ${COARSE_BELOW_S} s or more shows slow modulation finer.`;
   }
 
-  ui.source.addEventListener("change", () => {
-    // the page may hold a recording while another source is chosen
-    if (ui.source.value === "file" && !hasRecording()) {
-      showSettings(); // the source changes when a recording opens
-      return ui.audioFile.click();
-    }
-    commit({ ...state, source: ui.source.value });
-  });
   ui.carrier.addEventListener("change", () => commit({ ...state, carrier: ui.carrier.value }));
   ui.iterations.addEventListener("change", () => {
     const n = Math.round(typedNumber(ui.iterations.value, NaN));
@@ -196,24 +172,6 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   });
   ui.noDown.addEventListener("click", () => commitBytes(removeSweeps("down")));
   ui.noUp.addEventListener("click", () => commitBytes(removeSweeps("up")));
-
-  // --- opening a recording (E1, c) -----------------------------------------------------
-
-  ui.openAudio.addEventListener("click", () => ui.audioFile.click());
-  ui.audioFile.addEventListener("change", async () => {
-    const file = ui.audioFile.files[0];
-    ui.audioFile.value = "";
-    if (!file) return;
-    try {
-      const { samples, seconds } = await decodeAudio(file, state.fs);
-      if (!samples.some((x) => x !== 0)) throw new Error("it is silent");
-      openRecording({ name: file.name, fs: state.fs, pcm16: encodePcm16(samples) }, seconds);
-      log?.info(`opened the recording ${file.name} (${seconds.toFixed(2)} s)`);
-    } catch (error) {
-      ui.recordingNote.textContent = `Could not open ${file.name}: ${error.message}`;
-      log?.error(`could not open the recording ${file.name}: ${error.message}`);
-    }
-  });
 
   // --- the plane -------------------------------------------------------------------
 
@@ -309,85 +267,24 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
 
   // The mask's outline: cell edges where the cut crosses OUTLINE_DB.
   function outline(context, g, mask) {
-    const deep = (r, c) => mask[r * COLUMNS + c] >= OUTLINE_DB;
     const rowY = (r) => g.y1 - (r / ROWS) * (g.y1 - g.y0);
-    context.beginPath();
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLUMNS; c++) {
-        const here = deep(r, c);
-        if (c + 1 < COLUMNS && here !== deep(r, c + 1)) {
-          const x = Math.round(g.columnX(c + 1)) + 0.5;
-          context.moveTo(x, rowY(r));
-          context.lineTo(x, rowY(r + 1));
-        }
-        if (r + 1 < ROWS && here !== deep(r + 1, c)) {
-          const y = Math.round(rowY(r + 1)) + 0.5;
-          context.moveTo(g.columnX(c), y);
-          context.lineTo(g.columnX(c + 1), y);
-        }
-      }
-    }
-    context.stroke();
+    drawMaskOutline(context, mask, ROWS, COLUMNS, OUTLINE_DB, g.columnX, rowY);
   }
 
   // The plane's border, gridlines and labels, as on the Draw modulation tab
   // (`densities`: the ones labeled; `words`: the rate axis's name and directions).
   function axes(context, target, g, densities, words) {
-    const style = getComputedStyle(target);
-    const muted = style.getPropertyValue("--muted").trim() || "#6b7280";
-    const line = style.getPropertyValue("--line").trim() || "#d5d9e0";
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.fillStyle = muted;
-    context.strokeStyle = line;
-    context.strokeRect(g.x0 + 0.5, g.y0 + 0.5, g.x1 - g.x0 - 1, g.y1 - g.y0 - 1);
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const d of densities) {
-      const y = Math.round(g.y(d)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(g.x0, y);
-      context.lineTo(g.x1, y);
-      context.stroke();
-      context.fillText(`${d}`, g.x0 - 6, Math.min(Math.max(y, g.y0 + 5), g.y1 - 5));
-    }
-    if (words) {
-      context.save();
-      context.translate(12, (g.y0 + g.y1) / 2);
-      context.rotate(-Math.PI / 2);
-      context.textAlign = "center";
-      context.fillText("cyc/oct", 0, 0);
-      context.restore();
-    }
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    for (const sign of [-1, 1]) {
-      for (const r of RATE_TICKS) {
-        const x = Math.round(sign > 0 ? g.xc + STRIP + (Math.log2(r) / Math.log2(RATE_MAX)) * g.half : g.xc - STRIP - (Math.log2(r) / Math.log2(RATE_MAX)) * g.half) + 0.5;
-        context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-        context.beginPath();
-        context.moveTo(x, g.y0);
-        context.lineTo(x, g.y1);
-        context.stroke();
-        if (r > 1) context.fillText(`${sign * r}`.replace("-", "−"), x, g.y1 + 4);
-      }
-    }
+    drawFrame(context, target, g);
+    drawValueTicks(context, g, densities, g.y, (d) => `${d}`);
+    if (words) drawAxisName(context, g, "cyc/oct");
+    drawRateTicks(context, g, g.x, 2);
     context.fillText("0", g.xc, g.y1 + 4); // the strip: |rate| under 1 Hz
-    if (!words) return;
-    context.textAlign = "left";
-    context.fillText("← sweeps up", g.x0, g.y1 + 19);
-    context.textAlign = "center";
-    context.fillText("rate, Hz", g.xc, g.y1 + 19);
-    context.textAlign = "right";
-    context.fillText("sweeps down →", g.x1, g.y1 + 19);
+    if (words) drawRateAxisWords(context, g, g.xc);
   }
 
   function render() {
     if (!state) return;
-    const context = fitCanvas(canvas);
-    const ratio = canvas.width / (canvas.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const context = fitCanvasInCssPixels(canvas);
     const g = geometry();
     context.clearRect(0, 0, g.width, g.height);
     const mask = stroke?.preview ?? bytes;
@@ -400,20 +297,9 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       context.lineWidth = 1;
       outline(context, g, mask);
     }
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillStyle = "rgba(255, 255, 255, 0.85)";
-    const title = source ? "The source's modulation spectrum; what is erased is darkened and outlined" : "The source's modulation spectrum: Play to analyze it";
-    context.fillText(title, g.x0 + 6, g.y0 + 4);
+    drawTitle(context, g, source ? "The source's modulation spectrum; what is erased is darkened and outlined" : "The source's modulation spectrum: Play to analyze it");
 
-    if (pointer) {
-      context.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      context.setLineDash([3, 3]);
-      context.beginPath();
-      context.arc(pointer[0], pointer[1], Number(ui.size.value) / 2, 0, 2 * Math.PI);
-      context.stroke();
-      context.setLineDash([]);
-    }
+    if (pointer) drawBrush(context, pointer, Number(ui.size.value));
   }
 
   // What came out: the result's own modulation spectrum, measured from the
@@ -423,9 +309,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
   const MEASURED_MARGIN = { left: MARGIN.left, right: MARGIN.right, top: 6, bottom: 22 };
   function renderMeasured() {
     const target = ui.measured;
-    const context = fitCanvas(target);
-    const ratio = target.width / (target.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const context = fitCanvasInCssPixels(target);
     const g = geometry(target, MEASURED_MARGIN);
     context.clearRect(0, 0, g.width, g.height);
     if (!state) return;
@@ -440,10 +324,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       outline(context, g, mask);
       context.setLineDash([]);
     }
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillStyle = "rgba(255, 255, 255, 0.85)";
-    context.fillText(shown ? "The result's modulation spectrum, measured; what was erased is outlined" : "The result's modulation spectrum: Play to measure it", g.x0 + 6, g.y0 + 4);
+    drawTitle(context, g, shown ? "The result's modulation spectrum, measured; what was erased is outlined" : "The result's modulation spectrum: Play to measure it");
   }
 
   // E9: sonore clips envelopes an edit pushes below zero; say how much, not as an error.
@@ -455,10 +336,7 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
 
   // --- painting --------------------------------------------------------------------
 
-  function local(event) {
-    const box = canvas.getBoundingClientRect();
-    return [event.clientX - box.left, event.clientY - box.top];
-  }
+  const local = (event) => pointerPosition(canvas, event);
 
   // A dab of the brush at pixel `at`, weighed by distance on screen, so the
   // wide center strip is cut only where the circle drawn on it reaches (a
@@ -539,72 +417,19 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
 
   // --- the result ------------------------------------------------------------------
 
-  const stftImage = document.createElement("canvas");
-  let stftDrawn = { sound: null, key: "" };
+  const stftPlot = logSpectrogramPlot(ui.stft, STFT_MARGIN);
 
   function renderStft() {
-    const context = fitCanvas(ui.stft);
-    const ratio = ui.stft.width / (ui.stft.clientWidth || 1);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const width = ui.stft.clientWidth || 600;
-    const height = ui.stft.clientHeight || 200;
-    context.clearRect(0, 0, width, height);
+    const context = stftPlot.clear();
     if (!state) return;
-    const { f_lo, f_hi } = state;
-    const x0 = STFT_MARGIN.left;
-    const x1 = width - STFT_MARGIN.right;
-    const y0 = STFT_MARGIN.top;
-    const y1 = height - STFT_MARGIN.bottom;
-    const duration = sound ? sound.samples.length / sound.fs : state.duration;
-    const span = Math.log2(f_hi / f_lo);
-    const w = Math.max(1, Math.round(x1 - x0));
-    const h = Math.max(1, Math.round(y1 - y0));
-    const key = [w, h, f_lo, f_hi, duration].join(" ");
-    if (stftDrawn.sound !== sound || stftDrawn.key !== key) {
-      paintLogSpectrogram(stftImage, sound?.spectrogram, w, h, f_lo, span, duration);
-      stftDrawn = { sound, key };
-    }
-    context.imageSmoothingEnabled = true;
-    context.drawImage(stftImage, x0, y0, x1 - x0, y1 - y0);
-    const style = getComputedStyle(ui.stft);
-    context.lineWidth = 1;
-    context.font = "11px system-ui, sans-serif";
-    context.strokeStyle = style.getPropertyValue("--line").trim() || "#d5d9e0";
-    context.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0 - 1, y1 - y0 - 1);
-    context.fillStyle = style.getPropertyValue("--muted").trim() || "#6b7280";
-    context.textAlign = "right";
-    context.textBaseline = "middle";
-    for (const f of FREQUENCY_TICKS.filter((f) => f >= f_lo && f <= f_hi)) {
-      const y = Math.round(y1 - (Math.log2(f / f_lo) / span) * (y1 - y0)) + 0.5;
-      context.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      context.beginPath();
-      context.moveTo(x0, y);
-      context.lineTo(x1, y);
-      context.stroke();
-      context.fillText(f >= 1000 ? `${f / 1000}k` : `${f}`, x0 - 6, Math.min(Math.max(y, y0 + 5), y1 - 5));
-    }
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    const step = niceStep(duration, x1 - x0);
-    for (let k = 0; k * step <= duration + 1e-9; k++) {
-      const x = x0 + ((k * step) / duration) * (x1 - x0);
-      if (x < x1 - 24) context.fillText(`${+(k * step).toFixed(2)}`, x, y1 + 4);
-    }
-    context.textAlign = "right";
-    context.fillText("s", x1, y1 + 4);
-    if (playhead !== null) {
-      const x = Math.round(x0 + (playhead / duration) * (x1 - x0)) + 0.5;
-      context.strokeStyle = "#ffffff";
-      context.beginPath();
-      context.moveTo(x, y0);
-      context.lineTo(x, y1);
-      context.stroke();
-    }
+    // the sound's own duration: a result of an older duration shows at its own times
+    const plot = stftPlot.geometry(state.f_lo, state.f_hi, sound ? soundSeconds(sound) : state.duration);
+    stftPlot.draw(context, plot, sound?.spectrogram, { named: false });
+    if (playhead !== null) drawPlayhead(context, plot, plot.x(playhead), "#ffffff");
   }
 
   function renderWave() {
-    const duration = sound ? sound.samples.length / sound.fs : state?.duration ?? 1;
-    drawWaveform(ui.wave, sound?.samples, sound?.fs, duration);
+    drawWaveform(ui.wave, sound, sound ? soundSeconds(sound) : state?.duration ?? 1);
   }
 
   new ResizeObserver(render).observe(canvas);
@@ -658,50 +483,4 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
       return true;
     },
   };
-}
-
-// The 5 ms spectrogram (the shell's) on a log-frequency axis from f_lo up
-// `span` octaves, into `target`, w x h pixels.
-function paintLogSpectrogram(target, picture, w, h, f_lo, span, duration) {
-  target.width = w;
-  target.height = h;
-  const pixels = target.getContext("2d").createImageData(w, h);
-  const floor = magma(0);
-  for (let i = 0; i < pixels.data.length; i += 4) {
-    pixels.data.set(floor, i);
-    pixels.data[i + 3] = 255;
-  }
-  if (picture) {
-    const { data, nFreqs, nWindows, fMax, tStart, tStep } = picture;
-    const bins = Int32Array.from({ length: h }, (_, py) => Math.round(((f_lo * 2 ** ((1 - (py + 0.5) / h) * span)) / fMax) * (nFreqs - 1)));
-    for (let px = 0; px < w; px++) {
-      const timeWindow = Math.round((((px + 0.5) / w) * duration - tStart) / tStep);
-      if (timeWindow < 0 || timeWindow >= nWindows) continue;
-      for (let py = 0; py < h; py++) {
-        const bin = bins[py];
-        if (bin < 0 || bin >= nFreqs) continue;
-        pixels.data.set(magma(data[bin * nWindows + timeWindow] / 255), 4 * (py * w + px));
-      }
-    }
-  }
-  target.getContext("2d").putImageData(pixels, 0, 0);
-}
-
-// A sound file as mono samples at `fs` (the browser decodes and resamples
-// it), at most MAX_RECORDING_S long, and its own length in seconds.
-export async function decodeAudio(file, fs) {
-  const context = new OfflineAudioContext(1, 1, fs);
-  let audio;
-  try {
-    audio = await context.decodeAudioData(await file.arrayBuffer());
-  } catch {
-    throw new Error("the browser cannot decode it as audio");
-  }
-  const n = Math.min(audio.length, Math.round(MAX_RECORDING_S * fs));
-  const samples = new Float32Array(n);
-  for (let channel = 0; channel < audio.numberOfChannels; channel++) {
-    const data = audio.getChannelData(channel);
-    for (let i = 0; i < n; i++) samples[i] += data[i] / audio.numberOfChannels;
-  }
-  return { samples, seconds: audio.length / audio.sampleRate };
 }

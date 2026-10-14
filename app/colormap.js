@@ -21,7 +21,7 @@ const MAGMA_HEX =
   "fec488fec68afec88cfeca8dfecc8ffecd90fecf92fed194fed395fed597fed799fed89afdda9cfddc9efddea0fde0a1" +
   "fde2a3fde3a5fde5a7fde7a9fde9aafdebacfcecaefceeb0fcf0b2fcf2b4fcf4b6fcf6b8fcf7b9fcf9bbfcfbbdfcfdbf";
 
-export const MAGMA = Array.from({ length: 256 }, (_, i) => [0, 2, 4].map((k) => parseInt(MAGMA_HEX.substr(6 * i + k, 2), 16)));
+const MAGMA = Array.from({ length: 256 }, (_, i) => [0, 2, 4].map((offset) => parseInt(MAGMA_HEX.substr(6 * i + offset, 2), 16)));
 
 // The color for a level from 0 (dark, quiet) to 1 (bright, loud).
 export function magma(level) {

@@ -474,9 +474,6 @@ export function createTracksTab(root, { commit }) {
   return {
     id: "tracks",
     figure: panels[0].node, // the formants panel: where the shell shows synthesis progress
-    get document() {
-      return doc;
-    },
     setDocument(next) {
       gesture = null;
       doc = next;

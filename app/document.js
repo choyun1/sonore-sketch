@@ -27,6 +27,7 @@ import * as blobs from "./blobs/model.js";
 import * as edit from "./edit/model.js";
 import * as mask from "./mask/model.js";
 import * as painted from "./painted/model.js";
+import { MAX_RECORDING_S, checkRecording } from "./sources.js";
 import * as tracks from "./tracks/model.js";
 
 export const APP = "sonore-sketch";
@@ -122,7 +123,7 @@ export function forLink(page) {
 // which sets the duration to its own (up to the page's limit; F6),
 // stretching what the other tabs have drawn.
 export function withRecording(page, recording, seconds, tab = "edit") {
-  const duration = tracks.clampDuration(Math.round(Math.min(edit.MAX_RECORDING_S, seconds) * 1000) / 1000);
+  const duration = tracks.clampDuration(Math.round(Math.min(MAX_RECORDING_S, seconds) * 1000) / 1000);
   const stretched = stretchPage(page, duration);
   return { ...stretched, recording, [tab]: { ...stretched[tab], source: "file" } };
 }
@@ -135,7 +136,7 @@ export function openDocument(doc) {
   blobs.check(tabState(page, "blobs"));
   edit.check(tabState(page, "edit"));
   mask.check(tabState(page, "mask"));
-  if (page.recording !== undefined) edit.checkRecording(page.recording);
+  if (page.recording !== undefined) checkRecording(page.recording);
   return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "tracks" }, "tracks", state);
 }
 
@@ -161,12 +162,14 @@ export function resetTab(page, tab, start = defaultPage()) {
 
 // Clear: `tab`'s drawing goes blank and its settings (carrier, range,
 // source) stay, as does the duration. Draw speech cannot be blank, so it
-// goes to a steady neutral vowel (tracks.NEUTRAL). The sampling rate goes
-// back to its default, which nothing on the page sets but a file or link.
+// goes to a steady neutral vowel: every track flat at its default
+// (tracks.DEFAULTS), a schwa on 100 Hz (F1-F5 at 500, 1500, 2500, 3500 and
+// 4500 Hz, a uniform tube's resonances), voiced, no noise. The sampling rate
+// goes back to its default, which nothing on the page sets but a file or link.
 export async function clearTab(page, tab) {
   const fresh = defaultPage();
   const cleared = { ...page, fs: fresh.fs, sonore: fresh.sonore };
-  if (tab === "tracks") return { ...cleared, tracks: { mode: "klatt", params: { ...tracks.NEUTRAL } } };
+  if (tab === "tracks") return { ...cleared, tracks: { mode: "klatt", params: { ...tracks.DEFAULTS } } };
   if (tab === "painted") return { ...cleared, painted: { ...page.painted, levels: await painted.encodeLevels(painted.blank(page.painted)) } };
   if (tab === "blobs") return { ...cleared, blobs: { ...page.blobs, items: [], bands: [] } };
   if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };

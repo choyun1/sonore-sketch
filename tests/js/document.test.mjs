@@ -5,8 +5,7 @@ import { clearTab, defaultPage, openDocument, resetTab, stretchPage, tabState, u
 import * as painted from "../../app/painted/model.js";
 import * as edit from "../../app/edit/model.js";
 import * as mask from "../../app/mask/model.js";
-import { NEUTRAL } from "../../app/tracks/model.js";
-import { defaultDocument } from "../../app/tracks/model.js";
+import { DEFAULTS, defaultDocument } from "../../app/tracks/model.js";
 
 test("the default page holds the Draw speech tab's default drawing", () => {
   assert.deepEqual(tabState(defaultPage(), "tracks"), defaultDocument());
@@ -47,7 +46,7 @@ test("stretching the page stretches what the Draw speech tab drew", () => {
 test("Clear blanks the tab shown, keeping its settings and the duration", async () => {
   const page = { ...stretchPage(defaultPage(), 1.2), fs: 22050 };
   const tracks = await clearTab(page, "tracks");
-  assert.deepEqual(tracks.tracks, { mode: "klatt", params: NEUTRAL });
+  assert.deepEqual(tracks.tracks, { mode: "klatt", params: DEFAULTS });
   assert.equal(tracks.duration, 1.2);
   assert.equal(tracks.fs, 16000);
   assert.deepEqual(tracks.painted, page.painted);
