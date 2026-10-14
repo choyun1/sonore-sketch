@@ -275,7 +275,7 @@ in 1 Hz steps, half a second gray at each end at every rate, and each event
 blurred over about ±0.3 s; 0.5 s gives 4 to 64 Hz, 0.25 s gray and
 ±0.14 s. A 2 Hz floor is about the rate of a musical beat, and speech's
 rhythm peaks near 5 Hz (Ding et al., 2017), so the tab uses 1 s; but the
-page's sounds run from 0.05 to 10 s (0.6 s by default), and a 1 s window
+page's sounds run from 0.05 to 30 s (0.6 s by default), and a 1 s window
 leaves a shorter sound all gray. So the window is a third of the sound, at
 most 1 s, and at least two cycles of 64 Hz; the slowest rate holds two
 cycles in it. [measure] 0.6 s: rates 10 to 64 Hz, valid from 0.1 to 0.5 s;

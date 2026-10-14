@@ -37,7 +37,7 @@ from .shared import number
 from .sources import SOURCES, source
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 CARRIERS = ("source", "tones", "noise")  # E5
 MAX_ITERATIONS = 20  # E5
 RATE_MIN, RATE_MAX = 1.0, 64.0  # the plane's rate axis on each side (E2, as blobs.md B1)

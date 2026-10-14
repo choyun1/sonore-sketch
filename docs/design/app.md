@@ -296,6 +296,26 @@ puts every tab's 10 s synthesis at roughly 1–3 s in the browser
 Above that, it plays on Play, and a progress note shows while it is made.
 The limit is one constant, so it can change after measuring in the browser.
 
+Cho, 2026-10-14: raised to **30 s on every tab**, and said on the page
+("(max 30)" beside the duration) and in the README. Measured in headless
+Chromium with Pyodide 314.0.7 and sonore 0.7.0, each tab's starting
+drawing, from Play to the sound made ("Made … in" counts synthesis only;
+the gap is the pictures measured from the result):
+
+| Tab | 10 s, synthesis | 30 s, synthesis | 30 s, Play to sound |
+|---|---|---|---|
+| Draw speech | 1.0 s | 2.9 s | 3.4 s |
+| Draw spectrogram | 1.4 s | 4.8 s | 5.2 s |
+| Erase spectrogram | 2.7 s | 7.7 s | 8.0 s |
+| Draw modulation | 1.8 s | 6.5 s | 20.5 s |
+| Erase modulation (5 iterations) | 63.5 s | 176 s | 188 s |
+| Draw path | 2.0 s | 6.1 s | 6.6 s |
+| Scatter events | 2.6 s | 8.2 s | 8.6 s |
+
+Time grows about linearly with duration. Erase modulation is the outlier:
+its iterations make it about 3 minutes at 30 s; fewer iterations make it
+faster.
+
 The Tracks tab's own decisions (scope, track model, file format, sine-wave
 speech upstream, drawing interaction) are in `tabs/tracks.md`.
 The Painted tab's and the Paint primitive's decisions are in

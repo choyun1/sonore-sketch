@@ -43,7 +43,7 @@ from . import sources
 from .shared import number
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 FS = 32000  # the tab's own rate (W5)
 SOURCES = ("noise", "syllables", "speech", "file")
 ROOMS = ("dry", "room")
@@ -51,7 +51,7 @@ ROOM_RT60 = 0.6  # s, a living room's (an estimate, as in sonore's moving-sound 
 HALF_WIDTH = 4.0  # m: the top view spans -4..4 m on both axes
 MIN_DISTANCE = 0.25  # m from the head's center; a path is kept at least this far out
 ELEVATION_RANGE = (-40.0, 90.0)  # degrees, the measured range
-MAX_POINTS = 20000  # a stroke of 10 s at 120 events a second is 1200
+MAX_POINTS = 20000  # a stroke of 30 s at 120 events a second is 3600
 SLOWEST = 1 / 20  # of the speed track's fastest (W8)
 STEP = 0.01  # s, the spacing the stroke is put on before smoothing (W3)
 SMOOTHING = 0.03  # s, the Gaussian's standard deviation (W3)

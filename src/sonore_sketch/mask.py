@@ -34,7 +34,7 @@ from . import shared, sources
 from .shared import number
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 SOURCES = sources.SOURCES  # F2: the Erase modulation tab's
 ROWS, COLUMNS = 256, 256
 FLOOR_DB = -60.0  # a cut this deep removes the cell

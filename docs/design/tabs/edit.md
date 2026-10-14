@@ -192,7 +192,7 @@ For recordings, this takes the parked Filter recording design's
 recommendations, so the two tabs share them:
 - open a file now, with the microphone in a later PR (F1);
 - a recording is kept in memory and in saved files, never in links (F3);
-- a recording sets the page's duration to its length, up to 10 s (F6).
+- a recording sets the page's duration to its length, up to 30 s (F6; 10 s until 2026-10-14, app.md D10).
 
 **E2. The plane.**
 *Recommended:* the Modulation tab's axes (signed log rate 1–64 Hz, density

@@ -46,7 +46,7 @@ from serve import encode  # noqa: E402
 # The sites whose pages may call this server (CORS). Anything else is refused
 # by the visitor's browser, though not by this server: CORS is no access control.
 ORIGINS = {"https://choyun1.github.io", "http://127.0.0.1:8000", "http://localhost:8000"}
-MAX_BODY = 4_000_000  # bytes; a 10 s recording at 16 kHz is about 430 kB in a request
+MAX_BODY = 4_000_000  # bytes; a 30 s recording at 16 kHz is about 1.3 MB in a request
 RATE = (60, 60.0)  # at most 60 syntheses per address per 60 s: a busy person drawing makes about one a second
 
 

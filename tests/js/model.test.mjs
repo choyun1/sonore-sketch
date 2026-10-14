@@ -83,13 +83,13 @@ test("stretching scales breakpoint times exactly and keeps values (tracks.md, C3
   assert.deepEqual(longer.params.F1[0], doc.params.F1[0].map((t) => t * 2));
   assert.deepEqual(longer.params.F1[1], doc.params.F1[1]);
   assert.equal(longer.params.F4, 4400);
-  assert.equal(clampDuration(30), 10);
+  assert.equal(clampDuration(40), 30);
   assert.equal(clampDuration(0), 0.05);
 });
 
 test("check accepts the default document and refuses broken ones", () => {
   assert.equal(check(defaultDocument()).trackdraw, 1);
-  assert.throws(() => check({ ...defaultDocument(), duration: 11 }), /duration/);
+  assert.throws(() => check({ ...defaultDocument(), duration: 31 }), /duration/);
   assert.throws(() => check({ ...defaultDocument(), params: { F1: [[0], [1, 2]] } }), /F1/);
   assert.throws(() => check({ hello: 1 }), /TrackDraw/);
 });

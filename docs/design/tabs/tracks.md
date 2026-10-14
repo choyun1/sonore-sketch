@@ -191,7 +191,7 @@ Most of the time goes to the voiced source (70 to 80 harmonics below 7.2 kHz,
 each with its amplitude function evaluated per sample), not to the
 per-sample resonator loop: moving formants add only 0.02–0.10 s.
 
-At 10 s, the app's longest duration (`../app.md`, D10), the same three
+At 10 s, the app's longest duration until 2026-10-14 (`../app.md`, D10), the same three
 cases take 0.94, 0.65 and 0.04 s (warm, sonore's main branch at 451f99a;
 `../app.md`, M2).
 
@@ -284,7 +284,7 @@ and a mapping from Klatt parameter names to either a number or a track. A
 track is a list of breakpoints `(time, value)` sorted by time (D4), which is
 exactly sonore's `(times, values)` pair. A gap in a formant (sine-wave mode)
 or in voicing is two breakpoints at the edges of the gap with the value 0,
-so it stays where it was drawn (M4). The duration is the page's setting, up to 10 s (`../app.md`, D10).
+so it stays where it was drawn (M4). The duration is the page's setting, up to 30 s (`../app.md`, D10).
 Operations: add or move a breakpoint,
 replace a span (line and freehand), scale or shift values (the paper's
 command line: F0 up an octave is ×2), and stretch time (scale every

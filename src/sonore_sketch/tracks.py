@@ -21,7 +21,7 @@ import numpy as np
 import sonore as so
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 MODES = ("klatt",)  # sine-wave speech comes later (tracks.md, D6)
 F0_FLOOR = 20.0  # Hz: lower, the voicing turns into clicks (Cho, 2026-10-05); the page draws no lower
 

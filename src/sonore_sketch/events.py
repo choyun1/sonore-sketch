@@ -49,7 +49,7 @@ from scipy import stats
 from .shared import number
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 EVENTS = ("chirp", "pip", "noise", "impact")
 TONES = ("pure", "harmonic")  # the tone pip's
 RATE_RANGE = (1.0, 1000.0)  # events per second, the rate track's axis (E3)

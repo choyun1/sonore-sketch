@@ -70,6 +70,22 @@ def test_the_sonore_version_is_the_same_everywhere():
     assert pin == f">={major}.{minor},<{major}.{minor + 1}"  # the minor version the page installs
 
 
+def test_the_longest_duration_is_the_same_everywhere():
+    # one limit for every tab, and the page says what it is (app.md, D10)
+    from sonore_sketch import blobs, edit, events, mask, painted, paths
+
+    root = Path(__file__).resolve().parents[1]
+    longest = tracks.MAX_DURATION
+    assert {m.MAX_DURATION for m in (blobs, edit, events, mask, painted, paths)} == {longest}
+    seconds = f"{longest:g}"
+    assert re.search(r"MAX_DURATION = (\S+);", (root / "app" / "tracks" / "model.js").read_text()).group(1) == seconds
+    assert re.search(r"MAX_RECORDING_S = (\S+);", (root / "app" / "sources.js").read_text()).group(1) == seconds
+    html = (root / "index.html").read_text()
+    label = re.search(r'<label class="duration".*?</label>', html, re.S).group(0)
+    assert f'max="{seconds}"' in label and f"up to {seconds} s" in label and f"(max {seconds})" in label
+    assert f"(up to {seconds} s on every tab)" in (root / "README.md").read_text()
+
+
 def test_the_page_colors_levels_with_matplotlibs_magma_as_sonore_does():
     matplotlib = pytest.importorskip("matplotlib")
     root = Path(__file__).resolve().parents[1]

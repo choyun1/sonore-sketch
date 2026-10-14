@@ -73,7 +73,10 @@ each time you finish a change.
 
 - **Play** (or Space) plays the sound. Tick **Auto-play** to hear each
   change as soon as it is drawn (for sounds up to 3 s).
-- The **duration** (up to 10 s) stretches everything drawn.
+- The **duration** (up to 30 s on every tab) stretches everything drawn.
+  Longer sounds take longer to make: 30 s takes about 3–20 s on most tabs
+  in the browser, and about 3 minutes on Erase modulation with its 5
+  iterations.
 - **Undo** and **Redo** (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y) cover every change.
   **Clear** blanks the tab you are on (Draw speech, which cannot be
   silent, goes to a steady neutral vowel, a schwa), keeping the duration.
@@ -142,7 +145,7 @@ carrier (tones, harmonic or noise), the modulation depth, and the seed
 
 **Erase modulation.** Choose a **source**: a syllable train made at the
 page's duration, the Draw speech tab's sound, or a recording (**Open audio
-file…**, which sets the duration to the recording's, up to 10 s). Each
+file…**, which sets the duration to the recording's, up to 30 s). Each
 sound made shows the source's modulation spectrum on the plane, with a
 center strip for rates under 1 Hz. Paint on it to erase that modulation
 (right-drag or **Restore** brings it back; E and R switch between them);

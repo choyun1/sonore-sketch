@@ -65,7 +65,7 @@ def test_noise_sources_are_seeded():
     [
         ({"trackdraw": 2}, "format"),
         ({"duration": 0}, "duration"),
-        ({"duration": 10.5}, "duration"),
+        ({"duration": 30.5}, "duration"),
         ({"fs": -1}, "fs"),
         ({"mode": "sine"}, "mode"),
         ({"params": {"F9": 100}}, "unknown"),

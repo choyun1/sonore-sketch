@@ -40,7 +40,7 @@ from . import shared
 from .shared import number
 
 FORMAT = 1
-MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 CARRIERS = ("tones", "harmonic", "noise")  # blobs.md, B3, and Cho's harmonic complex
 MAX_BLOBS = 8  # B2
 BLOB_LEVELS = (-40.0, 0.0)  # dB, as the page's Level field allows
