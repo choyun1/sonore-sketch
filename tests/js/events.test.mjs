@@ -7,14 +7,15 @@ import {
   SLIDER_STEPS,
   check,
   defaultSection,
-  flatRate,
   fromSlider,
   knobLabel,
+  knobName,
   knobShown,
   rateAt,
   ratePoints,
   stretchSection,
   toSlider,
+  withDefaults,
   withRate,
 } from "../../app/events/model.js";
 
@@ -30,23 +31,42 @@ test("a document saved before the tab existed opens with the starting events", (
   assert.deepEqual(openDocument(older).events, defaultSection());
 });
 
+test("a section saved before the tone and noise band knobs opens with them at their defaults", () => {
+  const { tone: _tone, harmonics: _harmonics, noise_low: _low, noise_high: _high, ...older } = defaultSection();
+  const page = { ...defaultPage(), events: { ...older, pitch_sd: 200 } };
+  const opened = openDocument(page).events;
+  assert.equal(opened.tone, "pure");
+  assert.equal(opened.noise_high, 7500);
+  assert.equal(opened.pitch_sd, 200);
+  assert.deepEqual(withDefaults({}), defaultSection());
+});
+
 test("each slider's ends are its knob's range, and a position round-trips", () => {
-  for (const { name, low, high } of KNOBS) {
+  for (const { name, low, high, scale, step } of KNOBS) {
     assert.equal(fromSlider(name, 0), low, name);
     assert.equal(fromSlider(name, SLIDER_STEPS), high, name);
     const middle = fromSlider(name, SLIDER_STEPS / 2);
-    assert.ok(Math.abs(toSlider(name, middle) - SLIDER_STEPS / 2) <= 3, name);
+    // within a step of the knob's value (a whole-number knob moves in steps of 1)
+    const tolerance = scale === "linear" ? Math.max(3, (SLIDER_STEPS * step) / (high - low)) : 3;
+    assert.ok(Math.abs(toSlider(name, middle) - SLIDER_STEPS / 2) <= tolerance, name);
   }
   assert.equal(fromSlider("regularity", SLIDER_STEPS / 2), 8); // log: the middle of 1 to 64
   assert.equal(knobLabel("length", 0.03), "30 ms");
   assert.equal(knobLabel("cutoff", 2000), "2000 Hz");
   assert.equal(knobLabel("regularity", 4), "4.0");
+  assert.equal(knobLabel("harmonics", 8), "8");
+  assert.equal(fromSlider("pitch_sd", SLIDER_STEPS), 600);
 });
 
 test("only the chosen event's knobs show, and the copies' knobs always do", () => {
-  assert.ok(knobShown("f_low", "chirp") && !knobShown("f_low", "impact"));
-  assert.ok(knobShown("cutoff", "impact") && !knobShown("length", "impact"));
-  assert.ok(knobShown("pitch_sd", "noise") && knobShown("regularity", "impact"));
+  const as = (event, tone = "pure") => ({ event, tone });
+  assert.ok(knobShown("f_low", as("chirp")) && !knobShown("f_low", as("impact")));
+  assert.ok(knobShown("cutoff", as("impact")) && !knobShown("length", as("impact")));
+  assert.ok(knobShown("pitch_sd", as("noise")) && knobShown("regularity", as("impact")));
+  assert.ok(knobShown("noise_low", as("noise")) && !knobShown("noise_low", as("pip")));
+  assert.ok(!knobShown("harmonics", as("pip")) && knobShown("harmonics", as("pip", "harmonic")));
+  assert.equal(knobName("frequency", as("pip")), "Frequency");
+  assert.equal(knobName("frequency", as("pip", "harmonic")), "F0");
 });
 
 test("the rate is a number while flat, breakpoints otherwise, within 1 to 1000 per second", () => {
@@ -55,7 +75,6 @@ test("the rate is a number while flat, breakpoints otherwise, within 1 to 1000 p
   const rising = withRate(section, [[0, 0.2], [1, 123.456], [2, 5000]]);
   assert.deepEqual(rising.rate, [[0, 1, 2], [1, 123, 1000]]);
   assert.equal(rateAt(rising, 2, 0.5), 62);
-  assert.equal(flatRate(rising), null);
   assert.deepEqual(ratePoints(section, 3), [[0, 10], [3, 10]]);
 });
 
@@ -77,6 +96,10 @@ test("bad states are refused", () => {
   assert.throws(() => check({ ...good, event: "drum" }), /event must be/);
   assert.throws(() => check({ ...good, cutoff: 20 }), /cutoff/);
   assert.throws(() => check({ ...good, seed: 0.5 }), /seed/);
+  assert.throws(() => check({ ...good, tone: "square" }), /tone/);
+  assert.throws(() => check({ ...good, harmonics: 2.5 }), /harmonics/);
+  assert.throws(() => check({ ...good, noise_low: 3000, noise_high: 2000 }), /below its highest/);
+  assert.throws(() => check({ ...good, pitch_sd: 700 }), /pitch_sd/);
   assert.throws(() => check({ ...good, rate: 0.5 }), /rate must stay/);
   assert.throws(() => check({ ...good, rate: [[1, 0], [10, 20]] }), /must increase/);
   assert.throws(() => check({ ...good, rate: [[0], [10, 20]] }), /rate must be/);

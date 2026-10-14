@@ -1,4 +1,5 @@
-"""The Scatter events tab's state, the sound it describes, and its sparsity.
+"""The Scatter events tab's state, the sound it describes, and its
+modulation spectrogram.
 
 One short event is copied at random times by ``so.event_train``, at a drawn
 rate, with sliders for how regular the timing is and how much each copy's
@@ -6,12 +7,15 @@ level and pitch vary (docs/design/tabs/events.md)::
 
     {"events": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000,
      "event": "chirp", "length": 0.03, "f_low": 2000, "f_high": 6000,
-     "frequency": 1000, "decay": 0.008, "cutoff": 2000,
+     "tone": "pure", "frequency": 1000, "harmonics": 8,
+     "noise_low": 100, "noise_high": 7500, "decay": 0.008, "cutoff": 2000,
      "rate": 10 or [times, events per second],
      "regularity": 1, "level_sd": 0, "pitch_sd": 0, "seed": 0}
 
-``event`` is one of ``chirp`` (``f_low`` to ``f_high``), ``pip`` (a tone
-at ``frequency``) and ``noise``, each ``length`` seconds under a Hann
+``event`` is one of ``chirp`` (``f_low`` to ``f_high``), ``pip`` (a pure
+tone at ``frequency``, or with ``tone`` ``"harmonic"`` a harmonic complex
+on that F0 with its first ``harmonics`` harmonics) and ``noise`` (noise
+from ``noise_low`` to ``noise_high``), each ``length`` seconds under a Hann
 window, or ``impact``: a noise burst dying away with time constant
 ``decay``, through a causal lowpass at ``cutoff`` (E2). The knobs of the
 other events are kept, so switching back finds them as they were.
@@ -21,13 +25,15 @@ page's time (E3); the intervals are gamma-distributed with mean 1 s and
 shape ``regularity`` (1 is Poisson timing, 64 nearly regular), and the rate
 is ``event_train``'s ``rate_scale``. Levels and pitch shifts are drawn from
 normal distributions with standard deviations ``level_sd`` (dB) and
-``pitch_sd`` (cents). ``seed`` draws the train; the impact's noise always
-uses seed 0, so a new draw moves the events, not their shape.
+``pitch_sd`` (cents). ``seed`` draws the train; the noise in the noise
+burst and the impact always uses seed 0, so a new draw moves the events,
+not their shape.
 
-The plots under the sound (E7) read one statistic of sonore's texture
-model, the envelope variance over the squared mean of each band
-(``TextureStats.env_var``), here called sparsity. It is a one-way view: it
-keeps how peaky each band's envelope is and drops the events' timing.
+Under the sound, the tab shows its modulation spectrogram
+(``so.ModulationSpectrogram``, as on sonore's gallery page of that name),
+which is a one-way view: it keeps how deeply each band's envelope is
+modulated at each rate over time and drops the fine structure and the
+modulation phase.
 """
 
 from __future__ import annotations
@@ -39,37 +45,40 @@ from typing import Any
 import numpy as np
 import sonore as so
 from scipy import stats
-from sonore.texture import TextureStats
 
 from .shared import number
 
 FORMAT = 1
 MAX_DURATION = 10.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 EVENTS = ("chirp", "pip", "noise", "impact")
+TONES = ("pure", "harmonic")  # the tone pip's
 RATE_RANGE = (1.0, 1000.0)  # events per second, the rate track's axis (E3)
 REGULARITY_RANGE = (1.0, 64.0)  # the gamma shape (E4)
 LEVEL_SD_MAX = 12.0  # dB (E4)
-PITCH_SD_MAX = 300.0  # cents (E4)
+PITCH_SD_MAX = 600.0  # cents (E4; widened from 300 by Cho, 2026-10-14)
 LENGTH_RANGE = (0.01, 0.1)  # s, the chirp's, tone pip's and noise burst's length (E2)
 DECAY_RANGE = (0.002, 0.05)  # s, the impact's time constant (E2)
 CUTOFF_RANGE = (300.0, 8000.0)  # Hz, the impact's lowpass (E2)
 IMPACT_DECAYS = 8  # the impact lasts this many time constants,
 IMPACT_MIN_LENGTH = 0.05  # and at least this long, in seconds
-FREQUENCY_RANGE = (50.0, 7500.0)  # Hz, the chirp's and tone pip's, under the page's 8 kHz
+FREQUENCY_RANGE = (50.0, 7500.0)  # Hz, the chirp's, tone pip's and noise burst's, under the page's 8 kHz
+HARMONICS_RANGE = (1, 30)  # the harmonic complex's number of harmonics
 MAX_BREAKPOINTS = 2000
 
-# The sparsity-against-rate curve (E7): renders of this length at each rate,
-# Poisson timing, nothing spread, seed 0; made once per event and kept.
-CURVE_RATES = (1, 3, 10, 30, 100, 300, 1000)
-CURVE_S = 3.0
-# A band is one of the event's own when the event's power in it is within
-# this much of its strongest band; the curve and the dot average over those.
-EVENT_BANDS_DB = 10.0
+# The modulation spectrogram under the sound: the gallery's settings (24
+# cosine bands from 100 Hz, envelopes at 1 kHz, rates from 0.5 to 64 Hz, three
+# cycles per window), every 20 ms, depth shown over its top 30 dB.
+MOD_BANDS = 24
+MOD_F_LOW = 100.0
+MOD_F_HIGH = 7000.0
+MOD_ENV_FS = 1000.0
+MOD_HOP = 0.02
+MOD_RANGE_DB = 30.0
 
 
 DEFAULTS: dict[str, Any] = {
-    "event": "chirp", "length": 0.03, "f_low": 2000.0, "f_high": 6000.0, "frequency": 1000.0,
-    "decay": 0.008, "cutoff": 2000.0, "rate": 10.0, "regularity": 1.0, "level_sd": 0.0, "pitch_sd": 0.0,
+    "event": "chirp", "length": 0.03, "f_low": 2000.0, "f_high": 6000.0, "tone": "pure", "frequency": 1000.0,
+    "harmonics": 8, "noise_low": 100.0, "noise_high": 7500.0, "decay": 0.008, "cutoff": 2000.0, "rate": 10.0, "regularity": 1.0, "level_sd": 0.0, "pitch_sd": 0.0,
     "seed": 0,
 }
 
@@ -86,15 +95,22 @@ def check(state: Mapping[str, Any]) -> None:
         raise ValueError(f"'fs' must be a positive sampling rate, not {fs!r}")
     if state.get("event", "chirp") not in EVENTS:
         raise ValueError(f"'event' must be one of {EVENTS}, not {state.get('event')!r}")
+    if state.get("tone", "pure") not in TONES:
+        raise ValueError(f"'tone' must be one of {TONES}, not {state.get('tone')!r}")
+    harmonics = state.get("harmonics", DEFAULTS["harmonics"])
+    if not (isinstance(harmonics, int) and not isinstance(harmonics, bool) and HARMONICS_RANGE[0] <= harmonics <= HARMONICS_RANGE[1]):
+        raise ValueError(f"'harmonics' must be a whole number from {HARMONICS_RANGE[0]} to {HARMONICS_RANGE[1]}, not {harmonics!r}")
     ranges = {
         "length": LENGTH_RANGE, "f_low": FREQUENCY_RANGE, "f_high": FREQUENCY_RANGE,
-        "frequency": FREQUENCY_RANGE, "decay": DECAY_RANGE, "cutoff": CUTOFF_RANGE,
+        "frequency": FREQUENCY_RANGE, "noise_low": FREQUENCY_RANGE, "noise_high": FREQUENCY_RANGE, "decay": DECAY_RANGE, "cutoff": CUTOFF_RANGE,
         "regularity": REGULARITY_RANGE, "level_sd": (0.0, LEVEL_SD_MAX), "pitch_sd": (0.0, PITCH_SD_MAX),
     }
     for name, (low, high) in ranges.items():
         value = state.get(name, DEFAULTS[name])
         if not number(value) or not low <= value <= high:
             raise ValueError(f"'{name}' must be a number from {low:g} to {high:g}, not {value!r}")
+    if state.get("noise_low", DEFAULTS["noise_low"]) >= state.get("noise_high", DEFAULTS["noise_high"]):
+        raise ValueError("the noise burst's lowest frequency must be below its highest")
     if not isinstance(state.get("seed", 0), int) or isinstance(state.get("seed", 0), bool):
         raise ValueError(f"'seed' must be a whole number, not {state.get('seed')!r}")
     rate = state.get("rate", DEFAULTS["rate"])
@@ -116,12 +132,11 @@ def check(state: Mapping[str, Any]) -> None:
 
 
 def _knobs(state: Mapping[str, Any]) -> tuple:
-    """The event's own settings, with the sampling rate: what the event, and
-    so its sparsity curve, depends on."""
+    """The event's own settings, with the sampling rate: what the event depends on."""
     kind = state.get("event", DEFAULTS["event"])
-    names = {"chirp": ("length", "f_low", "f_high"), "pip": ("length", "frequency"), "noise": ("length",),
-             "impact": ("decay", "cutoff")}[kind]
-    return (kind, float(state["fs"]), *(float(state.get(name, DEFAULTS[name])) for name in names))
+    names = {"chirp": ("length", "f_low", "f_high"), "pip": ("length", "frequency", "tone", "harmonics"),
+             "noise": ("length", "noise_low", "noise_high"), "impact": ("decay", "cutoff")}[kind]
+    return (kind, float(state["fs"]), *(state.get(name, DEFAULTS[name]) for name in names))
 
 
 @functools.lru_cache(maxsize=8)
@@ -137,10 +152,15 @@ def _event(knobs: tuple) -> so.Sound:
     match kind:
         case "chirp":
             sound = so.exponential_chirp(length, fs, values[1], values[2])
+        case "pip" if values[2] == "harmonic":
+            # the harmonics under 0.45 times the sampling rate, and at least the fundamental
+            count = max(1, min(int(values[3]), int(0.45 * fs // values[1])))
+            sound = so.harmonic_complex(length, fs, values[1], harmonics=np.arange(1, count + 1), ramp=0.0)
         case "pip":
             sound = so.pure_tone(length, fs, values[1])
         case _:
-            sound = so.gaussian_noise(length, fs, rng=0)
+            band = (values[1], min(values[2], 0.45 * fs))
+            sound = so.butter_filter(so.gaussian_noise(length, fs, rng=0), band, btype="bandpass")
     return sound * np.hanning(sound.n_samples)[:, None]
 
 
@@ -185,62 +205,50 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     return sound.normalize() if sound.rms > 0 else sound
 
 
-# --- sparsity (E7) ---------------------------------------------------------------------
+# --- the modulation spectrogram ---------------------------------------------------------
 
 
-def band_sparsity(sound: so.Sound) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """The texture model's bands under the sound's Nyquist frequency: their
-    center frequencies, each band's envelope variance over its squared mean
-    (``TextureStats.env_var``), and each band's power (``subband_var``)."""
-    measured = TextureStats.measure(sound)
-    cfs = measured.model.filterbank.cfs
-    inside = (cfs < 0.45 * sound.fs) & (np.arange(cfs.size) > 0) & (np.arange(cfs.size) < cfs.size - 1)
-    return cfs[inside], measured.env_var[inside], measured.subband_var[inside]
+def _levels(db: np.ndarray) -> tuple[np.ndarray, float]:
+    """Depth in dB as 8-bit levels: 1 at ``MOD_RANGE_DB`` below the top, 255
+    at the top, 0 where the cell is not valid; and the top in dB."""
+    top = float(np.nanmax(db)) if np.any(np.isfinite(db)) else 0.0
+    scaled = 1 + np.round(254 * np.clip((db - top) / MOD_RANGE_DB + 1, 0, 1))
+    return np.where(np.isfinite(db), scaled, 0).astype(np.uint8), top
 
 
-@functools.lru_cache(maxsize=4)
-def _reference(knobs: tuple) -> dict[str, Any]:
-    """What the plots compare a sound with, for one event: Gaussian noise
-    with the event's spectrum (the limit as the rate grows, as on sonore's
-    Sound textures page), which bands are the event's own, and the curve of
-    sparsity against rate."""
-    one = _event(knobs)
-    fs = one.fs
-    noise = so.gaussian_noise(CURVE_S, fs, rng=0).convolve(one)[:CURVE_S]
-    cfs, noise_sparsity, power = band_sparsity(noise)
-    own = power >= power.max() * 10 ** (-EVENT_BANDS_DB / 10)
-    curve = [float(band_sparsity(train(one, CURVE_S, float(rate)))[1][own].mean()) for rate in CURVE_RATES]
-    return {"cfs": cfs, "noise": noise_sparsity, "own": own, "curve": curve,
-            "noise_mean": float(noise_sparsity[own].mean())}
-
-
-def sparsity(sound: so.Sound, state: Mapping[str, Any]) -> dict[str, Any]:
-    """The tab's plots of ``sound`` (E7), as plain lists for the page: each
-    band's sparsity and Gaussian noise's, which bands are the event's own,
-    the curve of the mean over those bands against rate, and this sound's
-    mean with its rate when the rate track is flat (else ``rate`` is None)."""
-    reference = _reference(_knobs(state))
-    _, values, _ = band_sparsity(sound) if sound.rms > 0 else (None, np.zeros_like(reference["cfs"]), None)
-    rate = rate_track(state)
-    if not number(rate) and np.all(rate[1] == rate[1][0]):
-        rate = float(rate[1][0])
+def modulation(sound: so.Sound) -> dict[str, Any]:
+    """``sound``'s modulation spectrogram as pictures for the page: the band
+    x rate depth at each time window (``frames``, window by window, each
+    band by band, each band's rates in order) and the depth pooled over the
+    bands, rate by time (``pooled``, rate by rate), both in dB over their top
+    ``MOD_RANGE_DB``, with the bands' and rates' centers and the windows'
+    times."""
+    bank = so.cosine_filterbank(n_bands=MOD_BANDS, f_lo=MOD_F_LOW, f_hi=min(MOD_F_HIGH, 0.45 * sound.fs))
+    spectrogram = so.ModulationSpectrogram(bank.analyze(sound.mono()).envelopes(fs=MOD_ENV_FS), hop=MOD_HOP)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        depth = np.where(spectrogram.valid, 20 * np.log10(spectrogram.depth[0]), np.nan)  # (band, rate, window)
+        pooled = 20 * np.log10(spectrogram.pooled_depth()[0])  # (rate, window)
+    frames, top = _levels(depth)
+    pooled_levels, pooled_top = _levels(pooled)
+    times = spectrogram.t
+    common = {
+        "n_rates": int(spectrogram.fm.size), "n_windows": int(times.size),
+        "rates": [float(rate) for rate in spectrogram.fm],
+        "t_start": float(times[0]), "t_step": float(times[1] - times[0]) if times.size > 1 else MOD_HOP,
+        "range_db": MOD_RANGE_DB,
+    }
     return {
-        "cfs": reference["cfs"].tolist(),
-        "values": values.tolist(),
-        "noise": reference["noise"].tolist(),
-        "own": reference["own"].tolist(),
-        "curve_rates": list(CURVE_RATES),
-        "curve": reference["curve"],
-        "noise_mean": reference["noise_mean"],
-        "mean": float(values[reference["own"]].mean()),
-        "rate": rate if number(rate) else None,
+        "frames": {
+            "data": np.ascontiguousarray(frames.transpose(2, 0, 1)).tobytes(),
+            "n_bands": int(spectrogram.f.size), "bands": [float(f) for f in spectrogram.f], "top_db": top, **common,
+        },
+        "pooled": {"data": np.ascontiguousarray(pooled_levels).tobytes(), "top_db": pooled_top, **common},
     }
 
 
 def steps(state: Mapping[str, Any]) -> Iterator[float]:
-    """Synthesize ``state`` and measure its sparsity, yielding the fraction
-    done; the curve against rate (made once per event, then kept) takes
-    most of the first request for an event."""
+    """Synthesize ``state`` and make its modulation spectrogram, yielding
+    the fraction done."""
     sound = synthesize(state)
-    yield 0.2
-    return sound, sparsity(sound, state)
+    yield 0.3
+    return sound, modulation(sound)
