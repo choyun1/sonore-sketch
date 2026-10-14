@@ -21,7 +21,7 @@ that makes every sound here, can do, each sound playable next to its plots.
 <table><tr>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-speech"><img alt="The Draw speech tab: formant tracks over the spectrogram of sonore saying its name, with the F0 and voicing tracks below" src="docs/screenshots/draw-speech.png"></a><br><sub><b>Draw speech</b>: formant, F0, voicing and noise tracks, spoken by Klatt's synthesizer</sub></td>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-spectrogram"><img alt="The Draw spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/draw-spectrogram.png"></a><br><sub><b>Draw spectrogram</b>: a sound whose spectrogram is the painting</sub></td>
-<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-modulation"><img alt="The Draw modulation tab: one blob on a modulation spectrum, and the spectrogram of the sound it makes, confined to one band round 500 Hz" src="docs/screenshots/draw-modulation.png"></a><br><sub><b>Draw modulation</b>: blobs on a modulation spectrum, confined to bands</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-path"><img alt="The Draw path tab: a path drawn round the listener, seen from above, from front left to front right, with its speed and elevation tracks below" src="docs/screenshots/draw-path.png"></a><br><sub><b>Draw path</b>: a sound moving round your head, for headphones</sub></td>
 </tr></table>
 
 sonore-sketch is under active development, and so is sonore. A saved
