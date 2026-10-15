@@ -306,9 +306,12 @@ main[data-tab="events"] > .result { margin-right: 470px; }
 .status .error { color: var(--error); }
 
 @media (max-width: 720px) {
-  .tracks-body { flex-direction: column-reverse; }
-  .painted-body, .blobs-body, .edit-body, .mask-body { flex-direction: column-reverse; }
+  /* the side panel above the plots, which take the whole width */
+  .tracks-body, .painted-body, .blobs-body, .edit-body, .mask-body, .paths-body { flex-direction: column-reverse; align-items: stretch; }
   .side { width: 100%; flex-direction: row; flex-wrap: wrap; }
+  /* the tab buttons wrap instead of running off the page */
+  .tabs { flex-wrap: wrap; }
+  .tabs button { border-radius: 6px; border-bottom: 1px solid var(--line); }
   .result, main[data-tab="events"] > .result { margin-right: 10px; }
 }
 
