@@ -272,8 +272,13 @@ canvas.measured {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-right: 162px;
+  /* the waveform spans the plots' time axis: the side panel (150 px), its
+     gap (12 px) and the plots' right margin (10 px) are left out */
+  margin-right: 172px;
 }
+/* on Scatter events the time axis also leaves out the band x rate picture
+   beside it (240 px and an 8 px gap) and a wider side panel (200 px) */
+main[data-tab="events"] > .result { margin-right: 470px; }
 .result-row { display: flex; align-items: center; gap: 0; }
 .result-label { width: 52px; color: var(--muted); font-size: 11px; }
 .result canvas {
@@ -300,7 +305,7 @@ canvas.measured {
   .tracks-body { flex-direction: column-reverse; }
   .painted-body, .blobs-body, .edit-body, .mask-body { flex-direction: column-reverse; }
   .side { width: 100%; flex-direction: row; flex-wrap: wrap; }
-  .result { margin-right: 0; }
+  .result, main[data-tab="events"] > .result { margin-right: 10px; }
 }
 
 .log { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }

@@ -156,6 +156,7 @@ function showTab() {
   for (const id of Object.keys(tabs)) byId(`tab-${id}`).hidden = id !== tab.id;
   // a tab that draws the result's waveform itself (the Draw modulation tab, in its Result box)
   document.querySelector("main > .result").hidden = Boolean(tab.ownWaveform);
+  document.querySelector("main").dataset.tab = tab.id; // the waveform's width follows the tab's plots (style.css)
   byId("tab-caption").textContent = tabButtons.find((button) => button.dataset.tab === tab.id)?.dataset.caption ?? "";
 }
 
