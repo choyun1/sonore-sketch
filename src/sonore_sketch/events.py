@@ -39,7 +39,7 @@ modulation phase.
 from __future__ import annotations
 
 import functools
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from typing import Any
 
 import numpy as np
@@ -149,27 +149,83 @@ def _knobs(state: Mapping[str, Any]) -> tuple:
 
 @functools.lru_cache(maxsize=8)
 def _event(knobs: tuple) -> so.Sound:
+    return _event_at(knobs, 1.0)
+
+
+def _event_at(knobs: tuple, ratio: float) -> so.Sound:
+    """The event ``ratio`` times higher and ``ratio`` times shorter, as a tape
+    played faster is, made at that pitch rather than resampled: what
+    ``so.event_train`` would make by reading the event every ``ratio``
+    samples, at a fraction of the cost (each distinct pitch is a resampling
+    of its own there). What would rise above what the sampling rate holds
+    is left out, as that reading filters it out: the part of a chirp above
+    it, a tone or harmonics above it, the part of a noise band above it."""
     kind, fs, *values = knobs
+    # the event itself draws its own noise; its copies at other pitches cut theirs from one long draw
+    noise = (lambda duration: so.gaussian_noise(duration, fs, rng=0).data) if ratio == 1 else (
+        lambda duration: _noise(round(duration * fs), fs))
     if kind == "impact":
-        decay, cutoff = values
-        length = max(IMPACT_MIN_LENGTH, IMPACT_DECAYS * decay)
+        decay, cutoff = values[0] / ratio, values[1] * ratio
+        length = max(IMPACT_MIN_LENGTH, IMPACT_DECAYS * values[0]) / ratio
         t = np.arange(round(length * fs)) / fs
-        burst = so.gaussian_noise(length, fs, rng=0) * np.exp(-t / decay)[:, None]
+        # noise read faster keeps its power over a wider band; fresh noise over that band has ratio times more
+        burst = so.Sound(noise(length) * (np.exp(-t / decay) / np.sqrt(ratio))[:, None], fs)
         return so.butter_filter(burst, min(cutoff, 0.45 * fs), btype="lowpass", zero_phase=False)
-    length = values[0]
+    length = values[0] / ratio
+    n = round(length * fs)
+    silent = so.Sound(np.zeros((n, 1)), fs)
     match kind:
         case "chirp":
-            sound = so.exponential_chirp(length, fs, values[1], values[2])
+            sound = _chirp_below(length, fs, values[1] * ratio, values[2] * ratio, fs / 2) or silent
         case "pip" if values[2] == "harmonic":
-            # the harmonics under 0.45 times the sampling rate, and at least the fundamental
-            count = max(1, min(int(values[3]), int(0.45 * fs // values[1])))
-            sound = so.harmonic_complex(length, fs, values[1], harmonics=np.arange(1, count + 1), ramp=0.0)
+            f0 = values[1] * ratio
+            # the harmonics under 0.45 times the sampling rate, and at least the fundamental while it is
+            count = min(int(values[3]), int(0.45 * fs // f0))
+            if ratio == 1:
+                count = max(1, count)
+            sound = so.harmonic_complex(length, fs, f0, harmonics=np.arange(1, count + 1), ramp=0.0) if count else silent
         case "pip":
-            sound = so.pure_tone(length, fs, values[1])
+            frequency = values[1] * ratio
+            sound = so.pure_tone(length, fs, frequency) if frequency < fs / 2 else silent
         case _:
-            band = (values[1], min(values[2], 0.45 * fs))
-            sound = so.butter_filter(so.gaussian_noise(length, fs, rng=0), band, btype="bandpass")
+            band = (values[1] * ratio, min(values[2] * ratio, 0.45 * fs))
+            burst = so.Sound(noise(length) / np.sqrt(ratio), fs)  # as for the impact
+            sound = so.butter_filter(burst, band, btype="bandpass") if band[0] < band[1] else silent
     return sound * np.hanning(sound.n_samples)[:, None]
+
+
+@functools.lru_cache(maxsize=2)
+def _white(fs: float) -> np.ndarray:
+    """White noise (seed 0) long enough for nearly every copy: the longest
+    event five of the widest pitch spreads down."""
+    longest = max(LENGTH_RANGE[1], IMPACT_DECAYS * DECAY_RANGE[1]) * 2 ** (5 * PITCH_SD_MAX / 1200)
+    return so.gaussian_noise(longest, fs, rng=0).data
+
+
+def _noise(n: int, fs: float) -> np.ndarray:
+    """``n`` samples of white noise for a copy's noise burst or impact, cut
+    from one long draw rather than drawn for each pitch."""
+    white = _white(fs)
+    return white[:n] if n <= len(white) else so.gaussian_noise(n / fs, fs, rng=0).data
+
+
+def _chirp_below(length: float, fs: float, f_start: float, f_end: float, ceiling: float) -> so.Sound | None:
+    """An exponential chirp from ``f_start`` to ``f_end`` over ``length``
+    seconds, silent while it is at or above ``ceiling``; None if it always is."""
+    if max(f_start, f_end) < ceiling:
+        return so.exponential_chirp(length, fs, f_start, f_end)
+    if min(f_start, f_end) >= ceiling:
+        return None
+    # f(t) = f_start * (f_end / f_start) ** (t / length): the time it crosses the ceiling
+    crossing = length * np.log(ceiling / f_start) / np.log(f_end / f_start)
+    n = round(length * fs)
+    if f_start < f_end:  # rising: heard up to the crossing
+        part = so.exponential_chirp(crossing, fs, f_start, ceiling)
+        data = np.concatenate([part.data, np.zeros((n - part.n_samples, part.n_channels))])
+    else:  # falling: heard from the crossing on
+        part = so.exponential_chirp(length - crossing, fs, ceiling, f_end)
+        data = np.concatenate([np.zeros((n - part.n_samples, part.n_channels)), part.data])
+    return so.Sound(data, fs)
 
 
 def event(state: Mapping[str, Any]) -> so.Sound:
@@ -185,9 +241,11 @@ def rate_track(state: Mapping[str, Any]) -> float | tuple[np.ndarray, np.ndarray
     return np.asarray(rate[0], dtype=float), np.asarray(rate[1], dtype=float)
 
 
-def train(one: so.Sound, duration: float, rate: Any, *, regularity: float = 1.0, level_sd: float = 0.0,
-          pitch_sd: float = 0.0, seed: int = 0) -> so.Sound:
-    """``one`` copied by ``so.event_train`` at ``rate`` events per second (E3, E4)."""
+def train(one: so.Sound | Callable[[float], so.Sound], duration: float, rate: Any, *, regularity: float = 1.0,
+          level_sd: float = 0.0, pitch_sd: float = 0.0, seed: int = 0) -> so.Sound:
+    """``one`` copied by ``so.event_train`` at ``rate`` events per second (E3,
+    E4): a sound, or a function of the pitch ratio that makes each copy."""
+    first = one(1.0) if callable(one) else one
     return so.event_train(
         one,
         duration,
@@ -195,7 +253,7 @@ def train(one: so.Sound, duration: float, rate: Any, *, regularity: float = 1.0,
         rate_scale=rate,
         level_db=stats.norm(0, level_sd) if level_sd else 0.0,
         pitch_cents=stats.norm(0, pitch_sd) if pitch_sd else 0.0,
-        lead=one.duration,
+        lead=first.duration,
         rng=seed,
     )
 
@@ -204,8 +262,10 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     """The sound ``state`` describes, brought to RMS 1 (its power grows with
     the rate) unless no event falls in it."""
     check(state)
+    knobs = _knobs(state)
+    # each copy made at its own pitch: far cheaper than sonore resampling the event for each one
     sound = train(
-        event(state), float(state["duration"]), rate_track(state),
+        lambda ratio: _event(knobs) if ratio == 1 else _event_at(knobs, ratio), float(state["duration"]), rate_track(state),
         regularity=float(state.get("regularity", DEFAULTS["regularity"])),
         level_sd=float(state.get("level_sd", 0.0)), pitch_sd=float(state.get("pitch_sd", 0.0)),
         seed=int(state.get("seed", 0)),

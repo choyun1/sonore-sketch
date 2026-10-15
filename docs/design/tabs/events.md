@@ -252,6 +252,19 @@ decision card (the plots), the rest were asked for directly.
 - **Pitch spread goes up to 1200 cents and events up to 500 ms** (were 600
   cents and 100 ms; Cho, 2026-10-15; E2, E4). Length is now on a log slider
   (10 to 500 ms). Every slider on the page also has a box to type its value in.
+- **Each copy is made at its own pitch** (Cho, 2026-10-15). sonore's
+  `event_train` resamples the event once for each distinct pitch shift (a
+  windowed sinc, widened going up), and with a wide spread nearly every
+  copy has its own, so 1000/s with 500 ms chirps and 1200 cents took 29.7 s
+  for 2 s of sound. The tab now hands `event_train` a function of the pitch
+  ratio that makes the copy with sonore's own functions: the frequencies
+  times the ratio, the length divided by it, as the resampled copy would
+  be; what would rise above Nyquist is left out, as the resampling filters
+  it. [measure, native] 1.3 s for those 2 s; at 30 s, 63 s became 14 s for
+  the noise burst and 62 s became 4.7 s for the chirp. Tonal copies match
+  the resampled ones within 0.15 dB (tests/test_events.py); noise copies
+  are scaled to the same power. Without a pitch spread the sound is
+  unchanged.
 - **The tone pip is a pure tone or a harmonic complex** (F0 and 1 to 30
   harmonics, those above 0.45 times the sampling rate left out), since a
   single frequency alone said little (E2).
