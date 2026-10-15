@@ -32,7 +32,8 @@ import {
   TONES,
   SLIDER_STEPS,
   fromSlider,
-  knobLabel,
+  fromTyped,
+  knobNumber,
   knobName,
   knobShown,
   rateAt,
@@ -55,8 +56,10 @@ const RATE_MARK = "rgba(255, 255, 255, 0.85)"; // the drawn rate, dashed over th
 const EVENT_KNOBS = KNOBS.filter((entry) => entry.events !== null);
 const COPY_KNOBS = KNOBS.filter((entry) => entry.events === null);
 
-const knobField = ({ name, label, title, ends }) =>
-  `<label class="field knob" data-knob="${name}" title="${title}"><span class="knob-name">${label}</span><output></output>
+// The knob's value is typed in the box, in the units its label shows (ms, Hz, cents).
+const knobField = ({ name, label, title, ends, unit, factor = 1, low, high, step }) =>
+  `<label class="field knob" data-knob="${name}" title="${title}"><span class="knob-name">${label}</span>
+    <input type="number" class="slider-value" min="${low * factor}" max="${high * factor}" step="${Number((step * factor).toPrecision(6))}" title="${title}">${unit ? `<span class="unit">${unit}</span>` : ""}
     <input type="range" min="0" max="${SLIDER_STEPS}" step="1">${ends ? `<span class="ends"><span>${ends[0]}</span><span>${ends[1]}</span></span>` : ""}</label>`;
 
 export function createEventsTab(root, { commit }) {
@@ -111,8 +114,8 @@ export function createEventsTab(root, { commit }) {
       const name = field.dataset.knob;
       field.hidden = !knobShown(name, state);
       field.querySelector(".knob-name").textContent = knobName(name, state);
-      field.querySelector("input").value = toSlider(name, state[name]);
-      field.querySelector("output").textContent = knobLabel(name, state[name]);
+      field.querySelector("input[type=range]").value = toSlider(name, state[name]);
+      field.querySelector(".slider-value").value = knobNumber(name, state[name]);
     }
     ui.flat.disabled = state.rate === DEFAULT_RATE;
   }
@@ -120,17 +123,24 @@ export function createEventsTab(root, { commit }) {
   ui.tone.addEventListener("change", () => commit({ ...state, tone: ui.tone.value }));
   for (const field of fields) {
     const name = field.dataset.knob;
-    const input = field.querySelector("input");
-    input.addEventListener("input", () => (field.querySelector("output").textContent = knobLabel(name, fromSlider(name, Number(input.value)))));
-    input.addEventListener("change", () => {
-      const value = fromSlider(name, Number(input.value));
-      if (value === state[name]) return;
-      const changed = { ...state, [name]: value };
-      // the noise band's ends cannot cross: the other end moves out of the way
-      if (name === "noise_low" && value >= state.noise_high) changed.noise_high = Math.min(7500, Math.round(value * 1.25));
-      if (name === "noise_high" && value <= state.noise_low) changed.noise_low = Math.max(50, Math.round(value / 1.25));
-      commit(changed);
+    const input = field.querySelector("input[type=range]");
+    const box = field.querySelector(".slider-value");
+    input.addEventListener("input", () => (box.value = knobNumber(name, fromSlider(name, Number(input.value)))));
+    input.addEventListener("change", () => setKnob(name, fromSlider(name, Number(input.value))));
+    box.addEventListener("change", () => {
+      const typed = fromTyped(name, box.value);
+      if (typed === null) return (box.value = knobNumber(name, state[name]));
+      setKnob(name, typed);
+      showSettings(); // a value the knob keeps differently from how it was typed shows as kept
     });
+  }
+  function setKnob(name, value) {
+    if (value === state[name]) return;
+    const changed = { ...state, [name]: value };
+    // the noise band's ends cannot cross: the other end moves out of the way
+    if (name === "noise_low" && value >= state.noise_high) changed.noise_high = Math.min(7500, Math.round(value * 1.25));
+    if (name === "noise_high" && value <= state.noise_low) changed.noise_low = Math.max(50, Math.round(value / 1.25));
+    commit(changed);
   }
   ui.draw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
   ui.flat.addEventListener("click", () => commit({ ...state, rate: DEFAULT_RATE }));

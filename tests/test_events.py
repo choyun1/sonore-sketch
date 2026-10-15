@@ -77,8 +77,8 @@ def test_the_noise_burst_is_a_band_of_noise():
     assert power[1000:2001].sum() > 0.9 * power.sum()
 
 
-def test_a_pitch_spread_of_600_cents_renders():
-    sound = events.synthesize(state(pitch_sd=600.0, rate=300))
+def test_the_widest_pitch_spread_and_longest_events_render():
+    sound = events.synthesize(state(pitch_sd=1200.0, length=0.5, rate=30))
     assert np.all(np.isfinite(sound.data)) and sound.rms == pytest.approx(1.0)
 
 
@@ -136,10 +136,10 @@ def test_handle_returns_the_modulation_spectrogram():
 @pytest.mark.parametrize("changes, message", [
     ({"events": 2}, "format"),
     ({"event": "drum"}, "'event'"),
-    ({"length": 0.5}, "'length'"),
+    ({"length": 0.6}, "'length'"),
     ({"cutoff": 20}, "'cutoff'"),
     ({"regularity": 0.5}, "'regularity'"),
-    ({"pitch_sd": 700}, "'pitch_sd'"),
+    ({"pitch_sd": 1300}, "'pitch_sd'"),
     ({"tone": "square"}, "'tone'"),
     ({"harmonics": 2.5}, "'harmonics'"),
     ({"noise_low": 3000, "noise_high": 2000}, "below its highest"),

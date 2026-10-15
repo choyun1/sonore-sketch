@@ -8,7 +8,8 @@ import {
   check,
   defaultSection,
   fromSlider,
-  knobLabel,
+  fromTyped,
+  knobNumber,
   knobName,
   knobShown,
   rateAt,
@@ -51,11 +52,25 @@ test("each slider's ends are its knob's range, and a position round-trips", () =
     assert.ok(Math.abs(toSlider(name, middle) - SLIDER_STEPS / 2) <= tolerance, name);
   }
   assert.equal(fromSlider("regularity", SLIDER_STEPS / 2), 8); // log: the middle of 1 to 64
-  assert.equal(knobLabel("length", 0.03), "30 ms");
-  assert.equal(knobLabel("cutoff", 2000), "2000 Hz");
-  assert.equal(knobLabel("regularity", 4), "4.0");
-  assert.equal(knobLabel("harmonics", 8), "8");
-  assert.equal(fromSlider("pitch_sd", SLIDER_STEPS), 600);
+  assert.equal(knobNumber("length", 0.03), "30");
+  assert.equal(knobNumber("cutoff", 2000), "2000");
+  assert.equal(knobNumber("regularity", 4), "4.0");
+  assert.equal(knobNumber("harmonics", 8), "8");
+  assert.equal(fromSlider("pitch_sd", SLIDER_STEPS), 1200);
+  assert.equal(fromSlider("length", SLIDER_STEPS), 0.5);
+});
+
+test("a typed value is read in the box's units, kept to the knob's range and step", () => {
+  assert.equal(fromTyped("length", "250"), 0.25); // ms
+  assert.equal(fromTyped("length", "250.4"), 0.25);
+  assert.equal(fromTyped("length", "2000"), 0.5);
+  assert.equal(fromTyped("length", "1"), 0.01);
+  assert.equal(fromTyped("pitch_sd", "1200"), 1200);
+  assert.equal(fromTyped("pitch_sd", "333"), 330);
+  assert.equal(fromTyped("decay", "8.2"), 0.008);
+  assert.equal(fromTyped("regularity", "12.34"), 12.3);
+  assert.equal(fromTyped("cutoff", ""), null);
+  assert.equal(fromTyped("cutoff", "abc"), null);
 });
 
 test("only the chosen event's knobs show, and the copies' knobs always do", () => {
@@ -99,7 +114,7 @@ test("bad states are refused", () => {
   assert.throws(() => check({ ...good, tone: "square" }), /tone/);
   assert.throws(() => check({ ...good, harmonics: 2.5 }), /harmonics/);
   assert.throws(() => check({ ...good, noise_low: 3000, noise_high: 2000 }), /below its highest/);
-  assert.throws(() => check({ ...good, pitch_sd: 700 }), /pitch_sd/);
+  assert.throws(() => check({ ...good, pitch_sd: 1300 }), /pitch_sd/);
   assert.throws(() => check({ ...good, rate: 0.5 }), /rate must stay/);
   assert.throws(() => check({ ...good, rate: [[1, 0], [10, 20]] }), /must increase/);
   assert.throws(() => check({ ...good, rate: [[0], [10, 20]] }), /rate must be/);

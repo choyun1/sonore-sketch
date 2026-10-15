@@ -32,7 +32,7 @@ export const MAX_BREAKPOINTS = 2000; // sonore_sketch.events.MAX_BREAKPOINTS
 // knob with `ends` shows what its two ends mean under the slider. The ranges
 // are the ones sonore_sketch.events.check takes (E2, E4).
 export const KNOBS = [
-  { name: "length", label: "Length", unit: "ms", factor: 1000, low: 0.01, high: 0.1, scale: "linear", step: 0.001, events: ["chirp", "pip", "noise"], title: "How long each event lasts, under a Hann window" },
+  { name: "length", label: "Length", unit: "ms", factor: 1000, low: 0.01, high: 0.5, scale: "log", step: 0.001, events: ["chirp", "pip", "noise"], title: "How long each event lasts, under a Hann window" },
   { name: "f_low", label: "From", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["chirp"], title: "The chirp's starting frequency" },
   { name: "f_high", label: "To", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["chirp"], title: "The chirp's ending frequency" },
   { name: "frequency", label: "Frequency", unit: "Hz", low: 50, high: 7500, scale: "log", step: 1, events: ["pip"], title: "The tone's frequency, or the harmonic complex's fundamental (F0)" },
@@ -43,7 +43,7 @@ export const KNOBS = [
   { name: "cutoff", label: "Cutoff", unit: "Hz", low: 300, high: 8000, scale: "log", step: 10, events: ["impact"], title: "The impact's lowpass: lower is duller, like a knock; higher is brighter, like a clap" },
   { name: "regularity", label: "Regularity", unit: "", low: 1, high: 64, scale: "log", step: 0.1, events: null, ends: ["random", "regular"], title: "How evenly the events are spaced, at the same rate: 1 is completely random (Poisson) timing, 64 nearly like a clock. The gaps vary by about 1/√k of their mean (the gamma shape k)" },
   { name: "level_sd", label: "Level spread", unit: "dB", low: 0, high: 12, scale: "linear", step: 0.5, events: null, title: "The standard deviation of each copy's level" },
-  { name: "pitch_sd", label: "Pitch spread", unit: "cents", low: 0, high: 600, scale: "linear", step: 10, events: null, title: "The standard deviation of each copy's pitch shift; a higher copy is also shorter" },
+  { name: "pitch_sd", label: "Pitch spread", unit: "cents", low: 0, high: 1200, scale: "linear", step: 10, events: null, title: "The standard deviation of each copy's pitch shift; a higher copy is also shorter" },
 ];
 export const SLIDER_STEPS = 1000; // a range input's positions from low to high
 
@@ -73,12 +73,22 @@ export function toSlider(name, value) {
   return Math.round(Math.min(1, Math.max(0, fraction)) * SLIDER_STEPS);
 }
 
-// A knob's value as the slider's label shows it: 30 ms, 2000 Hz, 4.0.
-export function knobLabel(name, value) {
+// A knob's value in the units its box shows, as text: "30" (ms), "2000" (Hz), "4.0".
+export function knobNumber(name, value) {
   const { unit, factor = 1, scale } = knob(name);
   const shown = value * factor;
   const digits = knob(name).step >= 1 ? 0 : unit === "" ? (shown < 10 ? 1 : 0) : unit === "dB" ? 1 : scale === "log" && shown < 10 ? 1 : 0;
-  return `${shown.toFixed(digits)}${unit ? ` ${unit}` : ""}`;
+  return shown.toFixed(digits);
+}
+
+// A knob's value from what was typed in its box, in the box's units: kept to
+// the knob's range and step, or null when it is not a number.
+export function fromTyped(name, text) {
+  const { low, high, step, factor = 1 } = knob(name);
+  const typed = Number(text);
+  if (String(text).trim() === "" || !Number.isFinite(typed)) return null;
+  const stepped = Math.round(typed / factor / step) * step;
+  return Math.min(high, Math.max(low, Number(stepped.toFixed(6))));
 }
 
 // A section from an older page, with the knobs it lacks at their defaults.
