@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import sonore as so
 import pytest
 
 from sonore_sketch import events
@@ -153,3 +154,32 @@ def test_handle_returns_the_modulation_spectrogram():
 def test_bad_states_are_refused(changes, message):
     with pytest.raises(ValueError, match=message):
         events.synthesize(state(**changes))
+
+
+class _Once:
+    """Intervals that put one copy at 50 ms and none after."""
+
+    def rvs(self, size=None, random_state=None):
+        intervals = np.full(size, 1e6)
+        intervals.flat[0] = 0.05
+        return intervals
+
+
+@pytest.mark.parametrize("changes", [{"event": "chirp"}, {"event": "pip"}, {"event": "pip", "tone": "harmonic", "frequency": 300.0}])
+@pytest.mark.parametrize("cents", [-2400, -700, 500])
+def test_a_copy_made_at_its_pitch_is_what_sonore_would_resample(changes, cents):
+    # the tab makes each copy at its own pitch, far cheaper than sonore's
+    # resampling of the event for each one; a tonal event comes out the same
+    knobs = events._knobs(state(**changes))
+    resampled = so.event_train(events._event(knobs), 2.5, _Once(), pitch_cents=cents, rng=0).data[:, 0]
+    made = so.event_train(lambda ratio: events._event_at(knobs, ratio), 2.5, _Once(), pitch_cents=cents, rng=0).data[:, 0]
+    assert 10 * np.log10(np.sum(made**2) / np.sum(resampled**2)) == pytest.approx(0, abs=0.15)
+    spectra = np.abs(np.fft.rfft([made, resampled]))
+    assert np.corrcoef(spectra)[0, 1] > 0.99
+
+
+def test_a_copy_above_the_sampling_rate_is_silent_or_cut():
+    knobs = events._knobs(state(event="chirp", f_low=2000.0, f_high=6000.0))
+    rising = events._event_at(knobs, 2.0).data[:, 0]  # 4 to 12 kHz: heard up to 8 kHz, then silent
+    assert np.any(rising[: len(rising) // 3]) and not np.any(rising[-len(rising) // 3 :])
+    assert not np.any(events._event_at(events._knobs(state(event="pip", frequency=5000.0)), 2.0).data)
