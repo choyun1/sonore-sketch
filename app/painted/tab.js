@@ -7,6 +7,7 @@
 // toward the brush's level by its weight when the stroke ends.
 
 import { magma } from "../colormap.js";
+import { numberBox } from "../numberbox.js";
 import {
   drawAxisName,
   drawBrush,
@@ -71,6 +72,8 @@ export function createPaintedTab(root, { commit, log }) {
     size: query(".size"), softness: query(".softness"), level: query(".level"),
     carrier: query(".carrier"), f0: query(".f0"), f0Field: query(".f0-field"), fLo: query(".f-lo"), fHi: query(".f-hi"),
   };
+  ui.size.before(numberBox(ui.size, { digits: 0 }).box);
+  ui.softness.before(numberBox(ui.softness).box);
   for (const input of root.querySelectorAll('input[name="paint-mode"]')) {
     input.addEventListener("change", () => (mode = input.value));
   }

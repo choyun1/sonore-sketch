@@ -249,6 +249,9 @@ decision card (the plots), the rest were asked for directly.
   render plus modulation spectrogram for a 3 s sound: 0.3 to 0.7 s across
   the four events at 100/s with a 600-cent spread. E7 above is superseded.
 - **Pitch spread goes up to 600 cents** (was 300; E4).
+- **Pitch spread goes up to 1200 cents and events up to 500 ms** (were 600
+  cents and 100 ms; Cho, 2026-10-15; E2, E4). Length is now on a log slider
+  (10 to 500 ms). Every slider on the page also has a box to type its value in.
 - **The tone pip is a pure tone or a harmonic complex** (F0 and 1 to 30
   harmonics, those above 0.45 times the sampling rate left out), since a
   single frequency alone said little (E2).

@@ -14,6 +14,7 @@
 // axis, and its waveform.
 
 import { magma } from "../colormap.js";
+import { numberBox } from "../numberbox.js";
 import {
   drawAxisName,
   drawBrush,
@@ -123,6 +124,8 @@ export function createEditTab(root, { commit, openRecording, hasRecording, log }
     carrier: query(".carrier"), iterations: query(".iterations"), coarse: query(".coarse"), stft: query("canvas.result-stft"), wave: query("canvas.wave"),
     measured: query("canvas.measured-plane"), clipNote: query(".clip-note"),
   };
+  ui.size.before(numberBox(ui.size, { digits: 0 }).box);
+  ui.softness.before(numberBox(ui.softness).box);
   for (const input of root.querySelectorAll('input[name="edit-mode"]')) input.addEventListener("change", () => (mode = input.value));
   function setMode(next) {
     mode = next;

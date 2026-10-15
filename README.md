@@ -177,14 +177,14 @@ shape of your own ears, and these are the mannequin's.
 **Scatter events.** Choose the **event** and its knobs: a chirp (its first
 and last frequency), a tone pip (a pure tone at one frequency, or a
 harmonic complex: its F0 and how many harmonics) or a noise burst (the
-lowest and highest frequency of its band), each 10 to 100 ms long, or an
+lowest and highest frequency of its band), each 10 to 500 ms long, or an
 impact, a noise burst that dies away (its **Decay**) through a lowpass
 (its **Cutoff**: low for a knock, higher for a clap).
 Drag on the rate track to draw how many copies come each second, from 1
 to 1000 on a log axis; **Rate back to 10/s** makes it flat again, as does
 Clear. **Regularity** sets how evenly the copies are spaced at the same
 rate: at 1 the gaps are random (Poisson timing), at 64 nearly like a
-clock. **Level spread** and **Pitch spread** (up to 600 cents) draw each
+clock. **Level spread** and **Pitch spread** (up to 1200 cents) draw each
 copy's level and pitch from a normal distribution. The sliders apply when
 you let go; **New draw** hears another draw with the same settings. Under
 the spectrogram is its modulation spectrogram: how deeply the envelope

@@ -14,6 +14,7 @@
 // axis name and the angle by the moving dot); the playhead is red on all
 // three.
 
+import { numberBox } from "../numberbox.js";
 import { drawAxisName, drawBorder, drawPlayhead, drawTimeTicks, drawValueTicks, fitCanvasInCssPixels, pointerPosition } from "../plot.js";
 import { extendStroke, replaceSpan, simplify } from "../tracks/model.js";
 import {
@@ -72,7 +73,7 @@ export function createPathsTab(root, { commit, hasRecording }) {
             <select class="source">${SOURCES.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
           <label class="field" title="Dry, or with a room's reverberation, which stays put while the source moves">Room
             <select class="room">${ROOMS.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}</select></label>
-          <label class="field" title="How much of the hand's wobble is smoothed out of the path's shape: the width, along the path, of the average each point is moved to">Smoothing <span class="smoothing-value"></span>
+          <label class="field" title="How much of the hand's wobble is smoothed out of the path's shape: the width, along the path, of the average each point is moved to"><span class="knob-name">Smoothing</span> <span class="unit">cm</span>
             <input type="range" class="smoothing" min="0" max="${MAX_SHAPE_SMOOTHING}" step="0.05"></label>
           <button type="button" class="even" title="Move at one speed from the start of the path to its end">Even speed</button>
           <button type="button" class="as-drawn" title="Move as fast as you drew each part">Speed as drawn</button>
@@ -86,8 +87,10 @@ export function createPathsTab(root, { commit, hasRecording }) {
   const top = query("canvas.top-view");
   const track = query("canvas.elevation");
   const speedTrack = query("canvas.speed");
-  const ui = { source: query(".source"), room: query(".room"), level: query(".level"), even: query(".even"), asDrawn: query(".as-drawn"), smoothing: query(".smoothing"), smoothingValue: query(".smoothing-value") };
-  const showSmoothing = (width) => (ui.smoothingValue.textContent = `${Math.round(width * 100)} cm`);
+  const ui = { source: query(".source"), room: query(".room"), level: query(".level"), even: query(".even"), asDrawn: query(".as-drawn"), smoothing: query(".smoothing") };
+  // typed in centimetres
+  const smoothingBox = numberBox(ui.smoothing, { toBox: (width) => width * 100, fromBox: (cm) => cm / 100, digits: 0 });
+  ui.smoothing.previousElementSibling.before(smoothingBox.box);
 
   const style = (name, fallback) => getComputedStyle(root).getPropertyValue(name).trim() || fallback;
 
@@ -98,7 +101,7 @@ export function createPathsTab(root, { commit, hasRecording }) {
     ui.level.disabled = state.elevation === 0;
     ui.asDrawn.disabled = !state.speed;
     ui.smoothing.value = state.smoothing ?? SHAPE_SMOOTHING;
-    showSmoothing(Number(ui.smoothing.value));
+    smoothingBox.show();
     ui.even.disabled = !state.stroke.length;
   }
   ui.source.addEventListener("change", () => commit({ ...state, source: ui.source.value }));
@@ -109,7 +112,6 @@ export function createPathsTab(root, { commit, hasRecording }) {
   // the path redraws as the slider moves; the sound is made when it is let go
   ui.smoothing.addEventListener("input", () => {
     const smoothing = Number(ui.smoothing.value);
-    showSmoothing(smoothing);
     path = timeline({ ...state, smoothing }, state.duration);
     renderTop();
   });

@@ -13,6 +13,7 @@
 // the same axes and scale, with the mask's outline over it, and its waveform.
 
 import { magma } from "../colormap.js";
+import { numberBox } from "../numberbox.js";
 import {
   drawAxisName,
   drawBrush,
@@ -84,6 +85,8 @@ export function createMaskTab(root, { commit, openRecording, hasRecording, log }
     size: query(".size"), softness: query(".softness"), cut: query(".cut"),
     result: query("canvas.filter-result"), wave: query("canvas.wave"),
   };
+  ui.size.before(numberBox(ui.size, { digits: 0 }).box);
+  ui.softness.before(numberBox(ui.softness).box);
   for (const input of root.querySelectorAll('input[name="mask-mode"]')) input.addEventListener("change", () => (mode = input.value));
   function setMode(next) {
     mode = next;

@@ -128,6 +128,10 @@ canvas.paint, canvas.plane {
 .side .field[hidden] { display: none; }
 .side .field input[type=range] { flex: 1; min-width: 60px; }
 .side .field input[type=number] { width: 4.5em; }
+/* the box for typing a slider's value: beside the slider's name, the slider under them */
+.side .field input.slider-value { width: 5em; margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; }
+.side .field:has(> input.slider-value) > input[type=range] { flex-basis: 100%; }
+.side .field .unit { color: var(--muted); font-size: 12px; }
 .side .clear { margin-top: 4px; }
 canvas.stft {
   display: block; width: 100%; height: 180px; margin-top: 8px;
@@ -353,7 +357,6 @@ canvas.mod-pooled, canvas.mod-frame {
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }
 .side .knob .knob-name { flex: 1; }
-.side .knob output { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .side .knob input[type=range] { flex-basis: 100%; }
 .side .draw, .side .flat { display: block; width: 100%; margin-top: 4px; }
 .side select.event { width: 100%; }

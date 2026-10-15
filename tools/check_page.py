@@ -470,10 +470,17 @@ def main() -> None:
             turns = sum(a != b for a, b in zip(rises, rises[1:]))
             assert turns <= 4, redrawn  # a zigzag between passes turns at nearly every breakpoint
             expect(status).to_contain_text("Made", timeout=120_000)
-            regularity = page.locator("#tab-events .knob[data-knob=regularity] input")
+            regularity = page.locator("#tab-events .knob[data-knob=regularity] input[type=range]")
             regularity.fill("1000")
             regularity.dispatch_event("change")
             assert page_document_in(page)["events"]["regularity"] == 64
+            expect(status).to_contain_text("Made", timeout=120_000)
+            # a value typed in the box beside a slider applies, kept to the slider's range and step
+            typed = page.locator("#tab-events .knob[data-knob=length] .slider-value")
+            typed.fill("250.4")
+            typed.press("Enter")
+            assert page_document_in(page)["events"]["length"] == 0.25
+            assert typed.input_value() == "250"
             expect(status).to_contain_text("Made", timeout=120_000)
             page.click("#tab-events .draw")
             assert page_document_in(page)["events"]["seed"] == 1
