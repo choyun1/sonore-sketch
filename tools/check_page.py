@@ -379,12 +379,12 @@ def main() -> None:
             # The arrow keys, Home and End move between the tabs (the WAI-ARIA tabs
             # pattern), and only the tab shown is in the Tab order.
             page.keyboard.press("ArrowLeft")  # from the first tab round to the last
-            expect(page.locator("#tab-events")).to_be_visible()
-            assert page.evaluate("document.activeElement.dataset.tab") == "events"
+            expect(page.locator("#tab-quilt")).to_be_visible()
+            assert page.evaluate("document.activeElement.dataset.tab") == "quilt"
             page.keyboard.press("Home")
             expect(page.locator("#tab-tracks")).to_be_visible()
             assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "tracks"
-            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 6
+            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 7
             expect(status).to_contain_text("Made", timeout=60_000)
             print("tabs: the arrow keys and Home move between the tabs")
 
@@ -502,6 +502,33 @@ def main() -> None:
             page.click(".tabs [data-tab=tracks]")
             expect(status).to_contain_text("Made", timeout=60_000)
             print("events: a rate track, a slider, New draw, Clear, a harmonic pip and the impact are made and heard; the modulation picture is drawn")
+
+            # The Quilt a sound tab: the quilt is made and both spectrograms
+            # drawn; a typed segment length applies, too few segments say so,
+            # New order changes the seed; there is nothing to Clear.
+            page.click(".tabs [data-tab=quilt]")
+            expect(page.locator("#tab-quilt")).to_be_visible()
+            expect(status).to_contain_text("Made", timeout=60_000)
+            expect(page.locator("#clear")).to_be_disabled()
+            duration = page_document_in(page)["duration"]
+            expect(page.locator("#tab-quilt .quilt-note")).to_contain_text("The quilt is")
+            for canvas_name in ("source-stft", "quilt-stft"):
+                assert page.evaluate(f"[...document.querySelector('#tab-quilt canvas.{canvas_name}').getContext('2d').getImageData(120, 80, 1, 1).data].some((v) => v > 0)"), canvas_name
+            segment_box = page.locator("#tab-quilt .slider-value")
+            segment_box.fill(str(round(1000 * duration / 2)))  # two segments: too few
+            segment_box.press("Enter")
+            expect(status).to_contain_text("Too few segments", timeout=10_000)
+            expect(page.locator("#tab-quilt .quilt-note")).to_contain_text("needs at least 3")
+            segment_box.fill("30")
+            segment_box.press("Enter")
+            assert page_document_in(page)["quilt"]["segment"] == 0.03
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.click("#tab-quilt .reorder")
+            assert page_document_in(page)["quilt"]["seed"] == 2
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.click(".tabs [data-tab=tracks]")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("quilt: the quilt and its source are drawn; a typed segment, too few segments and New order work")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore
