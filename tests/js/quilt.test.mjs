@@ -66,3 +66,17 @@ test("another tab's drawing can be the source, and goes with the state", () => {
   assert.equal(tabState(page, "quilt").drawing, undefined); // the syllable train needs no drawing
   assert.equal(withTabState(page, "quilt", { ...tabState(page, "quilt"), drawing: {} }).quilt.drawing, undefined);
 });
+
+test("every Source list keeps the tabs' order: sounds made here, the tabs' sounds, a file last", async () => {
+  const { LABELS } = await import("../../app/quilt/model.js");
+  const { SOURCES: PATHS } = await import("../../app/paths/model.js");
+  const { SOURCE_LABELS } = await import("../../app/sources.js");
+  const { TABS } = await import("../../app/document.js");
+  const tabs = (ids) => ids.filter((id) => TABS.includes(id) || id === "speech").map((id) => (id === "speech" ? "tracks" : id));
+  for (const ids of [Object.keys(LABELS), PATHS.map(([id]) => id), Object.keys(SOURCE_LABELS)]) {
+    assert.equal(ids.at(-1), "file");
+    const order = tabs(ids).map((id) => TABS.indexOf(id));
+    assert.deepEqual(order, [...order].sort((a, b) => a - b), ids.join(", "));
+  }
+  for (const label of [...Object.values(LABELS), ...PATHS.map(([, label]) => label)]) assert.ok(!label.startsWith("The "), label);
+});
