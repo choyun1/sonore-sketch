@@ -10,7 +10,8 @@ import { numberBox } from "../numberbox.js";
 import { drawPlayhead, drawTitle, drawWaveform, logSpectrogramPlot, soundSeconds } from "../plot.js";
 import { typedNumber } from "../painted/model.js";
 import { attachSourceControls, sourceFieldset } from "../sources.js";
-import { MIN_SEGMENTS, SLIDER_STEPS, clampSegment, segmentFromSlider, sliderFromSegment, wholeSegments } from "./model.js";
+import { randomSeed } from "../seed.js";
+import { LABELS, MIN_SEGMENTS, SLIDER_STEPS, clampSegment, segmentFromSlider, sliderFromSegment, wholeSegments } from "./model.js";
 
 const F_LO = 100; // Hz, the spectrograms' range
 const F_HI = 8000;
@@ -40,12 +41,12 @@ export function createQuiltTab(root, { commit, openRecording, hasRecording, log 
         </section>
       </div>
       <aside class="side">
-        ${sourceFieldset("The sound the quilt is made from")}
+        ${sourceFieldset("The sound the quilt is made from", LABELS)}
         <fieldset><legend>Quilt</legend>
           <label class="field knob" title="How long each segment is: short segments keep the sound's texture and lose its order; long ones keep words and rhythms whole"><span class="knob-name">Segment</span> <span class="unit">ms</span>
             <input type="range" class="segment" min="0" max="${SLIDER_STEPS}" step="1"></label>
           <label class="field" title="Which segment the quilt starts with; sonore chooses each next one from it">Seed <input type="number" class="seed" min="0" step="1"></label>
-          <button type="button" class="reorder" title="Start from another segment, and hear the new order">New order</button>
+          <button type="button" class="reorder" title="Draw a random seed, and hear the order it gives">New order</button>
         </fieldset>
         <p class="hint">Each segment is used at most once and never next to the one that followed it in the source. The segments are joined with 30 ms cross-fades. Space plays.</p>
       </aside>
@@ -85,7 +86,7 @@ export function createQuiltTab(root, { commit, openRecording, hasRecording, log 
     if (Number.isInteger(seed) && seed >= 0 && seed !== state.seed) commit({ ...state, seed });
     else ui.seed.value = state.seed;
   });
-  ui.reorder.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
+  ui.reorder.addEventListener("click", () => commit({ ...state, seed: randomSeed(state.seed) }, { play: true }));
 
   // How many segments the source holds, and how many the quilt has, or why there is no quilt.
   function showNote() {

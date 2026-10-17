@@ -10,6 +10,7 @@
 // over bands, rate by time, and beside it the band x rate depth at one
 // moment, which follows the playhead, as on sonore's gallery page.
 
+import { randomSeed } from "../seed.js";
 import { magma } from "../colormap.js";
 import {
   drawAxisName,
@@ -142,7 +143,7 @@ export function createEventsTab(root, { commit }) {
     if (name === "noise_high" && value <= state.noise_low) changed.noise_low = Math.max(50, Math.round(value / 1.25));
     commit(changed);
   }
-  ui.draw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
+  ui.draw.addEventListener("click", () => commit({ ...state, seed: randomSeed(state.seed) }, { play: true }));
   ui.flat.addEventListener("click", () => commit({ ...state, rate: DEFAULT_RATE }));
 
   // --- the rate track ------------------------------------------------------------------

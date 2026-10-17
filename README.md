@@ -60,7 +60,7 @@ different sound from it.
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 | **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
 | **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and their modulation spectrogram, which follows the sound as it plays (sonore's `ModulationSpectrogram`; Atlas & Shamma, 2003) | built |
-| **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, the Draw speech tab's sound, or a recording), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
+| **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, a recording, or the sound of the Draw speech, Draw spectrogram, Draw modulation or Scatter events tab), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
 
 ## Using the page
 
@@ -194,13 +194,14 @@ rises and falls at each rate up to 64 Hz, pooled over frequency
 bands over time, and beside it each band at one moment, which follows the
 sound as it plays (click the spectrogram to choose the moment).
 
-**Quilt a sound.** Choose a **source**, as on the Erase tabs: a syllable
-train made at the page's duration, the Draw speech tab's sound, or a
-recording (**Open audio file…**). The source is cut into **segments** of
+**Quilt a sound.** Choose a **source**: a syllable train made at the
+page's duration, a recording (**Open audio file…**), or the sound of the
+Draw speech, Draw spectrogram, Draw modulation or Scatter events tab, made
+from what is drawn there (go back to that tab to change it). The source is cut into **segments** of
 30 to 960 ms, and the quilt puts them back in a new order, each used once.
 Short segments keep the sound's texture and lose its words; long ones keep
 syllables and words whole. The **seed** picks the segment the quilt starts
-with, and **New order** hears the next one. The **Source** panel shows the
+with, and **New order** draws a random seed and hears its order. The **Source** panel shows the
 source's spectrogram cut into its segments, the **Result** panel the
 quilt's, with lines where the segments are joined. A quilt needs at least
 three whole segments, so at long segments lengthen the duration. Clear has
@@ -416,7 +417,8 @@ without it: removing every rate above 4 Hz leaves 2.5 dB less power at
 
 ### Quilt a sound
 
-1. The source is made at the page's duration and cut into as many whole
+1. The source is made at the page's duration (a drawing tab's sound as that
+   tab makes it, in mono) and cut into as many whole
    segments as fit; what is left over after the last one is not used.
 2. sonore's `quilt` orders them (Overath et al., 2015): the first is drawn
    at random from the seed; after each segment comes the unused one whose

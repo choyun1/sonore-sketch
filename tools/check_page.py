@@ -483,7 +483,7 @@ def main() -> None:
             assert typed.input_value() == "250"
             expect(status).to_contain_text("Made", timeout=120_000)
             page.click("#tab-events .draw")
-            assert page_document_in(page)["events"]["seed"] == 1
+            assert page_document_in(page)["events"]["seed"] != 0  # a random seed, never the one in use
             expect(status).to_contain_text("Made", timeout=120_000)
             page.click("#clear")
             assert page_document_in(page)["events"]["rate"] == 10
@@ -524,11 +524,15 @@ def main() -> None:
             assert page_document_in(page)["quilt"]["segment"] == 0.03
             expect(status).to_contain_text("Made", timeout=60_000)
             page.click("#tab-quilt .reorder")
-            assert page_document_in(page)["quilt"]["seed"] == 2
+            assert page_document_in(page)["quilt"]["seed"] != 1  # a random seed, never the one in use
+            expect(status).to_contain_text("Made", timeout=60_000)
+            # another tab's drawing as the source: Scatter events' starting chirps
+            page.select_option("#tab-quilt select.source", "events")
+            assert page_document_in(page)["quilt"]["source"] == "events"
             expect(status).to_contain_text("Made", timeout=60_000)
             page.click(".tabs [data-tab=tracks]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            print("quilt: the quilt and its source are drawn; a typed segment, too few segments and New order work")
+            print("quilt: the quilt and its source are drawn; a typed segment, too few segments, New order and Scatter events as the source work")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore
@@ -594,7 +598,7 @@ def main() -> None:
             # A new draw first: at the depth offered below, another draw may not fit.
             page.click("#tab-blobs .new-draw")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["blobs"]["seed"] == 2
+            assert page_document_in(page)["blobs"]["seed"] != 1  # a random seed, never the one in use
             before_failure = len(errors)
             page.locator("#tab-blobs .depth").fill("0.95")
             page.locator("#tab-blobs .depth").press("Enter")

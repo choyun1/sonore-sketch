@@ -73,6 +73,8 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
             state["speech"] = page["tracks"]
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
+        if tab == "quilt" and state.get("source") in quilt.DRAWN and state["source"] in page:
+            state["drawing"] = page[state["source"]]  # the tab's own drawing, made into its sound
         return state
     if tab in TABS:
         raise ValueError(f"the document has no {tab!r} section to make the sound from")

@@ -18,6 +18,7 @@
 // (blobs.md, B7) on the plane's axes, so drawn and heard compare by eye
 // (with bands, measured within them: bands.md, K7), above the page's waveform.
 
+import { randomSeed } from "../seed.js";
 import { extendStroke } from "../tracks/model.js";
 import { magma } from "../colormap.js";
 import {
@@ -308,7 +309,7 @@ export function createBlobsTab(root, { commit: commitDocument }) {
     if (iterations >= 0 && iterations <= 10 && iterations !== state.iterations) commit({ ...state, iterations });
     else showSettings();
   });
-  ui.newDraw.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
+  ui.newDraw.addEventListener("click", () => commit({ ...state, seed: randomSeed(state.seed) }, { play: true }));
 
   function removeSelected() {
     if (selected === null || !state.items[selected]) return false;
