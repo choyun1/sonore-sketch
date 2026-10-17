@@ -12,10 +12,11 @@
 //    "mask": {"source": "syllables", ..., "levels": "..."},
 //    "paths": {"source": "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0, "speed": null},
 //    "events": {"event": "chirp", ..., "rate": 10, "regularity": 1, "seed": 0},
+//    "quilt": {"source": "syllables", "segment": 0.06, "seed": 1},
 //    "recording": {"name": "talk.wav", "fs": 16000, "pcm16": "..."}}
 //
-// A recording opened on the Erase modulation or Erase spectrogram tab belongs
-// to the page, so either tab can use it; it is kept in saved files but never
+// A recording opened on the Erase modulation, Erase spectrogram or Quilt a
+// sound tab belongs to the page, so any of them can use it; it is kept in saved files but never
 // in links (docs/design/tabs/edit.md, E1), which would be far too long.
 //
 // A tab works on its own state, the shape its Python function takes
@@ -31,12 +32,13 @@ import * as events from "./events/model.js";
 import * as mask from "./mask/model.js";
 import * as painted from "./painted/model.js";
 import * as paths from "./paths/model.js";
+import * as quilt from "./quilt/model.js";
 import { MAX_RECORDING_S, checkRecording } from "./sources.js";
 import * as tracks from "./tracks/model.js";
 
 export const APP = "sonore-sketch";
 export const VERSION = 2;
-export const TABS = ["tracks", "painted", "mask", "blobs", "edit", "paths", "events"];
+export const TABS = ["tracks", "painted", "mask", "blobs", "edit", "paths", "events", "quilt"];
 
 // The page's starting duration [s] on every tab but Draw speech, which starts
 // at its word's own 0.6 s (Cho, 2026-10-14).
@@ -52,7 +54,7 @@ export function defaultPage(tab = "tracks") {
   return {
     app: APP, version: VERSION, sonore, duration, fs, tab,
     tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-    mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(),
+    mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(), quilt: quilt.defaultSection(),
   };
 }
 
@@ -68,7 +70,7 @@ export function upgrade(opened) {
     return {
       app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
       tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-      mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(),
+      mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(), quilt: quilt.defaultSection(),
     };
   }
   if (opened?.app !== APP || opened.version !== VERSION) {
@@ -83,6 +85,7 @@ export function upgrade(opened) {
     mask: opened.mask ?? mask.defaultSection(),
     paths: opened.paths ?? paths.defaultSection(),
     events: events.withDefaults(opened.events ?? {}),
+    quilt: opened.quilt ?? quilt.defaultSection(),
   };
 }
 
@@ -104,10 +107,10 @@ export function tabState(page, tab) {
     const { sonore, duration, fs } = page;
     return { events: events.FORMAT, sonore, duration, fs, ...page.events };
   }
-  if (tab === "edit" || tab === "mask" || tab === "paths") {
+  if (tab === "edit" || tab === "mask" || tab === "paths" || tab === "quilt") {
     // the source's own drawing goes with the state, so a change to it is heard
     const { sonore, duration, fs } = page;
-    const format = { edit: edit.FORMAT, mask: mask.FORMAT, paths: paths.FORMAT }[tab];
+    const format = { edit: edit.FORMAT, mask: mask.FORMAT, paths: paths.FORMAT, quilt: quilt.FORMAT }[tab];
     const state = { [tab]: format, sonore, duration, fs, ...page[tab] };
     if (state.source === "speech") state.speech = page.tracks;
     if (state.source === "file" && page.recording) state.recording = page.recording;
@@ -134,7 +137,7 @@ export function withTabState(page, tab, state) {
     const { events: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
     return { ...page, events: section };
   }
-  if (tab === "edit" || tab === "mask" || tab === "paths") {
+  if (tab === "edit" || tab === "mask" || tab === "paths" || tab === "quilt") {
     const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, speech: _speech, recording: _recording, ...section } = state;
     return { ...page, [tab]: section };
   }
@@ -166,6 +169,7 @@ export function openDocument(opened) {
   mask.check(tabState(page, "mask"));
   paths.check(tabState(page, "paths"));
   events.check(tabState(page, "events"));
+  quilt.check(tabState(page, "quilt"));
   if (page.recording !== undefined) checkRecording(page.recording);
   return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "tracks" }, "tracks", state);
 }
@@ -198,7 +202,8 @@ export function resetTab(page, tab, start = defaultPage()) {
 // (tracks.DEFAULTS), a schwa on 100 Hz (F1-F5 at 500, 1500, 2500, 3500 and
 // 4500 Hz, a uniform tube's resonances), voiced, no noise. The sampling rate
 // goes back to its default, which nothing on the page sets but a file or link.
-// Scatter events has no drawing but its rate track, which goes flat at its default.
+// Scatter events has no drawing but its rate track, which goes flat at its
+// default; Quilt a sound has none at all, and keeps its settings.
 export async function clearTab(page, tab) {
   const fresh = defaultPage();
   const cleared = { ...page, fs: fresh.fs, sonore: fresh.sonore };
@@ -208,6 +213,7 @@ export async function clearTab(page, tab) {
   if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };
   if (tab === "paths") return { ...cleared, paths: { ...page.paths, stroke: [], elevation: 0, speed: null } };
   if (tab === "events") return { ...cleared, events: { ...page.events, rate: events.DEFAULT_RATE } };
+  if (tab === "quilt") return cleared;
   if (tab === "mask") {
     const { span: _span, ...section } = page.mask;
     return { ...cleared, mask: { ...section, levels: mask.BLANK_LEVELS } };

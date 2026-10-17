@@ -16,12 +16,12 @@ from typing import Any
 import numpy as np
 import sonore as so
 
-from . import blobs, edit, events, mask, painted, paths, shared, tracks
+from . import blobs, edit, events, mask, painted, paths, quilt, shared, tracks
 
 TABS = {
     "tracks": tracks.synthesize, "painted": painted.synthesize, "mask": mask.synthesize,
     "blobs": blobs.synthesize, "edit": edit.synthesize, "paths": paths.synthesize,
-    "events": events.synthesize,
+    "events": events.synthesize, "quilt": quilt.synthesize,
 }
 
 # The page's document (docs/design/tabs/painted.md, "Data model"), as
@@ -65,9 +65,9 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
         return state
-    if tab in ("edit", "mask") and tab in page:
+    if tab in ("edit", "mask", "quilt") and tab in page:
         # the source's own drawing goes with the state: the Draw speech tab's, or the page's recording
-        section_format = edit.FORMAT if tab == "edit" else mask.FORMAT
+        section_format = {"edit": edit.FORMAT, "mask": mask.FORMAT, "quilt": quilt.FORMAT}[tab]
         state = {tab: section_format, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page[tab]}
         if state.get("source") == "speech":
             state["speech"] = page["tracks"]
@@ -126,7 +126,9 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     and the fraction of envelope values sonore clipped; on the Erase
     spectrogram tab the source's and the result's spectrograms in the mask's
     own STFT (``mask.pictures``); on the Scatter events tab the result's
-    modulation spectrogram (``events.modulation``).
+    modulation spectrogram (``events.modulation``); on the Quilt a sound tab
+    the source's spectrogram (:func:`spectrogram`, as ``source_stft``) and
+    how many segments the quilt has (``segments``), each ``segment_s`` long.
     """
     return shared.finish(handle_steps(request))
 
@@ -148,6 +150,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         sound, original, clipped = yield from shared.scaled(edit.steps(request["state"]), 0.9)
     elif tab == "events":
         sound, modulation = yield from shared.scaled(events.steps(request["state"]), 0.9)
+    elif tab == "quilt":
+        sound, original, segments = yield from shared.scaled(quilt.steps(request["state"]), 0.9)
     else:
         yield 0.0, "Synthesizing"
         sound = TABS[tab](request["state"])
@@ -169,6 +173,9 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         result["clipped"] = clipped
     if tab == "events":  # the result's modulation spectrogram (events.md, E7)
         result["modulation_frames"], result["modulation_pooled"] = modulation["frames"], modulation["pooled"]
+    if tab == "quilt":  # the source, to compare the quilt with, and the segments the quilt is made of
+        result["source_stft"], result["segments"] = spectrogram(original), segments
+        result["segment_s"] = round(float(request["state"]["segment"]) * sound.fs) / sound.fs
     if tab == "mask":  # the source's and the result's spectrograms in the mask's own STFT (mask.md)
         result["source_stft"], result["result_stft"] = mask.pictures(source_stft, result_stft)
     return result

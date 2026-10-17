@@ -14,7 +14,7 @@ test("the default page holds the Draw speech tab's default drawing", () => {
 test("Draw speech starts at its word's 0.6 s, every other tab at 2 s", () => {
   assert.equal(defaultPage().duration, 0.6);
   assert.equal(START_DURATION, 2);
-  for (const tab of ["painted", "mask", "blobs", "edit", "paths", "events"]) {
+  for (const tab of ["painted", "mask", "blobs", "edit", "paths", "events", "quilt"]) {
     const page = defaultPage(tab);
     assert.equal(page.duration, 2, tab);
     assert.equal(page.tab, tab);

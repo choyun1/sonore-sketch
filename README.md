@@ -9,10 +9,11 @@ routes back to sound a point-and-click surface: draw speech as formant and
 pitch tracks, draw a spectrogram with a brush or a modulation spectrum with blobs, and hear
 what sonore makes of it; or open a recording and erase parts of its
 spectrogram or its modulation spectrum; or copy one short event at a drawn
-rate and hear separate events pile up into a texture. sonore does the synthesis, in your
+rate and hear separate events pile up into a texture; or cut a sound into
+short segments and hear them put back in a new order, as a sound quilt. sonore does the synthesis, in your
 browser (Python under Pyodide); this project is only the interface.
 
-**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: seven tabs, each a different
+**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: eight tabs, each a different
 route to sound, with nothing to install.
 
 **[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
@@ -59,6 +60,7 @@ different sound from it.
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 | **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
 | **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and their modulation spectrogram, which follows the sound as it plays (sonore's `ModulationSpectrogram`; Atlas & Shamma, 2003) | built |
+| **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, the Draw speech tab's sound, or a recording), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
 
 ## Using the page
 
@@ -191,6 +193,18 @@ the spectrogram is its modulation spectrogram: how deeply the envelope
 rises and falls at each rate up to 64 Hz, pooled over frequency
 bands over time, and beside it each band at one moment, which follows the
 sound as it plays (click the spectrogram to choose the moment).
+
+**Quilt a sound.** Choose a **source**, as on the Erase tabs: a syllable
+train made at the page's duration, the Draw speech tab's sound, or a
+recording (**Open audio file…**). The source is cut into **segments** of
+30 to 960 ms, and the quilt puts them back in a new order, each used once.
+Short segments keep the sound's texture and lose its words; long ones keep
+syllables and words whole. The **seed** picks the segment the quilt starts
+with, and **New order** hears the next one. The **Source** panel shows the
+source's spectrogram cut into its segments, the **Result** panel the
+quilt's, with lines where the segments are joined. A quilt needs at least
+three whole segments, so at long segments lengthen the duration. Clear has
+nothing to blank here.
 
 ## The same sound in Python
 
@@ -400,6 +414,27 @@ without it: removing every rate above 4 Hz leaves 2.5 dB less power at
    by their level. It is a one-way view: it drops the fine structure, the
    modulation phase and rates above 64 Hz.
 
+### Quilt a sound
+
+1. The source is made at the page's duration and cut into as many whole
+   segments as fit; what is left over after the last one is not used.
+2. sonore's `quilt` orders them (Overath et al., 2015): the first is drawn
+   at random from the seed; after each segment comes the unused one whose
+   join changes the cochleagram (30 ERB-spaced cosine bands, Hilbert
+   envelopes raised to the power 0.3) by as much as the source changed
+   after that segment, comparing the last 30 ms of one segment with the
+   first 30 ms of the next.
+   The source's own next segment never follows, and its last segment only
+   ends the quilt.
+3. The segments are joined with 30 ms raised-cosine cross-fades, each one
+   moved by up to 15 ms to line its waveform up with what precedes it, and
+   with ramps that keep the level across a join of unlike segments
+   (sonore's `splice`).
+4. Each segment is used at most once, so the quilt is as long as the
+   source's whole segments. Sometimes the rule runs out of choices before
+   the last one; then the quilt has one segment fewer. The rest of the
+   page's duration, less than two segments, is silent.
+
 ## References
 
 Assmann, P. F., Ballard, W. J., Bornstein, L., & Paschall, D. D. (1994).
@@ -440,6 +475,11 @@ Neurophysiology*, *76*(5), 3503–3523. https://doi.org/10.1152/jn.1996.76.5.350
 McDermott, J. H., & Simoncelli, E. P. (2011). Sound texture perception via
 statistics of the auditory periphery: Evidence from sound synthesis.
 *Neuron*, *71*(5), 926–940. https://doi.org/10.1016/j.neuron.2011.06.032
+
+Overath, T., McDermott, J. H., Zarate, J. M., & Poeppel, D. (2015). The
+cortical analysis of speech-specific temporal structure revealed by
+responses to sound quilts. *Nature Neuroscience*, *18*(6), 903–911.
+https://doi.org/10.1038/nn.4021
 
 The Pyodide development team. (2021). *pyodide/pyodide* [Computer
 software]. Zenodo. https://doi.org/10.5281/zenodo.5156931

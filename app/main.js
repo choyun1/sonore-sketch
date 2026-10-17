@@ -16,6 +16,7 @@ import { createEventsTab } from "./events/tab.js";
 import { createMaskTab } from "./mask/tab.js";
 import { createPaintedTab } from "./painted/tab.js";
 import { createPathsTab } from "./paths/tab.js";
+import { createQuiltTab } from "./quilt/tab.js";
 import { SONORE_VERSION, clampDuration } from "./tracks/model.js";
 import { createTracksTab } from "./tracks/tab.js";
 
@@ -140,6 +141,12 @@ const tabs = {
   }),
   paths: createPathsTab(byId("tab-paths"), { commit: commitFrom("paths"), hasRecording }),
   events: createEventsTab(byId("tab-events"), { commit: commitFrom("events") }),
+  quilt: createQuiltTab(byId("tab-quilt"), {
+    commit: commitFrom("quilt"),
+    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "quilt")),
+    hasRecording,
+    log,
+  }),
 };
 // The tab shown is not an edit (undo does not switch tabs); it is saved with
 // the document, so a link opens on the tab it was made on.
@@ -157,6 +164,7 @@ function showTab() {
   // a tab that draws the result's waveform itself (the Draw modulation tab, in its Result box)
   document.querySelector("main > .result").hidden = Boolean(tab.ownWaveform);
   document.querySelector("main").dataset.tab = tab.id; // the waveform's width follows the tab's plots (style.css)
+  ui.clear.disabled = tab.clearable === false; // a tab with nothing drawn on it (Quilt a sound)
   byId("tab-caption").textContent = tabButtons.find((button) => button.dataset.tab === tab.id)?.dataset.caption ?? "";
 }
 

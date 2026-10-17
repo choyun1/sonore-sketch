@@ -13,8 +13,9 @@
 // modulation, sourceModulation: {...} (modulationPicture) and clipped (a
 // fraction), on the Scatter events tab modulationFrames, modulationPooled: {...}
 // (modulationSpectrogramPicture),
-// and on the Erase spectrogram tab sourceStft, resultStft: {...}
-// (spectrogramPicture; both in pictures.js).
+// on the Erase spectrogram tab sourceStft, resultStft: {...}
+// (spectrogramPicture; both in pictures.js), and on the Quilt a sound tab
+// sourceStft, segments (how many the quilt has) and segmentSeconds (each one's length).
 
 import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
 
@@ -179,6 +180,8 @@ export function readResult(body) {
     modulation: body.modulation && readPicture(body.modulation, modulationPicture),
     sourceModulation: body.source_modulation && readPicture(body.source_modulation, modulationPicture),
     clipped: body.clipped ?? null,
+    segments: body.segments ?? null,
+    segmentSeconds: body.segment_s ?? null,
     modulationFrames: body.modulation_frames && readPicture(body.modulation_frames, modulationSpectrogramPicture),
     modulationPooled: body.modulation_pooled && readPicture(body.modulation_pooled, modulationSpectrogramPicture),
   };

@@ -72,11 +72,11 @@ def test_the_sonore_version_is_the_same_everywhere():
 
 def test_the_longest_duration_is_the_same_everywhere():
     # one limit for every tab, and the page says what it is (app.md, D10)
-    from sonore_sketch import blobs, edit, events, mask, painted, paths
+    from sonore_sketch import blobs, edit, events, mask, painted, paths, quilt
 
     root = Path(__file__).resolve().parents[1]
     longest = tracks.MAX_DURATION
-    assert {m.MAX_DURATION for m in (blobs, edit, events, mask, painted, paths)} == {longest}
+    assert {m.MAX_DURATION for m in (blobs, edit, events, mask, painted, paths, quilt)} == {longest}
     seconds = f"{longest:g}"
     assert re.search(r"MAX_DURATION = (\S+);", (root / "app" / "tracks" / "model.js").read_text()).group(1) == seconds
     assert re.search(r"MAX_RECORDING_S = (\S+);", (root / "app" / "sources.js").read_text()).group(1) == seconds

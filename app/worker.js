@@ -167,6 +167,8 @@ function convert(result) {
       modulation: readPicture(result, "modulation", modulationPicture),
       sourceModulation: readPicture(result, "source_modulation", modulationPicture),
       clipped: result.has("clipped") ? result.get("clipped") : null,
+      segments: result.has("segments") ? result.get("segments") : null,
+      segmentSeconds: result.has("segment_s") ? result.get("segment_s") : null,
       modulationFrames: readPicture(result, "modulation_frames", modulationSpectrogramPicture),
       modulationPooled: readPicture(result, "modulation_pooled", modulationSpectrogramPicture),
     };
