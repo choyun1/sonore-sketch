@@ -102,3 +102,25 @@ def test_odd_recordings_make_a_finite_quilt_at_the_page_level(samples):
 def test_a_source_of_exactly_three_segments_still_makes_a_quilt():
     sound, _, count = quilt.shared.finish(quilt.steps({**STATE, "duration": 0.18}))
     assert 2 <= count <= 3 and sound.rms > 0
+
+
+@pytest.mark.parametrize("tab", ["painted", "blobs", "events"])
+def test_another_tabs_drawing_is_quilted_as_that_tab_sounds(tab):
+    import json
+    import subprocess
+
+    dump = 'import { defaultPage } from "./app/document.js"; console.log(JSON.stringify(defaultPage("quilt")))'
+    document = json.loads(subprocess.run(["node", "--input-type=module", "-e", dump], check=True, capture_output=True, text=True).stdout)
+    document["quilt"]["source"] = tab
+    state = page.tab_state(document, "quilt")
+    assert state["drawing"] == document[tab]
+    np.testing.assert_array_equal(quilt.source(state).data, page.synthesize({**document, "tab": tab}).mono().data)
+    assert quilt.synthesize(state).rms == pytest.approx(1)
+
+
+def test_a_drawn_source_without_its_drawing_or_with_nothing_drawn_says_so():
+    with pytest.raises(ValueError, match="drawing is missing"):
+        quilt.synthesize({**STATE, "source": "events"})
+    with pytest.raises(ValueError, match="no blobs yet"):
+        quilt.synthesize({**STATE, "source": "blobs", "drawing": {"carrier": "tones", "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+                                                                   "iterations": 0, "rms_depth": 0.2, "seed": 1, "items": []}})

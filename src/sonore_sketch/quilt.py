@@ -7,11 +7,13 @@ went on, joined with cross-fades: a sound quilt (Overath et al., 2015)::
     {"quilt": 1, "sonore": "0.7.0", "duration": 2.0, "fs": 16000,
      "source": "syllables", "segment": 0.06, "seed": 1,
      "speech": {"mode": "klatt", "params": {...}},          # with source "speech"
-     "recording": {"name": "...", "fs": 16000, "pcm16": "<base64>"}}  # with source "file"
+     "recording": {"name": "...", "fs": 16000, "pcm16": "<base64>"},  # with source "file"
+     "drawing": {...}}  # with source "painted", "blobs" or "events": that tab's section
 
-The source is the Erase tabs' (``sources.source``): a Klatt syllable train,
-the Draw speech tab's sound, or the page's recording, at the page's
-duration. The quilt is ``sonore.quilt`` of it, with sonore's defaults for
+The source is one of the Erase tabs' (``sources.source``: a Klatt syllable
+train, the Draw speech tab's sound, or the page's recording) or the sound
+of the Draw spectrogram, Draw modulation or Scatter events tab, made from
+its drawing as that tab makes it, all at the page's duration. The quilt is ``sonore.quilt`` of it, with sonore's defaults for
 everything but the segment length and the seed: it uses each segment at
 most once, so it is made of as many of the source's whole segments as it
 can order, and the rest of the page's duration, less than two segments,
@@ -26,12 +28,13 @@ from typing import Any
 import numpy as np
 import sonore as so
 
-from . import shared, sources
+from . import blobs, events, painted, shared, sources
 from .shared import number
 
 FORMAT = 1
 MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
-SOURCES = sources.SOURCES  # the Erase tabs'
+DRAWN = {"painted": painted, "blobs": blobs, "events": events}  # the tabs whose sound can be quilted
+SOURCES = (*sources.SOURCES, *DRAWN)  # the Erase tabs', and those
 SEGMENT_RANGE = (0.03, 0.96)  # s: the paper's shortest and longest segments
 MIN_SEGMENTS = 3  # two whole segments can only come back in their own order
 
@@ -54,6 +57,21 @@ def check(state: Mapping[str, Any]) -> None:
     seed = state.get("seed")
     if not (isinstance(seed, int) and not isinstance(seed, bool) and seed >= 0):
         raise ValueError(f"'seed' must be a whole number from 0 up, not {seed!r}")
+
+
+def source(state: Mapping[str, Any]) -> so.Sound:
+    """The sound the quilt is made from, at the page's duration and rate."""
+    kind = state["source"]
+    if kind not in DRAWN:
+        return sources.source(state, silent="there is nothing to quilt")
+    drawing = state.get("drawing")
+    if not isinstance(drawing, Mapping):
+        raise ValueError(f"the {kind} tab's drawing is missing")
+    module = DRAWN[kind]
+    sound = module.synthesize({kind: module.FORMAT, "duration": state["duration"], "fs": state["fs"], **drawing}).mono()
+    if not sound.rms > 0:
+        raise ValueError(f"the source ({kind}) is silent: there is nothing to quilt")
+    return sound
 
 
 def quilt(sound: so.Sound, segment: float, seed: int) -> tuple[so.Sound, int]:
@@ -84,7 +102,7 @@ def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
     quilt is padded with silence to the page's duration."""
     check(state)
     yield 0.0, "Making the source"
-    original = sources.source(state, silent="there is nothing to quilt")
+    original = source(state)
     yield 1 / 3, "Quilting"
     made, count = quilt(original, float(state["segment"]), int(state["seed"]))
     samples = np.zeros(original.n_samples)

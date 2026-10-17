@@ -114,6 +114,7 @@ export function tabState(page, tab) {
     const state = { [tab]: format, sonore, duration, fs, ...page[tab] };
     if (state.source === "speech") state.speech = page.tracks;
     if (state.source === "file" && page.recording) state.recording = page.recording;
+    if (tab === "quilt" && quilt.DRAWN.includes(state.source)) state.drawing = page[state.source]; // that tab's drawing, made into its sound
     return state;
   }
   throw new Error(`unknown tab ${tab}`);
@@ -138,7 +139,7 @@ export function withTabState(page, tab, state) {
     return { ...page, events: section };
   }
   if (tab === "edit" || tab === "mask" || tab === "paths" || tab === "quilt") {
-    const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, speech: _speech, recording: _recording, ...section } = state;
+    const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, speech: _speech, recording: _recording, drawing: _drawing, ...section } = state;
     return { ...page, [tab]: section };
   }
   throw new Error(`unknown tab ${tab}`);

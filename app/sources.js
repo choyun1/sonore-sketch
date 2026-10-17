@@ -61,11 +61,12 @@ export async function decodeAudio(file, fs) {
 
 // --- the Source controls -----------------------------------------------------------
 
-// The Source fieldset's HTML; `title` is the source list's tooltip.
-export function sourceFieldset(title) {
+// The Source fieldset's HTML; `title` is the source list's tooltip and
+// `labels` the sources offered, by id.
+export function sourceFieldset(title, labels = SOURCE_LABELS) {
   return `<fieldset><legend>Source</legend>
           <select class="source" title="${title}">
-            ${Object.entries(SOURCE_LABELS).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
+            ${Object.entries(labels).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
           </select>
           <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to erase from; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
           <input type="file" class="audio-file" accept="audio/*" hidden>

@@ -4,7 +4,18 @@
 //
 // No DOM here, so this file runs under `node --test`.
 
-import { SOURCES } from "../sources.js";
+import { SOURCE_LABELS } from "../sources.js";
+
+// The Erase tabs' sources, and the tabs whose drawing's sound can be quilted
+// (sonore_sketch.quilt.SOURCES, DRAWN).
+export const DRAWN = ["painted", "blobs", "events"];
+export const LABELS = {
+  ...SOURCE_LABELS,
+  painted: "The Draw spectrogram tab's sound",
+  blobs: "The Draw modulation tab's sound",
+  events: "The Scatter events tab's sound",
+};
+export const SOURCES = Object.keys(LABELS);
 
 export const FORMAT = 1;
 export const SEGMENT_RANGE = [0.03, 0.96]; // s, the paper's shortest and longest (sonore_sketch.quilt.SEGMENT_RANGE)

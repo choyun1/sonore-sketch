@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 
-import { clearTab, defaultPage, openDocument, tabState, withRecording } from "../../app/document.js";
+import { clearTab, defaultPage, openDocument, tabState, withRecording, withTabState } from "../../app/document.js";
 import { SEGMENT_RANGE, MIN_SEGMENTS, SLIDER_STEPS, check, clampSegment, segmentFromSlider, sliderFromSegment, wholeSegments } from "../../app/quilt/model.js";
 import { tabFromHash } from "../../app/share.js";
 
@@ -54,4 +54,15 @@ test("a recording opened here becomes the quilt's source, and Clear leaves the s
   assert.equal(tabState(page, "quilt").recording.name, "a.wav");
   const changed = { ...page, quilt: { ...page.quilt, segment: 0.2, seed: 4 } };
   assert.deepEqual((await clearTab(changed, "quilt")).quilt, changed.quilt);
+});
+
+test("another tab's drawing can be the source, and goes with the state", () => {
+  const page = defaultPage("quilt");
+  for (const source of ["painted", "blobs", "events"]) {
+    const state = tabState({ ...page, quilt: { ...page.quilt, source } }, "quilt");
+    assert.deepEqual(state.drawing, page[source], source);
+    assert.ok(check(state));
+  }
+  assert.equal(tabState(page, "quilt").drawing, undefined); // the syllable train needs no drawing
+  assert.equal(withTabState(page, "quilt", { ...tabState(page, "quilt"), drawing: {} }).quilt.drawing, undefined);
 });
