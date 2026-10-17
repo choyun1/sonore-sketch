@@ -9,7 +9,9 @@
 import { absolutePeak } from "./audio.js";
 
 export const SOURCES = ["syllables", "speech", "file"];
-export const SOURCE_LABELS = { syllables: "Syllable train", speech: "The Draw speech tab's sound", file: "A recording" };
+// The order every Source list keeps (Cho, 2026-10-17): sounds made here
+// first, then the tabs' sounds in the order of the tabs, then a file last.
+export const SOURCE_LABELS = { syllables: "Syllable train", speech: "Draw speech tab's sound", file: "From a file…" };
 export const MAX_RECORDING_S = 30; // F6: a recording sets the duration, up to the page's limit
 
 // --- recordings --------------------------------------------------------------------

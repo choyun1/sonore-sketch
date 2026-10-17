@@ -10,10 +10,12 @@ import { SOURCE_LABELS } from "../sources.js";
 // (sonore_sketch.quilt.SOURCES, DRAWN).
 export const DRAWN = ["painted", "blobs", "events"];
 export const LABELS = {
-  ...SOURCE_LABELS,
-  painted: "The Draw spectrogram tab's sound",
-  blobs: "The Draw modulation tab's sound",
-  events: "The Scatter events tab's sound",
+  syllables: SOURCE_LABELS.syllables,
+  speech: SOURCE_LABELS.speech,
+  painted: "Draw spectrogram tab's sound",
+  blobs: "Draw modulation tab's sound",
+  events: "Scatter events tab's sound",
+  file: SOURCE_LABELS.file,
 };
 export const SOURCES = Object.keys(LABELS);
 

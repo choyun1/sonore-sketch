@@ -16,10 +16,10 @@ import { simplify, tidyPoints, valueAt } from "../tracks/model.js";
 
 export const FORMAT = 1;
 export const SOURCES = [
-  ["noise", "noise"],
-  ["syllables", "syllable train"],
+  ["noise", "Noise"],
+  ["syllables", "Syllable train"],
   ["speech", "Draw speech tab's sound"],
-  ["file", "recording"],
+  ["file", "From a file…"],
 ];
 export const ROOMS = [["dry", "dry"], ["room", "room (RT60 0.6 s)"]];
 export const HALF_WIDTH = 4; // m: the top view spans -4..4 m both ways (sonore_sketch.paths.HALF_WIDTH)
