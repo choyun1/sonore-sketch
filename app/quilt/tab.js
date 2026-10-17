@@ -44,7 +44,7 @@ export function createQuiltTab(root, { commit, openRecording, hasRecording, log 
         <fieldset><legend>Quilt</legend>
           <label class="field knob" title="How long each segment is: short segments keep the sound's texture and lose its order; long ones keep words and rhythms whole"><span class="knob-name">Segment</span> <span class="unit">ms</span>
             <input type="range" class="segment" min="0" max="${SLIDER_STEPS}" step="1"></label>
-          <label class="field" title="Which segment the quilt starts with; sonore chooses each next one from it">Seed <input type="number" class="seed" step="1"></label>
+          <label class="field" title="Which segment the quilt starts with; sonore chooses each next one from it">Seed <input type="number" class="seed" min="0" step="1"></label>
           <button type="button" class="reorder" title="Start from another segment, and hear the new order">New order</button>
         </fieldset>
         <p class="hint">Each segment is used at most once and never next to the one that followed it in the source. The segments are joined with 30 ms cross-fades. Space plays.</p>
@@ -82,7 +82,7 @@ export function createQuiltTab(root, { commit, openRecording, hasRecording, log 
   });
   ui.seed.addEventListener("change", () => {
     const seed = Math.round(typedNumber(ui.seed.value, NaN));
-    if (Number.isInteger(seed) && seed !== state.seed) commit({ ...state, seed });
+    if (Number.isInteger(seed) && seed >= 0 && seed !== state.seed) commit({ ...state, seed });
     else ui.seed.value = state.seed;
   });
   ui.reorder.addEventListener("click", () => commit({ ...state, seed: state.seed + 1 }, { play: true }));
@@ -189,6 +189,10 @@ export function createQuiltTab(root, { commit, openRecording, hasRecording, log 
     setPlayhead(t) {
       playhead = t;
       renderQuilt();
+    },
+    failed(message) {
+      // the pictures are still the last quilt's; the note says this one was not made
+      ui.note.textContent = `Not made: ${message.replace(/^ValueError: /, "")}`;
     },
     blocked() {
       if (state.source === "file" && !state.recording) return "No recording: open an audio file (Source) to quilt.";

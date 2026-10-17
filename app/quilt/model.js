@@ -46,6 +46,6 @@ export function check(state) {
   if (!SOURCES.includes(source)) throw new Error(`the Quilt a sound source must be one of ${SOURCES.join(", ")}`);
   const [low, high] = SEGMENT_RANGE;
   if (!(typeof segment === "number" && segment >= low && segment <= high)) throw new Error(`the segment must be from ${low} to ${high} s`);
-  if (!Number.isInteger(seed)) throw new Error("seed must be a whole number");
+  if (!(Number.isInteger(seed) && seed >= 0)) throw new Error("seed must be a whole number from 0 up");
   return state;
 }

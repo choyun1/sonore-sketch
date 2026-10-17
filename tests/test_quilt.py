@@ -61,8 +61,44 @@ def test_a_page_document_gives_the_quilt_state_its_source():
 @pytest.mark.parametrize(
     "change, message",
     [({"quilt": 2}, "format"), ({"source": "radio"}, "'source'"), ({"segment": 0.02}, "'segment'"), ({"segment": 1.0}, "'segment'"),
-     ({"seed": 1.5}, "'seed'"), ({"duration": 31}, "'duration'")],
+     ({"seed": 1.5}, "'seed'"), ({"seed": -1}, "'seed'"), ({"duration": 31}, "'duration'")],
 )
 def test_bad_states_say_what_is_wrong(change, message):
     with pytest.raises(ValueError, match=message):
         quilt.check({**STATE, **change})
+
+
+def _recording(samples, fs=16000):
+    import base64
+
+    samples = np.asarray(samples, float)
+    pcm = np.round(samples / max(np.max(np.abs(samples)), 1e-12) * 32767).astype("<i2")
+    return {"name": "x.wav", "fs": fs, "pcm16": base64.b64encode(pcm.tobytes()).decode()}
+
+
+@pytest.mark.parametrize(
+    "samples, message",
+    [(np.zeros(32000), "silent: there is nothing to quilt"),  # a silent file
+     (np.r_[1.0, np.zeros(31999)], "the quilt came out silent"),  # one impulse at the very start, which the joins cut away
+     ([1.0], "the quilt came out silent")],  # a one-sample file, padded to the duration
+)
+def test_sounds_with_nothing_to_quilt_say_so(samples, message):
+    with pytest.raises(ValueError, match=message):
+        quilt.synthesize({**STATE, "source": "file", "recording": _recording(samples)})
+
+
+@pytest.mark.parametrize(
+    "samples",
+    [np.r_[np.zeros(16000), 1.0, np.zeros(15999)],  # one impulse in the middle
+     np.ones(32000),  # DC
+     np.tile([1.0, -1.0], 16000),  # the Nyquist frequency
+     np.random.default_rng(0).standard_normal(1600)],  # 0.1 s of noise, padded to the 2 s
+)
+def test_odd_recordings_make_a_finite_quilt_at_the_page_level(samples):
+    sound = quilt.synthesize({**STATE, "source": "file", "recording": _recording(samples)})
+    assert sound.n_samples == 32000 and np.isfinite(sound.data).all() and sound.rms == pytest.approx(1)
+
+
+def test_a_source_of_exactly_three_segments_still_makes_a_quilt():
+    sound, _, count = quilt.shared.finish(quilt.steps({**STATE, "duration": 0.18}))
+    assert 2 <= count <= 3 and sound.rms > 0

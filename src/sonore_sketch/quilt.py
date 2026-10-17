@@ -52,8 +52,8 @@ def check(state: Mapping[str, Any]) -> None:
     if not number(segment) or not low <= segment <= high:
         raise ValueError(f"'segment' must be a number of seconds from {low:g} to {high:g}, not {segment!r}")
     seed = state.get("seed")
-    if not (isinstance(seed, int) and not isinstance(seed, bool)):
-        raise ValueError(f"'seed' must be a whole number, not {seed!r}")
+    if not (isinstance(seed, int) and not isinstance(seed, bool) and seed >= 0):
+        raise ValueError(f"'seed' must be a whole number from 0 up, not {seed!r}")
 
 
 def quilt(sound: so.Sound, segment: float, seed: int) -> tuple[so.Sound, int]:
@@ -90,6 +90,8 @@ def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
     samples = np.zeros(original.n_samples)
     samples[: made.n_samples] = made.data[: original.n_samples, 0]
     sound = so.Sound(samples, original.fs)
+    if not sound.rms > 0:  # what the source held was cut away: in its leftover tail, or a single sample at a segment's very start
+        raise ValueError("the quilt came out silent: the source's sound is too short or too sparse for its segments to carry it")
     return (sound.normalize() if sound.rms > 0 else sound), original, count
 
 

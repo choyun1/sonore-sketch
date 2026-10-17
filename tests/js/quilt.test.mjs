@@ -44,6 +44,7 @@ test("bad sections say what is wrong", () => {
   assert.throws(() => check({ ...state, segment: 0.01 }), /segment/);
   assert.throws(() => check({ ...state, source: "radio" }), /source/);
   assert.throws(() => check({ ...state, seed: 0.5 }), /seed/);
+  assert.throws(() => check({ ...state, seed: -1 }), /seed/);
 });
 
 test("a recording opened here becomes the quilt's source, and Clear leaves the settings alone", async () => {
