@@ -1,7 +1,7 @@
 """Measure how long sonore takes to load and to synthesize speech in a browser.
 
 This script runs sonore to measure it; it is not an independent check. It
-answers one question for the design document (docs/design/tabs/tracks.md):
+answers one question for the design document (docs/design/tabs/draw_speech.md):
 is sonore under Pyodide fast enough to be the synthesizer behind a drawing
 interface in a web page?
 

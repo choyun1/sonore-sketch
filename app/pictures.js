@@ -29,7 +29,7 @@ function list(value) {
   }
 }
 
-// The Scatter events tab's modulation spectrogram (sonore_sketch.events.modulation):
+// The Scatter events tab's modulation spectrogram (sonore_sketch.scatter_events.modulation):
 // `frames`, the band x rate depth at each time window (window by window, band
 // by band, rate by rate), or `pooled`, rate by time window (rate by rate),
 // 8-bit levels over the top rangeDb dB, 0 where a cell is not valid.
@@ -49,8 +49,8 @@ export function modulationSpectrogramPicture(read, data) {
 }
 
 // A modulation spectrum on the plane: the Draw modulation tab's measured one
-// (sonore_sketch.blobs.measured_picture), the Erase modulation tab's source
-// (sonore_sketch.edit.plane_picture).
+// (sonore_sketch.draw_modulation.measured_picture), the Erase modulation tab's source
+// (sonore_sketch.erase_modulation.plane_picture).
 export function modulationPicture(read, data) {
   return {
     data,

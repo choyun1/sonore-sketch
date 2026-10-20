@@ -5,7 +5,7 @@ normal pinna, 710 directions at 1.4 m, elevations −40° to 90°, 44.1 kHz, as
 float32 arrays (`irs`, shape 710 × 2 × 512; `positions`, Cartesian meters
 as sonore uses them; `fs`). Made by `tools/make_hrirs.py` from the SOFA copy
 of the measurements. The Draw path tab reads it
-(`docs/design/tabs/paths.md`).
+(`docs/design/tabs/draw_path.md`).
 
 The measurements are by Bill Gardner and Keith Martin at the MIT Media Lab.
 Their documentation says: "This HRTF data is Copyright 1994 by the MIT Media

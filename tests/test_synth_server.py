@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT / "server"))
 import synth_server  # noqa: E402
 
 PAGE = "https://choyun1.github.io"
-REQUEST = json.dumps({"tab": "tracks", "state": json.loads((ROOT / "app" / "examples" / "tracks.json").read_text())["state"]}).encode()
+REQUEST = json.dumps({"tab": "draw_speech", "state": json.loads((ROOT / "app" / "examples" / "draw_speech.json").read_text())["state"]}).encode()
 
 
 @pytest.fixture
@@ -62,7 +62,7 @@ def test_it_synthesizes_for_the_page_and_lets_only_the_pages_sites_read_it(serve
 
 
 def test_a_drawing_it_cannot_make_is_a_400_with_the_reason(server):
-    status, _, body = ask(f"{server()}/api/synthesize", json.dumps({"tab": "tracks", "state": {}}).encode())
+    status, _, body = ask(f"{server()}/api/synthesize", json.dumps({"tab": "draw_speech", "state": {}}).encode())
     assert status == 400 and json.loads(body)["error"]
 
 

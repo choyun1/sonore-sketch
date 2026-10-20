@@ -1,4 +1,4 @@
-"""Numerical checks for the claims in docs/design/tabs/tracks.md (C1-C3).
+"""Numerical checks for the claims in docs/design/tabs/draw_speech.md (C1-C3).
 
 Independent of sonore and of TrackDraw: only NumPy and SciPy, with each
 filter written out from its formula in Klatt (1980) and Assmann et al.

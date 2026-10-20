@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sonore_sketch import blobs, edit, mask, page, painted, tracks
+from sonore_sketch import draw_modulation, erase_modulation, erase_spectrogram, page, draw_spectrogram, draw_speech
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "sound_fingerprints.json"
@@ -47,38 +47,38 @@ def _speech_params() -> dict:
 def _cases() -> dict[str, dict]:
     common = {"sonore": "0.8.0", "duration": DURATION, "fs": FS}
     painting = {
-        "painted": painted.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256,
-        "floor_db": -60, "f0": painted.EXAMPLE_F0, "seed": 1, "levels": painted.encode_levels(painted.example_levels()),
+        "draw_spectrogram": draw_spectrogram.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256,
+        "floor_db": -60, "f0": draw_spectrogram.EXAMPLE_F0, "seed": 1, "levels": draw_spectrogram.encode_levels(draw_spectrogram.example_levels()),
     }
     drawing = {
-        "blobs": blobs.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12, "carrier": "tones",
-        "f0": 100, "iterations": 0, "rms_depth": 0.2, "seed": 1, "items": blobs.EXAMPLE_ITEMS,
+        "draw_modulation": draw_modulation.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12, "carrier": "tones",
+        "f0": 100, "iterations": 0, "rms_depth": 0.2, "seed": 1, "items": draw_modulation.EXAMPLE_ITEMS,
     }
     band = [{"points": [[0, 500], [DURATION, 1000]], "width": 1, "level": 0}]
-    erased_band = np.zeros((mask.ROWS, mask.COLUMNS))
-    erased_band[40:60, 64:192] = -mask.FLOOR_DB  # 1.25-1.9 kHz over the middle half
+    erased_band = np.zeros((erase_spectrogram.ROWS, erase_spectrogram.COLUMNS))
+    erased_band[40:60, 64:192] = -erase_spectrogram.FLOOR_DB  # 1.25-1.9 kHz over the middle half
     filtering = {
-        "mask": mask.FORMAT, **common, "source": "syllables", "rows": mask.ROWS, "columns": mask.COLUMNS,
-        "floor_db": mask.FLOOR_DB, "window": mask.WINDOW_S, "levels": mask.encode(erased_band),
+        "erase_spectrogram": erase_spectrogram.FORMAT, **common, "source": "syllables", "rows": erase_spectrogram.ROWS, "columns": erase_spectrogram.COLUMNS,
+        "floor_db": erase_spectrogram.FLOOR_DB, "window": erase_spectrogram.WINDOW_S, "levels": erase_spectrogram.encode(erased_band),
     }
     editing = {
-        "edit": edit.FORMAT, **common, "source": "syllables", "carrier": "source", "iterations": 2, "seed": 1,
-        "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12, "columns": edit.COLUMNS, "rows": edit.ROWS,
-        "floor_db": edit.FLOOR_DB, "levels": edit.EXAMPLE_LEVELS,
+        "erase_modulation": erase_modulation.FORMAT, **common, "source": "syllables", "carrier": "source", "iterations": 2, "seed": 1,
+        "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12, "columns": erase_modulation.COLUMNS, "rows": erase_modulation.ROWS,
+        "floor_db": erase_modulation.FLOOR_DB, "levels": erase_modulation.EXAMPLE_LEVELS,
     }
     return {
-        "tracks": ("tracks", {"trackdraw": tracks.FORMAT, **common, "mode": "klatt", "seed": 3, "params": _speech_params()}),
-        "painted, tones": ("painted", {**painting, "carrier": "tones"}),
-        "painted, harmonic": ("painted", {**painting, "carrier": "harmonic"}),
-        "painted, noise": ("painted", {**painting, "carrier": "noise"}),
-        "mask, syllables": ("mask", filtering),
-        "blobs, tones": ("blobs", drawing),
-        "blobs, noise, B9, 2 iterations": ("blobs", {**drawing, "carrier": "noise", "items": blobs.B9_ITEMS, "iterations": 2}),
-        "blobs, harmonic": ("blobs", {**drawing, "carrier": "harmonic", "f0": 100}),
-        "blobs, tones, band, 2 iterations": ("blobs", {**drawing, "bands": band, "iterations": 2}),
-        "blobs, harmonic, band, 1 iteration": ("blobs", {**drawing, "carrier": "harmonic", "bands": band, "iterations": 1}),
-        "edit, source, 2 iterations": ("edit", editing),
-        "edit, tones": ("edit", {**editing, "carrier": "tones", "iterations": 0}),
+        "draw_speech": ("draw_speech", {"trackdraw": draw_speech.FORMAT, **common, "mode": "klatt", "seed": 3, "params": _speech_params()}),
+        "draw_spectrogram, tones": ("draw_spectrogram", {**painting, "carrier": "tones"}),
+        "draw_spectrogram, harmonic": ("draw_spectrogram", {**painting, "carrier": "harmonic"}),
+        "draw_spectrogram, noise": ("draw_spectrogram", {**painting, "carrier": "noise"}),
+        "erase_spectrogram, syllables": ("erase_spectrogram", filtering),
+        "draw_modulation, tones": ("draw_modulation", drawing),
+        "draw_modulation, noise, B9, 2 iterations": ("draw_modulation", {**drawing, "carrier": "noise", "items": draw_modulation.B9_ITEMS, "iterations": 2}),
+        "draw_modulation, harmonic": ("draw_modulation", {**drawing, "carrier": "harmonic", "f0": 100}),
+        "draw_modulation, tones, band, 2 iterations": ("draw_modulation", {**drawing, "bands": band, "iterations": 2}),
+        "draw_modulation, harmonic, band, 1 iteration": ("draw_modulation", {**drawing, "carrier": "harmonic", "bands": band, "iterations": 1}),
+        "erase_modulation, source, 2 iterations": ("erase_modulation", editing),
+        "erase_modulation, tones": ("erase_modulation", {**editing, "carrier": "tones", "iterations": 0}),
     }
 
 

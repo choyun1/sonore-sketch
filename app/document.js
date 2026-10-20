@@ -1,44 +1,66 @@
 // The page's document: what Save writes, what a link holds, and what undo
-// steps through (docs/design/tabs/painted.md, "Data model"). The duration and
+// steps through (docs/design/tabs/draw_spectrogram.md, "Data model"). The duration and
 // sampling rate belong to the page; each tab keeps its own section, so you
 // can switch tabs and come back to what you drew.
 //
-//   {"app": "sonore-sketch", "version": 2, "sonore": "0.8.0",
-//    "duration": 0.6, "fs": 16000, "tab": "tracks",
-//    "tracks": {"mode": "klatt", "params": {...}},
-//    "painted": {"f_lo": 100, "f_hi": 6400, ..., "levels": "..."},
-//    "blobs": {"carrier": "tones", ..., "items": [{"rate": 4, ...}]},
-//    "edit": {"source": "syllables", ..., "levels": "..."},
-//    "mask": {"source": "syllables", ..., "levels": "..."},
-//    "paths": {"source": "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0, "speed": null},
-//    "events": {"event": "chirp", ..., "rate": 10, "regularity": 1, "seed": 0},
-//    "quilt": {"source": "syllables", "segment": 0.06, "seed": 1},
+//   {"app": "sonore-sketch", "version": 3, "sonore": "0.8.0",
+//    "duration": 0.6, "fs": 16000, "tab": "draw_speech",
+//    "draw_speech": {"mode": "klatt", "params": {...}},
+//    "draw_spectrogram": {"f_lo": 100, "f_hi": 6400, ..., "levels": "..."},
+//    "draw_modulation": {"carrier": "tones", ..., "items": [{"rate": 4, ...}]},
+//    "erase_modulation": {"source": "syllables", ..., "levels": "..."},
+//    "erase_spectrogram": {"source": "syllables", ..., "levels": "..."},
+//    "draw_path": {"source": "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0, "speed": null},
+//    "scatter_events": {"event": "chirp", ..., "rate": 10, "regularity": 1, "seed": 0},
+//    "quilt_sound": {"source": "syllables", "segment": 0.06, "seed": 1},
 //    "recording": {"name": "talk.wav", "fs": 16000, "pcm16": "..."}}
 //
 // A recording opened on the Erase modulation, Erase spectrogram or Quilt a
 // sound tab belongs to the page, so any of them can use it; it is kept in saved files but never
-// in links (docs/design/tabs/edit.md, E1), which would be far too long.
+// in links (docs/design/tabs/erase_modulation.md, E1), which would be far too long.
 //
 // A tab works on its own state, the shape its Python function takes
-// (sonore_sketch.page.tab_state does the same in Python). A version-1
-// document, the Draw speech tab's own format from before there were other tabs,
-// opens as version 2, so old files and links keep working.
+// (sonore_sketch.page.tab_state does the same in Python). Older documents
+// open as version 3, so old files and links keep working: a version-1
+// document is the Draw speech tab's own format from before there were other
+// tabs, and a version-2 document names the tabs by their old ids (OLD_TAB_IDS).
 //
 // No DOM here, so this file runs under `node --test`.
 
-import * as blobs from "./blobs/model.js";
-import * as edit from "./edit/model.js";
-import * as events from "./events/model.js";
-import * as mask from "./mask/model.js";
-import * as painted from "./painted/model.js";
-import * as paths from "./paths/model.js";
-import * as quilt from "./quilt/model.js";
+import * as drawModulation from "./draw_modulation/model.js";
+import * as eraseModulation from "./erase_modulation/model.js";
+import * as scatterEvents from "./scatter_events/model.js";
+import * as eraseSpectrogram from "./erase_spectrogram/model.js";
+import * as drawSpectrogram from "./draw_spectrogram/model.js";
+import * as drawPath from "./draw_path/model.js";
+import * as quiltSound from "./quilt_sound/model.js";
 import { MAX_RECORDING_S, checkRecording } from "./sources.js";
-import * as tracks from "./tracks/model.js";
+import * as drawSpeech from "./draw_speech/model.js";
 
 export const APP = "sonore-sketch";
-export const VERSION = 2;
-export const TABS = ["tracks", "painted", "mask", "blobs", "edit", "paths", "events", "quilt"];
+export const VERSION = 3;
+export const TABS = ["draw_speech", "draw_spectrogram", "erase_spectrogram", "draw_modulation", "erase_modulation", "draw_path", "scatter_events", "quilt_sound"];
+
+// The tabs' ids in version-2 documents (before 2026-10-20), each with the id
+// it has now; a source naming a tab used the same ids, but "speech" for Draw
+// speech (sonore_sketch.page.OLD_TAB_IDS is the same).
+export const OLD_TAB_IDS = {
+  tracks: "draw_speech", painted: "draw_spectrogram", mask: "erase_spectrogram", blobs: "draw_modulation",
+  edit: "erase_modulation", paths: "draw_path", events: "scatter_events", quilt: "quilt_sound", speech: "draw_speech",
+};
+
+// A version-2 document as version 3: its sections, the tab it was saved on
+// and every source that names a tab, under the tabs' ids of now.
+function renameOldTabs(opened) {
+  const renamed = { ...opened, version: VERSION, tab: OLD_TAB_IDS[opened.tab] ?? opened.tab };
+  for (const [old, id] of Object.entries(OLD_TAB_IDS)) {
+    if (!(old in opened) || old === "speech") continue;
+    const section = opened[old];
+    delete renamed[old];
+    renamed[id] = section?.source in OLD_TAB_IDS ? { ...section, source: OLD_TAB_IDS[section.source] } : section;
+  }
+  return renamed;
+}
 
 // The page's starting duration [s] on every tab but Draw speech, which starts
 // at its word's own 0.6 s (Cho, 2026-10-14).
@@ -48,13 +70,13 @@ export const START_DURATION = 2;
 // starting duration. On the other tabs the Draw speech word is stretched to
 // the 2 s, as any change of duration would, so going back to 0.6 s gives the
 // word back as it was spoken.
-export function defaultPage(tab = "tracks") {
-  const word = tracks.defaultDocument();
-  const { sonore, duration, fs, mode, params } = tab === "tracks" ? word : tracks.stretch(word, START_DURATION);
+export function defaultPage(tab = "draw_speech") {
+  const word = drawSpeech.defaultDocument();
+  const { sonore, duration, fs, mode, params } = tab === "draw_speech" ? word : drawSpeech.stretch(word, START_DURATION);
   return {
     app: APP, version: VERSION, sonore, duration, fs, tab,
-    tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-    mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(), quilt: quilt.defaultSection(),
+    draw_speech: { mode, params }, draw_spectrogram: drawSpectrogram.defaultSection(), draw_modulation: drawModulation.defaultSection(), erase_modulation: eraseModulation.defaultSection(),
+    erase_spectrogram: eraseSpectrogram.defaultSection(), draw_path: drawPath.defaultSection(), scatter_events: scatterEvents.defaultSection(), quilt_sound: quiltSound.defaultSection(),
   };
 }
 
@@ -62,59 +84,60 @@ export function defaultPage(tab = "tracks") {
 // yet. Until then the duration follows the tab shown (main.js, switchTab).
 export const isStartingPage = (page, tab) => JSON.stringify({ ...page, tab }) === JSON.stringify(defaultPage(tab));
 
-// A document from a file or a link, as version 2; throws an Error saying what
+// A document from a file or a link, as version 3; throws an Error saying what
 // is wrong with it.
 export function upgrade(opened) {
-  if (opened?.trackdraw === tracks.FORMAT) {
+  if (opened?.app === APP && opened.version === 2) return upgrade(renameOldTabs(opened));
+  if (opened?.trackdraw === drawSpeech.FORMAT) {
     const { sonore, duration, fs, mode = "klatt", params = {} } = opened;
     return {
-      app: APP, version: VERSION, sonore, duration, fs, tab: "tracks",
-      tracks: { mode, params }, painted: painted.defaultSection(), blobs: blobs.defaultSection(), edit: edit.defaultSection(),
-      mask: mask.defaultSection(), paths: paths.defaultSection(), events: events.defaultSection(), quilt: quilt.defaultSection(),
+      app: APP, version: VERSION, sonore, duration, fs, tab: "draw_speech",
+      draw_speech: { mode, params }, draw_spectrogram: drawSpectrogram.defaultSection(), draw_modulation: drawModulation.defaultSection(), erase_modulation: eraseModulation.defaultSection(),
+      erase_spectrogram: eraseSpectrogram.defaultSection(), draw_path: drawPath.defaultSection(), scatter_events: scatterEvents.defaultSection(), quilt_sound: quiltSound.defaultSection(),
     };
   }
   if (opened?.app !== APP || opened.version !== VERSION) {
-    throw new Error(`not a sonore-sketch document of version ${VERSION}, or a TrackDraw document of format ${tracks.FORMAT}`);
+    throw new Error(`not a sonore-sketch document of version ${VERSION}, or a TrackDraw document of format ${drawSpeech.FORMAT}`);
   }
   // A tab added since the document was saved starts from its default.
   return {
     ...opened,
-    painted: opened.painted ?? painted.defaultSection(),
-    blobs: opened.blobs ?? blobs.defaultSection(),
-    edit: opened.edit ?? edit.defaultSection(),
-    mask: opened.mask ?? mask.defaultSection(),
-    paths: opened.paths ?? paths.defaultSection(),
-    events: events.withDefaults(opened.events ?? {}),
-    quilt: opened.quilt ?? quilt.defaultSection(),
+    draw_spectrogram: opened.draw_spectrogram ?? drawSpectrogram.defaultSection(),
+    draw_modulation: opened.draw_modulation ?? drawModulation.defaultSection(),
+    erase_modulation: opened.erase_modulation ?? eraseModulation.defaultSection(),
+    erase_spectrogram: opened.erase_spectrogram ?? eraseSpectrogram.defaultSection(),
+    draw_path: opened.draw_path ?? drawPath.defaultSection(),
+    scatter_events: scatterEvents.withDefaults(opened.scatter_events ?? {}),
+    quilt_sound: opened.quilt_sound ?? quiltSound.defaultSection(),
   };
 }
 
 // The state a tab draws on and its Python function takes.
 export function tabState(page, tab) {
-  if (tab === "tracks") {
+  if (tab === "draw_speech") {
     const { sonore, duration, fs } = page;
-    return { trackdraw: tracks.FORMAT, sonore, duration, fs, ...page.tracks };
+    return { trackdraw: drawSpeech.FORMAT, sonore, duration, fs, ...page.draw_speech };
   }
-  if (tab === "painted") {
+  if (tab === "draw_spectrogram") {
     const { sonore, duration, fs } = page;
-    return { painted: painted.FORMAT, sonore, duration, fs, ...page.painted };
+    return { draw_spectrogram: drawSpectrogram.FORMAT, sonore, duration, fs, ...page.draw_spectrogram };
   }
-  if (tab === "blobs") {
+  if (tab === "draw_modulation") {
     const { sonore, duration, fs } = page;
-    return { blobs: blobs.FORMAT, sonore, duration, fs, ...page.blobs };
+    return { draw_modulation: drawModulation.FORMAT, sonore, duration, fs, ...page.draw_modulation };
   }
-  if (tab === "events") {
+  if (tab === "scatter_events") {
     const { sonore, duration, fs } = page;
-    return { events: events.FORMAT, sonore, duration, fs, ...page.events };
+    return { scatter_events: scatterEvents.FORMAT, sonore, duration, fs, ...page.scatter_events };
   }
-  if (tab === "edit" || tab === "mask" || tab === "paths" || tab === "quilt") {
+  if (tab === "erase_modulation" || tab === "erase_spectrogram" || tab === "draw_path" || tab === "quilt_sound") {
     // the source's own drawing goes with the state, so a change to it is heard
     const { sonore, duration, fs } = page;
-    const format = { edit: edit.FORMAT, mask: mask.FORMAT, paths: paths.FORMAT, quilt: quilt.FORMAT }[tab];
+    const format = { erase_modulation: eraseModulation.FORMAT, erase_spectrogram: eraseSpectrogram.FORMAT, draw_path: drawPath.FORMAT, quilt_sound: quiltSound.FORMAT }[tab];
     const state = { [tab]: format, sonore, duration, fs, ...page[tab] };
-    if (state.source === "speech") state.speech = page.tracks;
+    if (state.source === "draw_speech") state.draw_speech = page.draw_speech;
     if (state.source === "file" && page.recording) state.recording = page.recording;
-    if (tab === "quilt" && quilt.DRAWN.includes(state.source)) state.drawing = page[state.source]; // that tab's drawing, made into its sound
+    if (tab === "quilt_sound" && quiltSound.DRAWN.includes(state.source)) state.drawing = page[state.source]; // that tab's drawing, made into its sound
     return state;
   }
   throw new Error(`unknown tab ${tab}`);
@@ -122,24 +145,24 @@ export function tabState(page, tab) {
 
 // A new page with a tab's state put back.
 export function withTabState(page, tab, state) {
-  if (tab === "tracks") {
+  if (tab === "draw_speech") {
     const { mode, params } = state;
-    return { ...page, tracks: { mode, params } };
+    return { ...page, draw_speech: { mode, params } };
   }
-  if (tab === "painted") {
-    const { painted: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
-    return { ...page, painted: section };
+  if (tab === "draw_spectrogram") {
+    const { draw_spectrogram: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
+    return { ...page, draw_spectrogram: section };
   }
-  if (tab === "blobs") {
-    const { blobs: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
-    return { ...page, blobs: section };
+  if (tab === "draw_modulation") {
+    const { draw_modulation: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
+    return { ...page, draw_modulation: section };
   }
-  if (tab === "events") {
-    const { events: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
-    return { ...page, events: section };
+  if (tab === "scatter_events") {
+    const { scatter_events: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
+    return { ...page, scatter_events: section };
   }
-  if (tab === "edit" || tab === "mask" || tab === "paths" || tab === "quilt") {
-    const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, speech: _speech, recording: _recording, drawing: _drawing, ...section } = state;
+  if (tab === "erase_modulation" || tab === "erase_spectrogram" || tab === "draw_path" || tab === "quilt_sound") {
+    const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, draw_speech: _speech, recording: _recording, drawing: _drawing, ...section } = state;
     return { ...page, [tab]: section };
   }
   throw new Error(`unknown tab ${tab}`);
@@ -154,8 +177,8 @@ export function forLink(page) {
 // A recording opened in the page on `tab` (which takes it as its source),
 // which sets the duration to its own (up to the page's limit; F6),
 // stretching what the other tabs have drawn.
-export function withRecording(page, recording, seconds, tab = "edit") {
-  const duration = tracks.clampDuration(Math.round(Math.min(MAX_RECORDING_S, seconds) * 1000) / 1000);
+export function withRecording(page, recording, seconds, tab = "erase_modulation") {
+  const duration = drawSpeech.clampDuration(Math.round(Math.min(MAX_RECORDING_S, seconds) * 1000) / 1000);
   const stretched = stretchPage(page, duration);
   return { ...stretched, recording, [tab]: { ...stretched[tab], source: "file" } };
 }
@@ -163,16 +186,16 @@ export function withRecording(page, recording, seconds, tab = "edit") {
 // Check and tidy a document from a file or a link (upgrading it if old).
 export function openDocument(opened) {
   const page = upgrade(opened);
-  const state = tracks.tidyDocument(tracks.check(tabState(page, "tracks")));
-  painted.check(tabState(page, "painted"));
-  blobs.check(tabState(page, "blobs"));
-  edit.check(tabState(page, "edit"));
-  mask.check(tabState(page, "mask"));
-  paths.check(tabState(page, "paths"));
-  events.check(tabState(page, "events"));
-  quilt.check(tabState(page, "quilt"));
+  const state = drawSpeech.tidyDocument(drawSpeech.check(tabState(page, "draw_speech")));
+  drawSpectrogram.check(tabState(page, "draw_spectrogram"));
+  drawModulation.check(tabState(page, "draw_modulation"));
+  eraseModulation.check(tabState(page, "erase_modulation"));
+  eraseSpectrogram.check(tabState(page, "erase_spectrogram"));
+  drawPath.check(tabState(page, "draw_path"));
+  scatterEvents.check(tabState(page, "scatter_events"));
+  quiltSound.check(tabState(page, "quilt_sound"));
   if (page.recording !== undefined) checkRecording(page.recording);
-  return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "tracks" }, "tracks", state);
+  return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "draw_speech" }, "draw_speech", state);
 }
 
 // Change the duration, stretching what every tab has drawn (a painting's
@@ -180,13 +203,13 @@ export function openDocument(opened) {
 // are in Hz and stay where they are, but the Draw modulation tab's bands are
 // tracks in time and stretch).
 export function stretchPage(page, duration) {
-  const state = tracks.stretch(tabState(page, "tracks"), duration);
-  const stretched = withTabState({ ...page, duration }, "tracks", state);
-  const masked = page.mask ? { ...stretched, mask: mask.stretchSection(page.mask, page.duration, duration) } : stretched;
-  const moved = page.paths ? { ...masked, paths: paths.stretchSection(page.paths, page.duration, duration) } : masked;
-  const out = page.events ? { ...moved, events: events.stretchSection(page.events, page.duration, duration) } : moved;
-  if (!page.blobs?.bands?.length) return out;
-  return { ...out, blobs: { ...page.blobs, bands: blobs.stretchBands(page.blobs.bands, page.duration, duration) } };
+  const state = drawSpeech.stretch(tabState(page, "draw_speech"), duration);
+  const stretched = withTabState({ ...page, duration }, "draw_speech", state);
+  const masked = page.erase_spectrogram ? { ...stretched, erase_spectrogram: eraseSpectrogram.stretchSection(page.erase_spectrogram, page.duration, duration) } : stretched;
+  const moved = page.draw_path ? { ...masked, draw_path: drawPath.stretchSection(page.draw_path, page.duration, duration) } : masked;
+  const out = page.scatter_events ? { ...moved, scatter_events: scatterEvents.stretchSection(page.scatter_events, page.duration, duration) } : moved;
+  if (!page.draw_modulation?.bands?.length) return out;
+  return { ...out, draw_modulation: { ...page.draw_modulation, bands: drawModulation.stretchBands(page.draw_modulation.bands, page.duration, duration) } };
 }
 
 // Reset: `tab` goes back to what it held in `start`, the page as it opened
@@ -200,7 +223,7 @@ export function resetTab(page, tab, start = defaultPage()) {
 // Clear: `tab`'s drawing goes blank and its settings (carrier, range,
 // source) stay, as does the duration. Draw speech cannot be blank, so it
 // goes to a steady neutral vowel: every track flat at its default
-// (tracks.DEFAULTS), a schwa on 100 Hz (F1-F5 at 500, 1500, 2500, 3500 and
+// (drawSpeech.DEFAULTS), a schwa on 100 Hz (F1-F5 at 500, 1500, 2500, 3500 and
 // 4500 Hz, a uniform tube's resonances), voiced, no noise. The sampling rate
 // goes back to its default, which nothing on the page sets but a file or link.
 // Scatter events has no drawing but its rate track, which goes flat at its
@@ -208,16 +231,16 @@ export function resetTab(page, tab, start = defaultPage()) {
 export async function clearTab(page, tab) {
   const fresh = defaultPage();
   const cleared = { ...page, fs: fresh.fs, sonore: fresh.sonore };
-  if (tab === "tracks") return { ...cleared, tracks: { mode: "klatt", params: { ...tracks.DEFAULTS } } };
-  if (tab === "painted") return { ...cleared, painted: { ...page.painted, levels: await painted.encodeLevels(painted.blank(page.painted)) } };
-  if (tab === "blobs") return { ...cleared, blobs: { ...page.blobs, items: [], bands: [] } };
-  if (tab === "edit") return { ...cleared, edit: { ...page.edit, levels: await painted.encodeLevels(edit.blank()) } };
-  if (tab === "paths") return { ...cleared, paths: { ...page.paths, stroke: [], elevation: 0, speed: null } };
-  if (tab === "events") return { ...cleared, events: { ...page.events, rate: events.DEFAULT_RATE } };
-  if (tab === "quilt") return cleared;
-  if (tab === "mask") {
-    const { span: _span, ...section } = page.mask;
-    return { ...cleared, mask: { ...section, levels: mask.BLANK_LEVELS } };
+  if (tab === "draw_speech") return { ...cleared, draw_speech: { mode: "klatt", params: { ...drawSpeech.DEFAULTS } } };
+  if (tab === "draw_spectrogram") return { ...cleared, draw_spectrogram: { ...page.draw_spectrogram, levels: await drawSpectrogram.encodeLevels(drawSpectrogram.blank(page.draw_spectrogram)) } };
+  if (tab === "draw_modulation") return { ...cleared, draw_modulation: { ...page.draw_modulation, items: [], bands: [] } };
+  if (tab === "erase_modulation") return { ...cleared, erase_modulation: { ...page.erase_modulation, levels: await drawSpectrogram.encodeLevels(eraseModulation.blank()) } };
+  if (tab === "draw_path") return { ...cleared, draw_path: { ...page.draw_path, stroke: [], elevation: 0, speed: null } };
+  if (tab === "scatter_events") return { ...cleared, scatter_events: { ...page.scatter_events, rate: scatterEvents.DEFAULT_RATE } };
+  if (tab === "quilt_sound") return cleared;
+  if (tab === "erase_spectrogram") {
+    const { span: _span, ...section } = page.erase_spectrogram;
+    return { ...cleared, erase_spectrogram: { ...section, levels: eraseSpectrogram.BLANK_LEVELS } };
   }
   throw new Error(`unknown tab ${tab}`);
 }

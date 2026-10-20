@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 
-TABS = ["tracks", "painted", "blobs", "edit", "mask", "paths", "events", "quilt"]
+TABS = ["draw_speech", "draw_spectrogram", "draw_modulation", "erase_modulation", "erase_spectrogram", "draw_path", "scatter_events", "quilt_sound"]
 
 DUMP = """
 import { defaultPage, tabState } from "./app/document.js";

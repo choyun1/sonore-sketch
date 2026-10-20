@@ -250,7 +250,7 @@ STFT is closest to the masked one (least squares; Griffin & Lim, 1984).
 Neighboring coefficients overlap, so not every picture is a sound's
 spectrogram, and the result panel shows what came back. With a 5 ms window
 an erased band would come back at only −32 dB, which is why the window is
-long (`docs/design/tabs/mask.md`, F-M2). There is no iteration.
+long (`docs/design/tabs/erase_spectrogram.md`, F-M2). There is no iteration.
 
 ### Draw modulation
 
@@ -347,14 +347,14 @@ same quantity the blobs draw, and the two can be compared directly.
    modulation phase**, so the sound keeps its timing wherever nothing was
    erased. Envelopes that come out below zero are clipped, and the note
    under the plane says how many; this is why boosting barely works and
-   erasing does (`docs/design/tabs/edit.md`, E-M5).
+   erasing does (`docs/design/tabs/erase_modulation.md`, E-M5).
 4. The fine structure is the source's own, or tones, or noise, as chosen.
 
 **Iterations** (0–20, default 5) are the search described under Draw
 modulation, here sonore's own `to_sound(iterations=n)`, taken one round at
 a time. On the source's own fine structure an erasure is barely heard
 without it: removing every rate above 4 Hz leaves 2.5 dB less power at
-6–40 Hz with no iterations, 11.6 dB with 5 and 14.7 dB with 20 (`edit.md`, E-M3).
+6–40 Hz with no iterations, 11.6 dB with 5 and 14.7 dB with 20 (`erase_modulation.md`, E-M3).
 
 ### Draw path
 
@@ -362,7 +362,7 @@ without it: removing every rate above 4 Hz leaves 2.5 dB less power at
    you draw is how fast the sound moves; it is stretched to the page's
    duration. Its points are put every 10 ms and smoothed with a 30 ms
    Gaussian, which takes out the speed changes the pointer adds at every
-   screen frame (`docs/design/tabs/paths.md`, W-M2). The speed track
+   screen frame (`docs/design/tabs/draw_path.md`, W-M2). The speed track
    under the top view starts as that drawn speed; drawing on it sets the
    speed along the path instead, from its start to its end (W7), scaled so
    the trip takes the duration and never slower than 1/20 of its fastest
@@ -498,6 +498,33 @@ runs under Pyodide, is in `src/sonore_sketch/` (one module per tab,
 `sources.py` and `shared.py`, which the tabs share, and `page.py`, which
 the page calls). It needs sonore 0.8.
 
+Each tab has one name, from its label on the page, used everywhere: its
+folder in `app/`, its Python module, its section in a saved file, its tests
+and its design document.
+
+| Tab | Page (JavaScript) | Sound (Python) | Tests |
+|---|---|---|---|
+| Draw speech | `app/draw_speech/` | `draw_speech.py` | `test_draw_speech.py`, `draw_speech.test.mjs` |
+| Draw spectrogram | `app/draw_spectrogram/` | `draw_spectrogram.py` | `test_draw_spectrogram.py`, `draw_spectrogram.test.mjs` |
+| Erase spectrogram | `app/erase_spectrogram/` | `erase_spectrogram.py` | `test_erase_spectrogram.py`, `erase_spectrogram.test.mjs` |
+| Draw modulation | `app/draw_modulation/` | `draw_modulation.py` | `test_draw_modulation.py`, `draw_modulation.test.mjs` |
+| Erase modulation | `app/erase_modulation/` | `erase_modulation.py` | `test_erase_modulation.py`, `erase_modulation.test.mjs` |
+| Draw path | `app/draw_path/` | `draw_path.py` | `test_draw_path.py`, `draw_path.test.mjs` |
+| Scatter events | `app/scatter_events/` | `scatter_events.py` | `test_scatter_events.py`, `scatter_events.test.mjs` |
+| Quilt a sound | `app/quilt_sound/` | `quilt_sound.py` | `test_quilt_sound.py`, `quilt_sound.test.mjs` |
+
+In each tab's folder, `model.js` holds the tab's state and the edits to it,
+with no DOM, so `npm test` can run it; `tab.js` draws the tab and handles
+the pointer, and hands the shell the new state when an edit ends. The shell,
+`app/main.js`, keeps the page's document (`app/document.js`), undo, links
+and playback, and sends `{tab, state}` to `app/engine.js`, which passes it
+to the Pyodide worker (`app/worker.js`). The worker calls
+`sonore_sketch.page.handle_steps`, whose `TABS` names each tab's
+`synthesize(state)`; the state is the same JSON on both sides. Saved files
+and links from before 2026-10-20, which used older ids (`tracks`,
+`painted`, `mask`, `blobs`, `edit`, `paths`, `events`, `quilt`), open as
+they did.
+
 ```
 pip install -e ".[test]" playwright
 python tools/serve.py             # the page at http://localhost:8000/
@@ -545,10 +572,10 @@ Six things to keep in step:
 ## Design documents
 
 Every tab is designed before it is built, in `docs/design/`: `app.md` for
-the page as a whole, and `tabs/` for each tab (`tracks.md` for Draw speech,
-`painted.md` for Draw spectrogram, `blobs.md` and `bands.md` for Draw modulation,
-`mask.md` for Erase spectrogram, `edit.md` for Erase modulation, `paths.md`
-for Draw path, `events.md` for Scatter events).
+the page as a whole, and `tabs/` for each tab (`draw_speech.md` for Draw speech,
+`draw_spectrogram.md` for Draw spectrogram, `draw_modulation.md` and `bands.md` for Draw modulation,
+`erase_spectrogram.md` for Erase spectrogram, `erase_modulation.md` for Erase modulation, `draw_path.md`
+for Draw path, `scatter_events.md` for Scatter events).
 Each records the measurements behind it, made by the scripts in `tools/`,
 and the decisions Cho made.
 

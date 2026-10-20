@@ -1,0 +1,170 @@
+"""The Erase spectrogram tab's state, and the sound it describes.
+
+Take a sound, paint over parts of its spectrogram to turn them down or
+remove them, and hear what is left (docs/design/tabs/erase_spectrogram.md)::
+
+    {"erase_spectrogram": 1, "sonore": "0.8.0", "duration": 1.8, "fs": 16000,
+     "source": "syllables", "rows": 256, "columns": 256, "floor_db": -60,
+     "window": 0.032, "levels": "<base64 of deflated bytes>",
+     "draw_speech": {"mode": "klatt", "params": {...}},          # with source "draw_speech"
+     "recording": {"name": "...", "fs": 16000, "pcm16": "<base64>"}}  # with source "file"
+
+The source (F2) is the Erase modulation tab's: a Klatt syllable train, the
+Draw speech tab's sound, or the page's recording (``sources.source``). The mask is a
+grid of cuts in dB, one byte a cell, stored as the other tabs store theirs:
+0 keeps a cell and ``-floor_db`` removes it. Its rows are equal steps of
+frequency from 0 Hz to Nyquist (F4), its columns equal fractions of
+``span`` seconds (the duration when absent): erasures on a recording or the
+syllable train keep their seconds when the duration changes, and time past
+``span`` is not erased. The sound is
+``(stft * gains).to_sound()``, sonore's least-squares resynthesis, with a
+32 ms Hann window and a hop of a quarter of it (F5).
+"""
+
+from __future__ import annotations
+
+import math
+from collections.abc import Iterator, Mapping
+from typing import Any
+
+import numpy as np
+import sonore as so
+
+from . import shared, sources
+from .shared import number
+
+FORMAT = 1
+MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
+SOURCES = sources.SOURCES  # F2: the Erase modulation tab's
+ROWS, COLUMNS = 256, 256
+FLOOR_DB = -60.0  # a cut this deep removes the cell
+WINDOW_S = 0.032  # F5: only a long window lets a painted cut come out as painted (F-M2, F-M3)
+PICTURE_FLOOR_DB = -80.0  # the pictures' range below the source's loudest cell
+
+
+def check(state: Mapping[str, Any]) -> None:
+    """Raise ``ValueError`` saying what is wrong with ``state``, if anything."""
+    if state.get("erase_spectrogram") != FORMAT:
+        raise ValueError(f"not an Erase spectrogram state of format {FORMAT}: 'erase_spectrogram' is {state.get('erase_spectrogram')!r}")
+    duration, fs = state.get("duration"), state.get("fs")
+    if not number(duration) or not 0 < duration <= MAX_DURATION:
+        raise ValueError(f"'duration' must be a number of seconds in (0, {MAX_DURATION:g}], not {duration!r}")
+    if not number(fs) or fs <= 0:
+        raise ValueError(f"'fs' must be a positive sampling rate, not {fs!r}")
+    if state.get("source") not in SOURCES:
+        raise ValueError(f"'source' must be one of {SOURCES}, not {state.get('source')!r}")
+    shape = (state.get("rows"), state.get("columns"), state.get("floor_db"), state.get("window"))
+    if shape != (ROWS, COLUMNS, FLOOR_DB, WINDOW_S):
+        raise ValueError(f"the mask must be {ROWS} rows x {COLUMNS} columns with a floor of {FLOOR_DB:g} dB and a {WINDOW_S:g} s window")
+    span = state.get("span")
+    if span is not None and not (number(span) and span > 0):
+        raise ValueError(f"'span' must be a positive number of seconds, not {span!r}")
+    cuts(state)  # decodes, and checks the size
+
+
+# --- the mask ---------------------------------------------------------------------
+
+
+def cuts(state: Mapping[str, Any]) -> np.ndarray:
+    """The mask as cuts in dB, shape (rows, columns), rows from 0 Hz up: 0
+    keeps, ``-floor_db`` removes."""
+    return shared.cuts(state, ROWS, COLUMNS, FLOOR_DB)
+
+
+def encode(cut_db: np.ndarray) -> str:
+    """``levels`` for a grid of cuts in dB, (rows, columns)."""
+    return shared.encode_cuts(cut_db, FLOOR_DB)
+
+
+def row_frequencies(fs: float) -> np.ndarray:
+    """Each row's center frequency [Hz]: equal steps from 0 Hz to Nyquist (F4)."""
+    return (np.arange(ROWS) + 0.5) / ROWS * fs / 2
+
+
+def _weights(points: np.ndarray, centers: np.ndarray) -> np.ndarray:
+    """Linear interpolation from values at ``centers`` to ``points`` as a matrix
+    (len(points), len(centers)), holding the ends beyond the outer centers."""
+    position = np.clip(np.interp(points, centers, np.arange(centers.size)), 0, centers.size - 1)
+    center_below = np.minimum(np.floor(position).astype(int), centers.size - 2)
+    weight = position - center_below
+    matrix = np.zeros((points.size, centers.size))
+    matrix[np.arange(points.size), center_below] = 1 - weight
+    matrix[np.arange(points.size), center_below + 1] += weight
+    return matrix
+
+
+def gains(cut_db: np.ndarray, f: np.ndarray, t: np.ndarray, span: float, fs: float) -> np.ndarray:
+    """The mask read bilinearly, in amplitude, at each STFT coefficient
+    (frequencies ``f`` x time windows ``t``), its columns over ``span`` seconds,
+    held beyond the outer ones; a removed cell is a gain of 0."""
+    amplitude = np.where(cut_db >= -FLOOR_DB, 0.0, 10 ** (-cut_db / 20))
+    columns = (np.arange(COLUMNS) + 0.5) / COLUMNS * span
+    return _weights(np.asarray(f, float), row_frequencies(fs)) @ amplitude @ _weights(np.asarray(t, float), columns).T
+
+
+# --- the sound -------------------------------------------------------------------------
+
+
+def frame() -> so.GaborFrame:
+    return so.GaborFrame(WINDOW_S, WINDOW_S / 4)
+
+
+def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
+    """``synthesize`` one step at a time: yields the fraction done (with
+    what comes next, ``shared.Step``) at the start, after the source and
+    after the resynthesis, and returns ``(sound, the source's
+    STFT, the result's STFT)``, both with the mask's window and on one
+    scale (the result's before it is normalized to RMS 1)."""
+    check(state)
+    yield 0.0, "Making the source"
+    original = sources.source(state, silent="there is nothing to erase")
+    yield 1 / 3, "Erasing and resynthesizing"
+    analysis = frame().analyze(original)
+    duration, fs = float(state["duration"]), float(state["fs"])
+    span = float(state.get("span", duration))
+    gain = gains(cuts(state), analysis.f, analysis.t, span, fs)
+    if span < duration:  # the erasures kept their seconds; what came after them is not erased
+        gain[:, np.asarray(analysis.t) >= span] = 1.0
+    out = (analysis * gain).to_sound()
+    sound = so.Sound(out.data[: original.n_samples], original.fs)
+    yield 2 / 3, "Measuring the result"
+    # the result's STFT before it is normalized, so it is on the source's scale
+    return (sound.normalize() if sound.rms > 0 else sound), analysis, frame().analyze(sound)
+
+
+def synthesize(state: Mapping[str, Any]) -> so.Sound:
+    """The sound ``state`` describes."""
+    return shared.finish(steps(state))[0]
+
+
+def pictures(source: so.STFT, result: so.STFT, max_windows: int = 1200) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The source's and the result's spectrograms (the mask's own STFT, so a
+    cut shows as it was made) as 8-bit levels, rows from 0 Hz to Nyquist, 0
+    at ``PICTURE_FLOOR_DB`` below the loudest of the two and 255 at it:
+    both on one scale, so what was taken out is darker in the result."""
+    def magnitude(stft):
+        every_window = np.abs(stft.data[0])
+        step = max(1, math.ceil(every_window.shape[1] / max_windows))
+        return every_window[:, ::step], step
+
+    (source_magnitude, step), (result_magnitude, _) = magnitude(source), magnitude(result)
+    peak = max(source_magnitude.max(), result_magnitude.max(), 1e-12)
+
+    def picture(shown, stft):
+        level = 20 * np.log10(np.maximum(shown, 1e-12) / peak)
+        scaled = np.round(255 * (1 - np.clip(level, PICTURE_FLOOR_DB, 0) / PICTURE_FLOOR_DB))
+        return {
+            "data": np.ascontiguousarray(scaled, dtype=np.uint8).tobytes(),
+            "n_freqs": int(shown.shape[0]),
+            "n_windows": int(shown.shape[1]),
+            "f_max": float(stft.f[-1]),
+            "t_start": float(stft.t[0]),
+            "t_step": float(stft.t[step] - stft.t[0]) if stft.t.size > step else float(stft.t[1] - stft.t[0]),
+            "floor_db": PICTURE_FLOOR_DB,
+        }
+
+    return picture(source_magnitude, source), picture(result_magnitude, result)
+
+
+# The mask the tab starts from: nothing cut, so the first Play is the source.
+BLANK_LEVELS = encode(np.zeros((ROWS, COLUMNS)))

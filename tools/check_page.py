@@ -57,8 +57,8 @@ def page_document_in(page) -> dict:
 def document_in(page) -> dict:
     """The Draw speech tab's drawing, as a TrackDraw document (sonore_sketch.page.tab_state)."""
     document = page_document_in(page)
-    assert document.get("app") == "sonore-sketch" and document.get("version") == 2, document
-    return {"trackdraw": 1, "sonore": document["sonore"], "duration": document["duration"], "fs": document["fs"], **document["tracks"]}
+    assert document.get("app") == "sonore-sketch" and document.get("version") == 3, document
+    return {"trackdraw": 1, "sonore": document["sonore"], "duration": document["duration"], "fs": document["fs"], **document["draw_speech"]}
 
 
 def edit_tab_state(document: dict) -> dict:
@@ -66,7 +66,7 @@ def edit_tab_state(document: dict) -> dict:
     sys.path.insert(0, str(ROOT / "src"))
     from sonore_sketch import page as page_module
 
-    return page_module.tab_state(document, "edit")
+    return page_module.tab_state(document, "erase_modulation")
 
 
 def main() -> None:
@@ -104,10 +104,10 @@ def main() -> None:
             # Draw speech starts at its word's 0.6 s, the other tabs at 2 s,
             # while nothing is drawn yet (app.md, "Starting duration").
             expect(page.locator("#duration")).to_have_value("0.6")
-            page.click(".tabs [data-tab=painted]")
+            page.click(".tabs [data-tab=draw_spectrogram]")
             expect(page.locator("#duration")).to_have_value("2")
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.click(".tabs [data-tab=tracks]")
+            page.click(".tabs [data-tab=draw_speech]")
             expect(page.locator("#duration")).to_have_value("0.6")
             expect(status).to_contain_text("Made", timeout=60_000)
             print("starting duration: 0.6 s on Draw speech, 2 s on Draw spectrogram")
@@ -190,19 +190,19 @@ def main() -> None:
             print(f"freehand: F0 has {len(f0[0])} breakpoints, peak {max(f0[1]):.0f} Hz")
             # The F0 axis can be switched to linear and back; the drawing stays.
             log_top = page.locator(".panel-F0 .tick").last.text_content()
-            page.locator('input[name="tracks-f0-scale"][value="linear"]').check()
+            page.locator('input[name="draw-speech-f0-scale"][value="linear"]').check()
             ticks = page.locator(".panel-F0 .tick").all_text_contents()
             assert ticks == ["0", "200", "400", "600", "800"] and log_top == "800", ticks
             assert document_in(page)["params"]["F0"] == f0, "switching the F0 axis changed the drawing"
-            page.locator('input[name="tracks-f0-scale"][value="log"]').check()
+            page.locator('input[name="draw-speech-f0-scale"][value="log"]').check()
             assert page.locator(".panel-F0 .tick").first.text_content() == "25"
             print("F0 axis: switched to linear and back to log")
             # The formants panel can reach 8 kHz, for the hiss of /s/, and back.
-            page.locator('input[name="tracks-formant-top"][value="8000"]').check()
+            page.locator('input[name="draw-speech-formant-top"][value="8000"]').check()
             assert page.locator(".panel-formants .tick").last.text_content() == "8k"
-            page.locator('input[name="tracks-formant-top"][value="4000"]').check()
+            page.locator('input[name="draw-speech-formant-top"][value="4000"]').check()
             assert page.locator(".panel-formants .tick").last.text_content() == "4k"
-            page.locator('input[name="tracks-formant-top"][value="5000"]').check()
+            page.locator('input[name="draw-speech-formant-top"][value="5000"]').check()
             assert page.locator(".panel-formants .tick").last.text_content() == "5k"
             print("formants up to: 8 kHz, 4 kHz and back to 5 kHz")
             expect(status).to_contain_text("Made", timeout=60_000)
@@ -335,15 +335,15 @@ def main() -> None:
 
             # The Draw spectrogram tab: the example plays; a stroke changes the painting
             # and is heard; Clear leaves nothing to hear; Undo brings it back.
-            page.click(".tabs [data-tab=painted]")
-            expect(page.locator("#tab-painted")).to_be_visible()
+            page.click(".tabs [data-tab=draw_spectrogram]")
+            expect(page.locator("#tab-draw_spectrogram")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["tab"] == "painted"
-            example = page_document_in(page)["painted"]["levels"]
+            assert page_document_in(page)["tab"] == "draw_spectrogram"
+            example = page_document_in(page)["draw_spectrogram"]["levels"]
             canvas = page.locator("canvas.paint").bounding_box()
             px = lambda fraction: canvas["x"] + 52 + fraction * (canvas["width"] - 62)  # noqa: E731
             py = lambda f: canvas["y"] + canvas["height"] - 22 - math.log2(f / 100) / 6 * (canvas["height"] - 30)  # noqa: E731
-            page.locator("#tab-painted .level").fill("-6")
+            page.locator("#tab-draw_spectrogram .level").fill("-6")
             before = page.evaluate("location.hash")
             page.mouse.move(px(0.05), py(5000))
             page.mouse.down()
@@ -351,39 +351,39 @@ def main() -> None:
             page.mouse.up()
             page.wait_for_function("(before) => location.hash !== before", arg=before, timeout=10_000)
             expect(status).to_contain_text("Made", timeout=60_000)
-            painted = page_document_in(page)["painted"]
+            painted = page_document_in(page)["draw_spectrogram"]
             assert painted["levels"] != example, "the stroke did not change the painting"
-            from sonore_sketch import painted as painted_tab  # the Python half reads what the page wrote
+            from sonore_sketch import draw_spectrogram  # the Python half reads what the page wrote
 
-            grid = painted_tab.levels({**painted, "duration": 0.6, "fs": 16000})
+            grid = draw_spectrogram.levels({**painted, "duration": 0.6, "fs": 16000})
             row, column = round(math.log2(5000 / 100) * 12 - 0.5), round(0.2 * 256 - 0.5)
             assert grid[row, column] == -6, grid[row - 2 : row + 3, column]
-            print(f"painted: a stroke at 5 kHz painted at {grid[row, column]:g} dB and was heard")
+            print(f"Draw spectrogram: a stroke at 5 kHz painted at {grid[row, column]:g} dB and was heard")
             page.click("#clear")
             expect(status).to_contain_text("Nothing painted yet", timeout=10_000)
             page.mouse.move(px(0.5), canvas["y"] - 30)  # off the canvas, so keys go to the page
             page.keyboard.press("Control+z")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["painted"]["levels"] == painted["levels"], "undo did not restore the painting"
+            assert page_document_in(page)["draw_spectrogram"]["levels"] == painted["levels"], "undo did not restore the painting"
             page.click("#reset")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["painted"]["levels"] == example, "Reset did not bring the example painting back"
-            print("painted: Clear, Undo and Reset work")
-            page.select_option("#tab-painted .carrier", "noise")
+            assert page_document_in(page)["draw_spectrogram"]["levels"] == example, "Reset did not bring the example painting back"
+            print("Draw spectrogram: Clear, Undo and Reset work")
+            page.select_option("#tab-draw_spectrogram .carrier", "noise")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["painted"]["carrier"] == "noise"
-            page.click(".tabs [data-tab=tracks]")
+            assert page_document_in(page)["draw_spectrogram"]["carrier"] == "noise"
+            page.click(".tabs [data-tab=draw_speech]")
             expect(status).to_contain_text("Made", timeout=60_000)
             assert document_in(page) == default, "the Tracks drawing changed while painting"
-            print("painted: Clear, Undo, the noise carrier and switching tabs work")
+            print("Draw spectrogram: Clear, Undo, the noise carrier and switching tabs work")
             # The arrow keys, Home and End move between the tabs (the WAI-ARIA tabs
             # pattern), and only the tab shown is in the Tab order.
             page.keyboard.press("ArrowLeft")  # from the first tab round to the last
-            expect(page.locator("#tab-quilt")).to_be_visible()
-            assert page.evaluate("document.activeElement.dataset.tab") == "quilt"
+            expect(page.locator("#tab-quilt_sound")).to_be_visible()
+            assert page.evaluate("document.activeElement.dataset.tab") == "quilt_sound"
             page.keyboard.press("Home")
-            expect(page.locator("#tab-tracks")).to_be_visible()
-            assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "tracks"
+            expect(page.locator("#tab-draw_speech")).to_be_visible()
+            assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "draw_speech"
             assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 7
             expect(status).to_contain_text("Made", timeout=60_000)
             print("tabs: the arrow keys and Home move between the tabs")
@@ -392,10 +392,10 @@ def main() -> None:
             # replaces the path and is heard; a stroke on the elevation track
             # lifts it; a stroke on the speed track and Even speed set the
             # speed; Clear leaves nothing to hear; Undo brings it back.
-            page.click(".tabs [data-tab=paths]")
-            expect(page.locator("#tab-paths")).to_be_visible()
+            page.click(".tabs [data-tab=draw_path]")
+            expect(page.locator("#tab-draw_path")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
-            example_path = page_document_in(page)["paths"]
+            example_path = page_document_in(page)["draw_path"]
             view = page.locator("canvas.top-view").bounding_box()
             middle_x, middle_y = view["x"] + view["width"] / 2, view["y"] + view["height"] / 2
             page.mouse.move(middle_x - 120, middle_y - 60)
@@ -404,7 +404,7 @@ def main() -> None:
                 page.mouse.move(middle_x - 120 + 8 * step, middle_y - 60 - 2 * step)
                 page.wait_for_timeout(10)
             page.mouse.up()
-            drawn = page_document_in(page)["paths"]["stroke"]
+            drawn = page_document_in(page)["draw_path"]["stroke"]
             assert len(drawn) >= 20 and drawn != example_path["stroke"], drawn[:3]
             assert drawn[0][1] < 0 < drawn[-1][1] and drawn[-1][2] > drawn[0][2] > 0, (drawn[0], drawn[-1])  # left to right, ahead, moving away
             assert all(later[0] >= earlier[0] for earlier, later in zip(drawn, drawn[1:]))
@@ -414,47 +414,47 @@ def main() -> None:
             page.mouse.down()
             page.mouse.move(lift["x"] + lift["width"] / 2, lift["y"] + 12, steps=10)
             page.mouse.up()
-            elevation = page_document_in(page)["paths"]["elevation"]
+            elevation = page_document_in(page)["draw_path"]["elevation"]
             assert isinstance(elevation, list) and max(elevation[1]) > 45, elevation
             expect(status).to_contain_text("Made", timeout=120_000)
             # the speed track: a stroke across its second half makes that half fast
-            assert page_document_in(page)["paths"]["speed"] is None
+            assert page_document_in(page)["draw_path"]["speed"] is None
             speed = page.locator("canvas.speed").bounding_box()
             page.mouse.move(speed["x"] + speed["width"] * 0.55, speed["y"] + 14)
             page.mouse.down()
             page.mouse.move(speed["x"] + speed["width"] + 20, speed["y"] + 14, steps=10)  # past its end, which holds it at the end
             page.mouse.up()
-            shaped = page_document_in(page)["paths"]["speed"]
+            shaped = page_document_in(page)["draw_path"]["speed"]
             assert shaped and shaped[1][-1] > 2 * shaped[1][0], shaped
             expect(status).to_contain_text("Made", timeout=120_000)
-            page.click("#tab-paths .even")
-            assert len(set(page_document_in(page)["paths"]["speed"][1])) == 1
+            page.click("#tab-draw_path .even")
+            assert len(set(page_document_in(page)["draw_path"]["speed"][1])) == 1
             expect(status).to_contain_text("Made", timeout=120_000)
             from sonore_sketch import page as page_module  # the Python half hears what the page wrote
 
-            heard = page_module.handle({"tab": "paths", "state": page_module.tab_state(page_document_in(page), "paths")})
+            heard = page_module.handle({"tab": "draw_path", "state": page_module.tab_state(page_document_in(page), "draw_path")})
             assert "samples_right" in heard and heard["fs"] == 32000
             page.click("#clear")
             expect(status).to_contain_text("No path yet")
             page.keyboard.press("Control+z")
-            assert page_document_in(page)["paths"]["stroke"] == drawn
+            assert page_document_in(page)["draw_path"]["stroke"] == drawn
             expect(status).to_contain_text("Made", timeout=120_000)
-            page.click(".tabs [data-tab=tracks]")
+            page.click(".tabs [data-tab=draw_speech]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            print("paths: a stroke, a speed and an elevation are drawn and heard in two ears; Clear and Undo work")
+            print("Draw path: a stroke, a speed and an elevation are drawn and heard in two ears; Clear and Undo work")
 
             # The Scatter events tab: the example plays; a stroke on the rate
             # track makes the rate rise, and is heard; a slider applies when
             # let go; New draw changes the seed; Clear makes the rate flat.
-            page.click(".tabs [data-tab=events]")
-            expect(page.locator("#tab-events")).to_be_visible()
+            page.click(".tabs [data-tab=scatter_events]")
+            expect(page.locator("#tab-scatter_events")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
             rate_box = page.locator("canvas.rate").bounding_box()
             page.mouse.move(rate_box["x"] + 60, rate_box["y"] + rate_box["height"] - 30)
             page.mouse.down()
             page.mouse.move(rate_box["x"] + rate_box["width"] - 20, rate_box["y"] + 15, steps=20)
             page.mouse.up()
-            rate = page_document_in(page)["events"]["rate"]
+            rate = page_document_in(page)["scatter_events"]["rate"]
             drawn_rate = rate[1][1:-1]  # the ends outside the stroke keep the starting 10 per second
             assert isinstance(rate, list) and max(drawn_rate) > 100 and drawn_rate[-1] > 10 * drawn_rate[0], rate
             expect(status).to_contain_text("Made", timeout=120_000)
@@ -465,91 +465,91 @@ def main() -> None:
             for i, (x, steps) in enumerate([(300, 15), (100, 11), (300, 13), (100, 17)]):  # passes interleave in time
                 page.mouse.move(rate_box["x"] + x, rate_box["y"] + (20 if i < 3 else rate_box["height"] - 30), steps=steps)
             page.mouse.up()
-            redrawn = page_document_in(page)["events"]["rate"]
+            redrawn = page_document_in(page)["scatter_events"]["rate"]
             rises = [later > earlier for earlier, later in zip(redrawn[1], redrawn[1][1:]) if later != earlier]
             turns = sum(a != b for a, b in zip(rises, rises[1:]))
             assert turns <= 4, redrawn  # a zigzag between passes turns at nearly every breakpoint
             expect(status).to_contain_text("Made", timeout=120_000)
-            regularity = page.locator("#tab-events .knob[data-knob=regularity] input[type=range]")
+            regularity = page.locator("#tab-scatter_events .knob[data-knob=regularity] input[type=range]")
             regularity.fill("1000")
             regularity.dispatch_event("change")
-            assert page_document_in(page)["events"]["regularity"] == 64
+            assert page_document_in(page)["scatter_events"]["regularity"] == 64
             expect(status).to_contain_text("Made", timeout=120_000)
             # a value typed in the box beside a slider applies, kept to the slider's range and step
-            typed = page.locator("#tab-events .knob[data-knob=length] .slider-value")
+            typed = page.locator("#tab-scatter_events .knob[data-knob=length] .slider-value")
             typed.fill("250.4")
             typed.press("Enter")
-            assert page_document_in(page)["events"]["length"] == 0.25
+            assert page_document_in(page)["scatter_events"]["length"] == 0.25
             assert typed.input_value() == "250"
             expect(status).to_contain_text("Made", timeout=120_000)
-            page.click("#tab-events .draw")
-            assert page_document_in(page)["events"]["seed"] != 0  # a random seed, never the one in use
+            page.click("#tab-scatter_events .draw")
+            assert page_document_in(page)["scatter_events"]["seed"] != 0  # a random seed, never the one in use
             expect(status).to_contain_text("Made", timeout=120_000)
             page.click("#clear")
-            assert page_document_in(page)["events"]["rate"] == 10
+            assert page_document_in(page)["scatter_events"]["rate"] == 10
             expect(status).to_contain_text("Made", timeout=120_000)
-            page.select_option("#tab-events select.event", "pip")
+            page.select_option("#tab-scatter_events select.event", "pip")
             expect(status).to_contain_text("Made", timeout=120_000)
-            page.select_option("#tab-events select.tone", "harmonic")
-            expect(page.locator("#tab-events .knob[data-knob=harmonics]")).to_be_visible()
-            assert page_document_in(page)["events"]["tone"] == "harmonic"
+            page.select_option("#tab-scatter_events select.tone", "harmonic")
+            expect(page.locator("#tab-scatter_events .knob[data-knob=harmonics]")).to_be_visible()
+            assert page_document_in(page)["scatter_events"]["tone"] == "harmonic"
             expect(status).to_contain_text("Made", timeout=120_000)
-            assert page.evaluate("[...document.querySelector('#tab-events canvas.mod-frame').getContext('2d').getImageData(80, 60, 1, 1).data].some((v) => v > 0)")
-            page.select_option("#tab-events select.event", "impact")
-            assert page.locator("#tab-events .knob[data-knob=cutoff]").is_visible()
-            assert not page.locator("#tab-events .knob[data-knob=length]").is_visible()
+            assert page.evaluate("[...document.querySelector('#tab-scatter_events canvas.mod-frame').getContext('2d').getImageData(80, 60, 1, 1).data].some((v) => v > 0)")
+            page.select_option("#tab-scatter_events select.event", "impact")
+            assert page.locator("#tab-scatter_events .knob[data-knob=cutoff]").is_visible()
+            assert not page.locator("#tab-scatter_events .knob[data-knob=length]").is_visible()
             expect(status).to_contain_text("Made", timeout=120_000)
-            page.click(".tabs [data-tab=tracks]")
+            page.click(".tabs [data-tab=draw_speech]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            print("events: a rate track, a slider, New draw, Clear, a harmonic pip and the impact are made and heard; the modulation picture is drawn")
+            print("Scatter events: a rate track, a slider, New draw, Clear, a harmonic pip and the impact are made and heard; the modulation picture is drawn")
 
             # The Quilt a sound tab: the quilt is made and both spectrograms
             # drawn; a typed segment length applies, too few segments say so,
             # New order changes the seed; there is nothing to Clear.
-            page.click(".tabs [data-tab=quilt]")
-            expect(page.locator("#tab-quilt")).to_be_visible()
+            page.click(".tabs [data-tab=quilt_sound]")
+            expect(page.locator("#tab-quilt_sound")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
             expect(page.locator("#clear")).to_be_disabled()
             duration = page_document_in(page)["duration"]
-            expect(page.locator("#tab-quilt .quilt-note")).to_contain_text("The quilt is")
+            expect(page.locator("#tab-quilt_sound .quilt-note")).to_contain_text("The quilt is")
             for canvas_name in ("source-stft", "quilt-stft"):
-                assert page.evaluate(f"[...document.querySelector('#tab-quilt canvas.{canvas_name}').getContext('2d').getImageData(120, 80, 1, 1).data].some((v) => v > 0)"), canvas_name
-            segment_box = page.locator("#tab-quilt .slider-value")
+                assert page.evaluate(f"[...document.querySelector('#tab-quilt_sound canvas.{canvas_name}').getContext('2d').getImageData(120, 80, 1, 1).data].some((v) => v > 0)"), canvas_name
+            segment_box = page.locator("#tab-quilt_sound .slider-value")
             segment_box.fill(str(round(1000 * duration / 2)))  # two segments: too few
             segment_box.press("Enter")
             expect(status).to_contain_text("Too few segments", timeout=10_000)
-            expect(page.locator("#tab-quilt .quilt-note")).to_contain_text("needs at least 3")
+            expect(page.locator("#tab-quilt_sound .quilt-note")).to_contain_text("needs at least 3")
             segment_box.fill("30")
             segment_box.press("Enter")
-            assert page_document_in(page)["quilt"]["segment"] == 0.03
+            assert page_document_in(page)["quilt_sound"]["segment"] == 0.03
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.click("#tab-quilt .reorder")
-            assert page_document_in(page)["quilt"]["seed"] != 1  # a random seed, never the one in use
+            page.click("#tab-quilt_sound .reorder")
+            assert page_document_in(page)["quilt_sound"]["seed"] != 1  # a random seed, never the one in use
             expect(status).to_contain_text("Made", timeout=60_000)
             # another tab's drawing as the source: Scatter events' starting chirps
-            page.select_option("#tab-quilt select.source", "events")
-            assert page_document_in(page)["quilt"]["source"] == "events"
+            page.select_option("#tab-quilt_sound select.source", "scatter_events")
+            assert page_document_in(page)["quilt_sound"]["source"] == "scatter_events"
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.click(".tabs [data-tab=tracks]")
+            page.click(".tabs [data-tab=draw_speech]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            print("quilt: the quilt and its source are drawn; a typed segment, too few segments, New order and Scatter events as the source work")
+            print("Quilt a sound: the quilt and its source are drawn; a typed segment, too few segments, New order and Scatter events as the source work")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore
             # refuses offers the depth that fits; New draw, Delete, Clear, Undo.
-            page.click(".tabs [data-tab=blobs]")
-            expect(page.locator("#tab-blobs")).to_be_visible()
+            page.click(".tabs [data-tab=draw_modulation]")
+            expect(page.locator("#tab-draw_modulation")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["tab"] == "blobs"
-            example = page_document_in(page)["blobs"]
+            assert page_document_in(page)["tab"] == "draw_modulation"
+            example = page_document_in(page)["draw_modulation"]
             start = example["items"]
             assert len(start) == 1 and start[0]["rate"] > 0 and start[0]["density"] > 0, start  # one blob, upper right
-            expect(page.locator("#tab-blobs .coarse")).to_be_visible()  # 0.6 s (the duration the page was left at) is under 2 s
+            expect(page.locator("#tab-draw_modulation .coarse")).to_be_visible()  # 0.6 s (the duration the page was left at) is under 2 s
             # The example keeps to one band round 500 Hz; the steps below start
             # from the same blob with no bands.
             assert example["bands"] == [{"points": [[0, 500]], "width": 2, "level": 0}], example["bands"]
             linked_blobs = {**example, "bands": []}  # what Reset goes back to from here
-            open_link({**page_document_in(page), "blobs": linked_blobs})
+            open_link({**page_document_in(page), "draw_modulation": linked_blobs})
             expect(status).to_contain_text("Made", timeout=60_000)
             plane = page.locator("canvas.plane").bounding_box()
             left, right = plane["x"] + 52, plane["x"] + plane["width"] - 10
@@ -564,7 +564,7 @@ def main() -> None:
                 return bottom - density / 6 * (bottom - top)
 
             def blobs_now():
-                return page_document_in(page)["blobs"]["items"]
+                return page_document_in(page)["draw_modulation"]["items"]
 
             def gesture(points):
                 before = page.evaluate("location.hash")
@@ -577,15 +577,15 @@ def main() -> None:
 
             page.evaluate(
                 """() => { window.progressSeen = false;
-                    new MutationObserver(() => { if (document.querySelector('#tab-blobs .synth-progress')) window.progressSeen = true; })
-                        .observe(document.querySelector('#tab-blobs'), { childList: true, subtree: true }); }"""
+                    new MutationObserver(() => { if (document.querySelector('#tab-draw_modulation .synth-progress')) window.progressSeen = true; })
+                        .observe(document.querySelector('#tab-draw_modulation'), { childList: true, subtree: true }); }"""
             )
             gesture([(bx(-16), by(3))])
             added = blobs_now()[-1]
             assert len(blobs_now()) == 2 and abs(math.log2(-added["rate"] / 16)) < 0.1 and abs(added["density"] - 3) < 0.1, added
             expect(status).to_contain_text("Made", timeout=60_000)
             assert page.evaluate("window.progressSeen"), "no progress shown over the plane while synthesizing"
-            expect(page.locator("#tab-blobs .synth-progress")).to_have_count(0)
+            expect(page.locator("#tab-draw_modulation .synth-progress")).to_have_count(0)
             print("modulation: progress shown over the plane while synthesizing, gone when made")
             gesture([(bx(added["rate"]), by(added["density"])), (bx(16), by(2))])
             moved = blobs_now()[-1]
@@ -596,19 +596,19 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=60_000)
 
             # A new draw first: at the depth offered below, another draw may not fit.
-            page.click("#tab-blobs .new-draw")
+            page.click("#tab-draw_modulation .new-draw")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["blobs"]["seed"] != 1  # a random seed, never the one in use
+            assert page_document_in(page)["draw_modulation"]["seed"] != 1  # a random seed, never the one in use
             before_failure = len(errors)
-            page.locator("#tab-blobs .depth").fill("0.95")
-            page.locator("#tab-blobs .depth").press("Enter")
+            page.locator("#tab-draw_modulation .depth").fill("0.95")
+            page.locator("#tab-draw_modulation .depth").press("Enter")
             expect(status).to_contain_text("Synthesis failed", timeout=60_000)
-            use = page.locator("#tab-blobs .use-depth")
+            use = page.locator("#tab-draw_modulation .use-depth")
             expect(use).to_be_visible()
             offered = float(use.inner_text().split()[-1])
             use.click()
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["blobs"]["rms_depth"] == offered < 0.95
+            assert page_document_in(page)["draw_modulation"]["rms_depth"] == offered < 0.95
             expect(use).to_be_hidden()
             page.wait_for_timeout(300)
             errors[before_failure:] = [e for e in errors[before_failure:] if "400 (Bad Request)" not in e]
@@ -623,19 +623,19 @@ def main() -> None:
             page.keyboard.press("Control+z")
             assert len(blobs_now()) == 2
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.locator("#tab-blobs .iterations").fill("2")
-            page.locator("#tab-blobs .iterations").press("Enter")
+            page.locator("#tab-draw_modulation .iterations").fill("2")
+            page.locator("#tab-draw_modulation .iterations").press("Enter")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["blobs"]["iterations"] == 2
+            assert page_document_in(page)["draw_modulation"]["iterations"] == 2
             print("modulation: 2 iterations set and heard")
-            page.select_option("#tab-blobs .carrier", "harmonic")
-            expect(page.locator("#tab-blobs .f0-field")).to_be_visible()
-            expect(page.locator("#tab-blobs .iterations-field")).to_be_hidden()
-            assert page_document_in(page)["blobs"]["iterations"] == 0  # the harmonic carrier takes none
-            page.locator("#tab-blobs .f0").fill("150")
-            page.locator("#tab-blobs .f0").press("Enter")
+            page.select_option("#tab-draw_modulation .carrier", "harmonic")
+            expect(page.locator("#tab-draw_modulation .f0-field")).to_be_visible()
+            expect(page.locator("#tab-draw_modulation .iterations-field")).to_be_hidden()
+            assert page_document_in(page)["draw_modulation"]["iterations"] == 0  # the harmonic carrier takes none
+            page.locator("#tab-draw_modulation .f0").fill("150")
+            page.locator("#tab-draw_modulation .f0").press("Enter")
             expect(status).to_contain_text("Made", timeout=60_000)
-            section = page_document_in(page)["blobs"]
+            section = page_document_in(page)["draw_modulation"]
             assert section["carrier"] == "harmonic" and section["f0"] == 150, section
             colors = page.evaluate(
                 """() => { const c = document.querySelector('canvas.stft');
@@ -658,29 +658,29 @@ def main() -> None:
             # its last breakpoint bends it up; a click on its line adds a
             # breakpoint, Delete removes it, Delete band removes the band.
             def bands_now():
-                return page_document_in(page)["blobs"].get("bands", [])
+                return page_document_in(page)["draw_modulation"].get("bands", [])
 
             # On the harmonic carrier, Iterations is offered only with bands (bands.md, K-M5b).
-            iterations_field = page.locator("#tab-blobs .iterations-field")
-            page.click("#tab-blobs .add-band")
+            iterations_field = page.locator("#tab-draw_modulation .iterations-field")
+            page.click("#tab-draw_modulation .add-band")
             expect(status).to_contain_text("Made", timeout=60_000)
             expect(iterations_field).to_be_visible()
-            page.locator("#tab-blobs .iterations").fill("1")
-            page.locator("#tab-blobs .iterations").press("Enter")
+            page.locator("#tab-draw_modulation .iterations").fill("1")
+            page.locator("#tab-draw_modulation .iterations").press("Enter")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["blobs"]["iterations"] == 1
-            page.click("#tab-blobs .delete-band")
+            assert page_document_in(page)["draw_modulation"]["iterations"] == 1
+            page.click("#tab-draw_modulation .delete-band")
             expect(iterations_field).to_be_hidden()
-            assert page_document_in(page)["blobs"]["iterations"] == 0 and bands_now() == []
+            assert page_document_in(page)["draw_modulation"]["iterations"] == 0 and bands_now() == []
             expect(status).to_contain_text("Made", timeout=60_000)
             print("modulation: on the harmonic carrier, Iterations shows with a band and goes with it")
-            page.select_option("#tab-blobs .carrier", "tones")
+            page.select_option("#tab-draw_modulation .carrier", "tones")
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.click("#tab-blobs .add-band")
+            page.click("#tab-draw_modulation .add-band")
             expect(status).to_contain_text("Made", timeout=60_000)
             span = page_document_in(page)["duration"]  # the page's starting duration
             assert bands_now() == [{"points": [[0, 500], [span, 500]], "width": 1, "level": 0}], bands_now()
-            stft = page.locator("#tab-blobs canvas.stft").bounding_box()
+            stft = page.locator("#tab-draw_modulation canvas.stft").bounding_box()
             s_left, s_right = stft["x"] + 52, stft["x"] + stft["width"] - 10
             s_top, s_bottom = stft["y"] + 6, stft["y"] + stft["height"] - 20
 
@@ -693,7 +693,7 @@ def main() -> None:
             gesture([(sx(span), sy(500)), (sx(span), sy(2000))])
             end = bands_now()[0]["points"][-1]
             assert end[0] == span and abs(math.log2(end[1] / 2000)) < 0.1, bands_now()
-            expect(page.locator("#tab-blobs .band-motion")).to_be_visible()
+            expect(page.locator("#tab-draw_modulation .band-motion")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=60_000)
             gesture([(sx(span / 2), sy(1000))])
             assert len(bands_now()[0]["points"]) == 3, bands_now()
@@ -702,11 +702,11 @@ def main() -> None:
             page.keyboard.press("Delete")
             assert len(bands_now()[0]["points"]) == 2, bands_now()
             expect(status).to_contain_text("Made", timeout=60_000)
-            page.click("#tab-blobs .delete-band")
+            page.click("#tab-draw_modulation .delete-band")
             assert bands_now() == []
             expect(status).to_contain_text("Made", timeout=60_000)
             # Freehand: a stroke outside every band draws a new band along it.
-            page.check("#tab-blobs input[name=band-tool][value=freehand]")
+            page.check("#tab-draw_modulation input[name=band-tool][value=freehand]")
             gesture([(sx(0.1), sy(300)), (sx(0.3), sy(600)), (sx(0.5), sy(1200))])
             drawn = bands_now()
             assert len(drawn) == 1 and len(drawn[0]["points"]) >= 2, drawn
@@ -721,37 +721,37 @@ def main() -> None:
             print(f"modulation: added a band, bent it up to {end[1]} Hz, added and removed a breakpoint, removed the band")
             page.click("#reset")
             expect(status).to_contain_text("Made", timeout=60_000)
-            assert page_document_in(page)["blobs"] == linked_blobs, "Reset did not restore the blobs the link opened with"
+            assert page_document_in(page)["draw_modulation"] == linked_blobs, "Reset did not restore the blobs the link opened with"
             print("modulation: New draw, Delete, Clear, Undo and Reset work")
 
-            # The Erase modulation tab (edit.md): it starts on the syllable
+            # The Erase modulation tab (erase_modulation.md): it starts on the syllable
             # train with "keep below 4 Hz", and the source's spectrum is drawn
             # on the plane once heard; a stroke, a preset, Clear and Undo
             # change the mask and are heard; the Draw speech tab's sound and a
             # recording opened from a file are sources too; a recording sets
             # the duration, goes in saved files and never in the link.
-            page.click(".tabs [data-tab=edit]")
-            expect(page.locator("#tab-edit")).to_be_visible()
+            page.click(".tabs [data-tab=erase_modulation]")
+            expect(page.locator("#tab-erase_modulation")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=120_000)
-            section = page_document_in(page)["edit"]
-            assert page_document_in(page)["tab"] == "edit" and section["source"] == "syllables" and section["iterations"] == 5, section
+            section = page_document_in(page)["erase_modulation"]
+            assert page_document_in(page)["tab"] == "erase_modulation" and section["source"] == "syllables" and section["iterations"] == 5, section
             assert page.locator("main > .result").is_hidden(), "the page's own waveform strip shows on the Erase modulation tab"
             colors = page.evaluate(
-                """() => { const c = document.querySelector('#tab-edit canvas.mask-plane');
+                """() => { const c = document.querySelector('#tab-erase_modulation canvas.mask-plane');
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     const s = new Set(); for (let i = 0; i < d.length; i += 4) s.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); return s.size; }"""
             )
             assert colors > 100, f"the source's spectrum is not drawn on the plane ({colors} colors)"
             measured = page.evaluate(
-                """() => { const c = document.querySelector('#tab-edit canvas.measured-plane');
+                """() => { const c = document.querySelector('#tab-erase_modulation canvas.measured-plane');
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     const s = new Set(); for (let i = 0; i < d.length; i += 4) s.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); return s.size; }"""
             )
             assert measured > 100, f"the result's measured spectrum is not drawn ({measured} colors)"
             # a hard cut clips envelopes, which a note says (E9)
-            expect(page.locator("#tab-edit .clip-note")).to_contain_text("% of the envelopes were clipped")
-            print(f"edit: the source's spectrum ({colors} colors), the result's ({measured}) and the clipping note are shown")
-            plane = page.locator("#tab-edit canvas.mask-plane").bounding_box()
+            expect(page.locator("#tab-erase_modulation .clip-note")).to_contain_text("% of the envelopes were clipped")
+            print(f"Erase modulation: the source's spectrum ({colors} colors), the result's ({measured}) and the clipping note are shown")
+            plane = page.locator("#tab-erase_modulation canvas.mask-plane").bounding_box()
             p_left, p_right = plane["x"] + 52, plane["x"] + plane["width"] - 10
             p_top, p_bottom = plane["y"] + 8, plane["y"] + plane["height"] - 36
             p_center = (p_left + p_right) / 2
@@ -764,36 +764,36 @@ def main() -> None:
             page.mouse.move(ex + 20, ey + 10, steps=4)
             page.mouse.up(button="right")
             page.wait_for_function("h => location.hash !== h", arg=before)  # the mask is encoded asynchronously
-            erased = page_document_in(page)["edit"]["levels"]
+            erased = page_document_in(page)["erase_modulation"]["levels"]
             assert erased != section["levels"], "the stroke did not change the mask"
             expect(status).to_contain_text("Made", timeout=120_000)
-            from sonore_sketch import edit as edit_tab, sources  # the Python half reads what the page wrote
+            from sonore_sketch import erase_modulation, sources  # the Python half reads what the page wrote
 
-            cut = edit_tab.cuts({**section, "levels": erased})
-            column = int(round(edit_tab.SIDE - 1 - (math.log2(16) * 16 - 0.5)))
+            cut = erase_modulation.cuts({**section, "levels": erased})
+            column = int(round(erase_modulation.SIDE - 1 - (math.log2(16) * 16 - 0.5)))
             assert cut[24, column] < 30 and cut[24, 0] == 60, (cut[24, column], cut[24, 0])
-            print(f"edit: a right-drag erased the cut at -16 Hz (now {cut[24, column]:g} dB) and was heard")
+            print(f"Erase modulation: a right-drag erased the cut at -16 Hz (now {cut[24, column]:g} dB) and was heard")
             before = page.evaluate("location.hash")
-            page.click("#tab-edit .no-down")
+            page.click("#tab-erase_modulation .no-down")
             page.wait_for_function("h => location.hash !== h", arg=before)
             expect(status).to_contain_text("Made", timeout=120_000)
-            assert (edit_tab.cuts(page_document_in(page)["edit"]) == edit_tab.remove_sweeps("down")).all()
+            assert (erase_modulation.cuts(page_document_in(page)["erase_modulation"]) == erase_modulation.remove_sweeps("down")).all()
             page.keyboard.press("Control+z")
-            assert page_document_in(page)["edit"]["levels"] == erased, "Undo did not bring the mask back"
+            assert page_document_in(page)["erase_modulation"]["levels"] == erased, "Undo did not bring the mask back"
             before = page.evaluate("location.hash")
             page.click("#clear")
             page.wait_for_function("h => location.hash !== h", arg=before)
             expect(status).to_contain_text("Made", timeout=120_000)
-            assert not edit_tab.cuts(page_document_in(page)["edit"]).any()
-            expect(page.locator("#tab-edit .clip-note")).to_be_hidden()  # nothing cut, nothing clipped
-            page.locator("#tab-edit .iterations").fill("0")
-            page.locator("#tab-edit .iterations").press("Enter")
-            page.select_option("#tab-edit .carrier", "tones")
+            assert not erase_modulation.cuts(page_document_in(page)["erase_modulation"]).any()
+            expect(page.locator("#tab-erase_modulation .clip-note")).to_be_hidden()  # nothing cut, nothing clipped
+            page.locator("#tab-erase_modulation .iterations").fill("0")
+            page.locator("#tab-erase_modulation .iterations").press("Enter")
+            page.select_option("#tab-erase_modulation .carrier", "tones")
             expect(status).to_contain_text("Made", timeout=120_000)
-            page.select_option("#tab-edit .source", "speech")
+            page.select_option("#tab-erase_modulation .source", "draw_speech")
             expect(status).to_contain_text("Made", timeout=120_000)
-            assert page_document_in(page)["edit"]["source"] == "speech"
-            print("edit: a preset, Undo, Clear, iterations, the tones carrier and the Draw speech tab's sound work")
+            assert page_document_in(page)["erase_modulation"]["source"] == "draw_speech"
+            print("Erase modulation: a preset, Undo, Clear, iterations, the tones carrier and the Draw speech tab's sound work")
             # a recording: 1.5 s of a tone pulsing at 4 Hz, as a WAV file
             import io
             import wave
@@ -809,45 +809,45 @@ def main() -> None:
                 w.setframerate(22050)
                 w.writeframes((tone * 32767).astype("<i2").tobytes())
             before = page.evaluate("location.hash")
-            page.locator("#tab-edit .audio-file").set_input_files(files=[{"name": "pulse.wav", "mimeType": "audio/wav", "buffer": buffer.getvalue()}])
+            page.locator("#tab-erase_modulation .audio-file").set_input_files(files=[{"name": "pulse.wav", "mimeType": "audio/wav", "buffer": buffer.getvalue()}])
             page.wait_for_function("h => location.hash !== h", arg=before)  # decoded by the browser
             expect(status).to_contain_text("Made", timeout=120_000)
             linked = page_document_in(page)
-            assert linked["duration"] == 1.5 and linked["edit"]["source"] == "file" and "recording" not in linked, {k: linked[k] for k in ("duration", "edit")}
-            expect(page.locator("#tab-edit .recording-note")).to_contain_text("pulse.wav: 1.50 s")
+            assert linked["duration"] == 1.5 and linked["erase_modulation"]["source"] == "file" and "recording" not in linked, {k: linked[k] for k in ("duration", "erase_modulation")}
+            expect(page.locator("#tab-erase_modulation .recording-note")).to_contain_text("pulse.wav: 1.50 s")
             with page.expect_download() as download:
                 page.click("#save")
             saved = json.loads(Path(download.value.path()).read_text())
             assert saved["recording"]["name"] == "pulse.wav" and saved["recording"]["fs"] == 16000, saved.get("recording", {}).keys()
             heard = sources.recording({**edit_tab_state(saved), "source": "file"})
             assert heard.n_samples == 24000 and abs(np.corrcoef(heard.data[:, 0], np.interp(np.arange(24000) / 16000, t, tone))[0, 1]) > 0.99
-            print("edit: a WAV file opened as the source, set the duration to 1.5 s, was heard, saved, and left out of the link")
+            print("Erase modulation: a WAV file opened as the source, set the duration to 1.5 s, was heard, saved, and left out of the link")
             page.keyboard.press("Control+z")
-            assert page_document_in(page)["duration"] == 0.6 and page_document_in(page)["edit"]["source"] == "speech"
-            print("edit: Undo takes the recording away again")
+            assert page_document_in(page)["duration"] == 0.6 and page_document_in(page)["erase_modulation"]["source"] == "draw_speech"
+            print("Erase modulation: Undo takes the recording away again")
 
-            # The Erase spectrogram tab (mask.md): it starts on the syllable
+            # The Erase spectrogram tab (erase_spectrogram.md): it starts on the syllable
             # train with nothing erased, and draws the source's spectrogram
             # once heard; an Erase stroke along 2 kHz and a Restore stroke
             # change the mask and are heard; a recording opened here is this
             # tab's source only.
-            page.click(".tabs [data-tab=mask]")
-            expect(page.locator("#tab-mask")).to_be_visible()
+            page.click(".tabs [data-tab=erase_spectrogram]")
+            expect(page.locator("#tab-erase_spectrogram")).to_be_visible()
             expect(status).to_contain_text("Made", timeout=120_000)
-            section = page_document_in(page)["mask"]
-            from sonore_sketch import mask as mask_tab
+            section = page_document_in(page)["erase_spectrogram"]
+            from sonore_sketch import erase_spectrogram
 
-            assert section["source"] == "syllables" and not mask_tab.cuts(section).any(), section["source"]
+            assert section["source"] == "syllables" and not erase_spectrogram.cuts(section).any(), section["source"]
             assert page.locator("main > .result").is_hidden(), "the page's own waveform strip shows on the Erase spectrogram tab"
             for name in ("filter-plane", "filter-result"):
                 colors = page.evaluate(
-                    """name => { const c = document.querySelector('#tab-mask canvas.' + name);
+                    """name => { const c = document.querySelector('#tab-erase_spectrogram canvas.' + name);
                         const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                         const s = new Set(); for (let i = 0; i < d.length; i += 4) s.add(d[i] << 16 | d[i + 1] << 8 | d[i + 2]); return s.size; }""",
                     name,
                 )
                 assert colors > 100, f"the {name} spectrogram is not drawn ({colors} colors)"
-            plane = page.locator("#tab-mask canvas.filter-plane").bounding_box()
+            plane = page.locator("#tab-erase_spectrogram canvas.filter-plane").bounding_box()
             m_left, m_right = plane["x"] + 52, plane["x"] + plane["width"] - 10
             m_top, m_bottom = plane["y"] + 8, plane["y"] + plane["height"] - 22
             y_2k = m_bottom - (2000 / 8000) * (m_bottom - m_top)
@@ -858,9 +858,9 @@ def main() -> None:
             page.mouse.up()
             page.wait_for_function("h => location.hash !== h", arg=before)
             expect(status).to_contain_text("Made", timeout=120_000)
-            cut = mask_tab.cuts(page_document_in(page)["mask"])
+            cut = erase_spectrogram.cuts(page_document_in(page)["erase_spectrogram"])
             assert cut[64, 128] == 60 and cut[64, 5] == 0 and cut[20, 128] == 0, (cut[64, 128], cut[64, 5], cut[20, 128])
-            print("mask: an Erase stroke along 2 kHz removed it there and was heard")
+            print("Erase spectrogram: an Erase stroke along 2 kHz removed it there and was heard")
             page.keyboard.press("r")
             before = page.evaluate("location.hash")
             page.mouse.move(m_left + 0.45 * (m_right - m_left), y_2k)
@@ -868,23 +868,23 @@ def main() -> None:
             page.mouse.move(m_left + 0.55 * (m_right - m_left), y_2k, steps=4)
             page.mouse.up()
             page.wait_for_function("h => location.hash !== h", arg=before)
-            restored = mask_tab.cuts(page_document_in(page)["mask"])
+            restored = erase_spectrogram.cuts(page_document_in(page)["erase_spectrogram"])
             assert restored[64, 128] == 0 and restored[64, 40] == 60, (restored[64, 128], restored[64, 40])
             page.keyboard.press("Control+z")
-            assert (mask_tab.cuts(page_document_in(page)["mask"]) == cut).all(), "Undo did not bring the erasing back"
+            assert (erase_spectrogram.cuts(page_document_in(page)["erase_spectrogram"]) == cut).all(), "Undo did not bring the erasing back"
             before = page.evaluate("location.hash")
             page.click("#clear")
             page.wait_for_function("h => location.hash !== h", arg=before)
-            assert not mask_tab.cuts(page_document_in(page)["mask"]).any()
-            print("mask: Restore (R), Undo and Clear work")
+            assert not erase_spectrogram.cuts(page_document_in(page)["erase_spectrogram"]).any()
+            print("Erase spectrogram: Restore (R), Undo and Clear work")
             before = page.evaluate("location.hash")
-            page.locator("#tab-mask .audio-file").set_input_files(files=[{"name": "pulse.wav", "mimeType": "audio/wav", "buffer": buffer.getvalue()}])
+            page.locator("#tab-erase_spectrogram .audio-file").set_input_files(files=[{"name": "pulse.wav", "mimeType": "audio/wav", "buffer": buffer.getvalue()}])
             page.wait_for_function("h => location.hash !== h", arg=before)
             expect(status).to_contain_text("Made", timeout=120_000)
             linked = page_document_in(page)
-            assert linked["duration"] == 1.5 and linked["mask"]["source"] == "file" and linked["edit"]["source"] == "speech", (linked["mask"], linked["edit"]["source"])
-            expect(page.locator("#tab-mask .recording-note")).to_contain_text("pulse.wav: 1.50 s")
-            print("mask: a WAV file opened here is this tab's source, set the duration and was heard")
+            assert linked["duration"] == 1.5 and linked["erase_spectrogram"]["source"] == "file" and linked["erase_modulation"]["source"] == "draw_speech", (linked["erase_spectrogram"], linked["erase_modulation"]["source"])
+            expect(page.locator("#tab-erase_spectrogram .recording-note")).to_contain_text("pulse.wav: 1.50 s")
+            print("Erase spectrogram: a WAV file opened here is this tab's source, set the duration and was heard")
             if args.screenshot:
                 page.screenshot(path=args.screenshot)
             browser.close()

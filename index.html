@@ -14,28 +14,28 @@
     <h1><a class="logo-link" href="https://choyun1.github.io/sonore/gallery/" title="Hear more of what sonore, the library that makes every sound here, can do: its listening gallery"><img class="logo" src="app/logo.svg" alt="sonore"></a>sonore-sketch</h1>
     <a class="about" href="https://github.com/choyun1/sonore-sketch#readme" target="_blank" rel="noopener" title="What this page is and how each tab works, on GitHub" aria-label="About sonore-sketch, on GitHub"><svg viewBox="0 0 16 16" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     <nav class="tabs" role="tablist">
-      <button role="tab" id="tab-button-tracks" class="active" aria-selected="true" aria-controls="tab-tracks" tabindex="0" data-tab="tracks"
+      <button role="tab" id="tab-button-draw_speech" class="active" aria-selected="true" aria-controls="tab-draw_speech" tabindex="0" data-tab="draw_speech"
         data-caption="Draw formant, pitch, voicing and noise tracks over time, and hear Klatt's synthesizer speak them (after TrackDraw; Assmann et al., 1994)."
         title="Formant, F0 and amplitude tracks, synthesized by Klatt's synthesizer">Draw speech</button>
-      <button role="tab" id="tab-button-painted" aria-selected="false" aria-controls="tab-painted" tabindex="-1" data-tab="painted"
+      <button role="tab" id="tab-button-draw_spectrogram" aria-selected="false" aria-controls="tab-draw_spectrogram" tabindex="-1" data-tab="draw_spectrogram"
         data-caption="Draw loudness over time and frequency with a brush, and hear a sound whose spectrogram is your drawing."
         title="Level painted on time × log-frequency, heard through sonore's ripple_sound">Draw spectrogram</button>
-      <button role="tab" id="tab-button-mask" aria-selected="false" aria-controls="tab-mask" tabindex="-1" data-tab="mask"
+      <button role="tab" id="tab-button-erase_spectrogram" aria-selected="false" aria-controls="tab-erase_spectrogram" tabindex="-1" data-tab="erase_spectrogram"
         data-caption="Take a sound (a syllable train, the Draw speech tab's sound, or a recording), erase parts of its spectrogram (a band, a moment, a harmonic) and hear what is left."
         title="A mask painted on a sound's spectrogram, heard through sonore's least-squares STFT resynthesis (GaborFrame)">Erase spectrogram</button>
-      <button role="tab" id="tab-button-blobs" aria-selected="false" aria-controls="tab-blobs" tabindex="-1" data-tab="blobs"
+      <button role="tab" id="tab-button-draw_modulation" aria-selected="false" aria-controls="tab-draw_modulation" tabindex="-1" data-tab="draw_modulation"
         data-caption="Place blobs on a modulation spectrum (how fast loudness changes in time and across frequency) and hear a sound with that rhythm and texture."
         title="Gaussian blobs on rate × density, heard through sonore's ModulationSpectrum.from_blobs">Draw modulation</button>
-      <button role="tab" id="tab-button-edit" aria-selected="false" aria-controls="tab-edit" tabindex="-1" data-tab="edit"
+      <button role="tab" id="tab-button-erase_modulation" aria-selected="false" aria-controls="tab-erase_modulation" tabindex="-1" data-tab="erase_modulation"
         data-caption="Take a sound and erase parts of its modulation spectrum: remove every rate above 4 Hz from speech and it blurs into a murmur that keeps its rhythm."
         title="Parts of a sound's modulation spectrum painted out, heard through sonore's ModulationSpectrum.with_gain and to_sound">Erase modulation</button>
-      <button role="tab" id="tab-button-paths" aria-selected="false" aria-controls="tab-paths" tabindex="-1" data-tab="paths"
+      <button role="tab" id="tab-button-draw_path" aria-selected="false" aria-controls="tab-draw_path" tabindex="-1" data-tab="draw_path"
         data-caption="Draw where a sound goes around you, seen from above, and how high it is over time, and hear it move. Use headphones."
         title="A path around the listener, heard through sonore's move_sound and the MIT KEMAR head-related impulse responses (Gardner &amp; Martin, 1995)">Draw path</button>
-      <button role="tab" id="tab-button-events" aria-selected="false" aria-controls="tab-events" tabindex="-1" data-tab="events"
+      <button role="tab" id="tab-button-scatter_events" aria-selected="false" aria-controls="tab-scatter_events" tabindex="-1" data-tab="scatter_events"
         data-caption="Copy one short event at random times, draw how many come each second, and hear single events pile up into a texture."
         title="One event copied at random times, levels and pitches, heard through sonore's event_train and measured with its texture statistics">Scatter events</button>
-      <button role="tab" id="tab-button-quilt" aria-selected="false" aria-controls="tab-quilt" tabindex="-1" data-tab="quilt"
+      <button role="tab" id="tab-button-quilt_sound" aria-selected="false" aria-controls="tab-quilt_sound" tabindex="-1" data-tab="quilt_sound"
         data-caption="Take a sound (a syllable train, a recording, or what you drew on another tab), cut it into short segments and hear them in a new order: short segments keep its texture and lose its words (after Overath et al., 2015)."
         title="A sound's segments reordered so that each join changes the sound as the sound itself changed, heard through sonore's quilt">Quilt a sound</button>
     </nav>
@@ -67,14 +67,14 @@
   </div>
   <main>
     <p class="tab-caption" id="tab-caption"></p>
-    <section class="tab-body" id="tab-tracks" role="tabpanel" aria-labelledby="tab-button-tracks"></section>
-    <section class="tab-body" id="tab-painted" role="tabpanel" aria-labelledby="tab-button-painted" hidden></section>
-    <section class="tab-body" id="tab-mask" role="tabpanel" aria-labelledby="tab-button-mask" hidden></section>
-    <section class="tab-body" id="tab-blobs" role="tabpanel" aria-labelledby="tab-button-blobs" hidden></section>
-    <section class="tab-body" id="tab-edit" role="tabpanel" aria-labelledby="tab-button-edit" hidden></section>
-    <section class="tab-body" id="tab-paths" role="tabpanel" aria-labelledby="tab-button-paths" hidden></section>
-    <section class="tab-body" id="tab-events" role="tabpanel" aria-labelledby="tab-button-events" hidden></section>
-    <section class="tab-body" id="tab-quilt" role="tabpanel" aria-labelledby="tab-button-quilt" hidden></section>
+    <section class="tab-body" id="tab-draw_speech" role="tabpanel" aria-labelledby="tab-button-draw_speech"></section>
+    <section class="tab-body" id="tab-draw_spectrogram" role="tabpanel" aria-labelledby="tab-button-draw_spectrogram" hidden></section>
+    <section class="tab-body" id="tab-erase_spectrogram" role="tabpanel" aria-labelledby="tab-button-erase_spectrogram" hidden></section>
+    <section class="tab-body" id="tab-draw_modulation" role="tabpanel" aria-labelledby="tab-button-draw_modulation" hidden></section>
+    <section class="tab-body" id="tab-erase_modulation" role="tabpanel" aria-labelledby="tab-button-erase_modulation" hidden></section>
+    <section class="tab-body" id="tab-draw_path" role="tabpanel" aria-labelledby="tab-button-draw_path" hidden></section>
+    <section class="tab-body" id="tab-scatter_events" role="tabpanel" aria-labelledby="tab-button-scatter_events" hidden></section>
+    <section class="tab-body" id="tab-quilt_sound" role="tabpanel" aria-labelledby="tab-button-quilt_sound" hidden></section>
     <section class="result">
       <div class="result-row">
         <span class="result-label">Result</span>

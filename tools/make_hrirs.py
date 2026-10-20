@@ -1,4 +1,4 @@
-"""Make the HRIR file the Draw path tab reads (docs/design/tabs/paths.md, W2).
+"""Make the HRIR file the Draw path tab reads (docs/design/tabs/draw_path.md, W2).
 
 The tab uses the MIT KEMAR measurements (Gardner & Martin, 1995), normal
 pinna, which MIT provides "without any usage restrictions", asking only that

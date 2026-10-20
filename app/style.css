@@ -108,9 +108,9 @@ kbd { font-size: 11px; color: var(--muted); }
 
 main { flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
 
-.tracks-body { display: flex; gap: 12px; align-items: flex-start; }
-.painted-body, .blobs-body, .edit-body, .mask-body, .paths-body, .quilt-body { display: flex; gap: 12px; align-items: flex-start; }
-.paths-area { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.draw-speech-body { display: flex; gap: 12px; align-items: flex-start; }
+.draw-spectrogram-body, .draw-modulation-body, .erase-modulation-body, .erase-spectrogram-body, .draw-path-body, .quilt-sound-body { display: flex; gap: 12px; align-items: flex-start; }
+.draw-path-area { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 canvas.top-view, canvas.speed, canvas.elevation {
   display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
   cursor: crosshair; touch-action: none;
@@ -137,37 +137,37 @@ canvas.stft {
   display: block; width: 100%; height: 180px; margin-top: 8px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }
-.blobs-body canvas.stft { height: 300px; touch-action: none; }
-.blobs-body canvas.plane { height: min(46vh, 360px); }
-.mask-body canvas.filter-plane {
+.draw-modulation-body canvas.stft { height: 300px; touch-action: none; }
+.draw-modulation-body canvas.plane { height: min(46vh, 360px); }
+.erase-spectrogram-body canvas.filter-plane {
   display: block; width: 100%; height: min(50vh, 400px); min-height: 240px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
   cursor: crosshair; touch-action: none;
 }
-.mask-body canvas.filter-result {
+.erase-spectrogram-body canvas.filter-result {
   display: block; width: 100%; height: 260px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }
-.edit-body canvas.mask-plane {
+.erase-modulation-body canvas.mask-plane {
   display: block; width: 100%; height: min(50vh, 400px); min-height: 240px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
   cursor: crosshair; touch-action: none;
 }
-.edit-body canvas.measured-plane {
+.erase-modulation-body canvas.measured-plane {
   display: block; width: 100%; height: 170px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }
-.edit-body .clip-note { margin: 0 10px 0 52px; }
-.edit-body .clip-note[hidden] { display: none; }
-.edit-body canvas.result-stft {
+.erase-modulation-body .clip-note { margin: 0 10px 0 52px; }
+.erase-modulation-body .clip-note[hidden] { display: none; }
+.erase-modulation-body canvas.result-stft {
   display: block; width: 100%; height: 220px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }
-.quilt-body canvas.source-stft, .quilt-body canvas.quilt-stft {
+.quilt-sound-body canvas.source-stft, .quilt-sound-body canvas.quilt-stft {
   display: block; width: 100%; height: min(32vh, 260px); min-height: 180px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }
-.quilt-body .quilt-note { margin: 0 10px 0 52px; }
+.quilt-sound-body .quilt-note { margin: 0 10px 0 52px; }
 .side .reorder { display: block; width: 100%; margin-top: 4px; }
 .side .preset-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
 .side .preset-row input { width: 3.5em; }
@@ -288,7 +288,7 @@ canvas.measured {
 }
 /* on Scatter events the time axis also leaves out the band x rate picture
    beside it (240 px and an 8 px gap) and a wider side panel (200 px) */
-main[data-tab="events"] > .result { margin-right: 470px; }
+main[data-tab="scatter_events"] > .result { margin-right: 470px; }
 .result-row { display: flex; align-items: center; gap: 0; }
 .result-label { width: 52px; color: var(--muted); font-size: 11px; }
 .result canvas {
@@ -313,12 +313,12 @@ main[data-tab="events"] > .result { margin-right: 470px; }
 
 @media (max-width: 720px) {
   /* the side panel above the plots, which take the whole width */
-  .tracks-body, .painted-body, .blobs-body, .edit-body, .mask-body, .paths-body, .quilt-body { flex-direction: column-reverse; align-items: stretch; }
+  .draw-speech-body, .draw-spectrogram-body, .draw-modulation-body, .erase-modulation-body, .erase-spectrogram-body, .draw-path-body, .quilt-sound-body { flex-direction: column-reverse; align-items: stretch; }
   .side { width: 100%; flex-direction: row; flex-wrap: wrap; }
   /* the tab buttons wrap instead of running off the page */
   .tabs { flex-wrap: wrap; }
   .tabs button { border-radius: 6px; border-bottom: 1px solid var(--line); }
-  .result, main[data-tab="events"] > .result { margin-right: 10px; }
+  .result, main[data-tab="scatter_events"] > .result { margin-right: 10px; }
 }
 
 .log { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
@@ -340,24 +340,24 @@ main[data-tab="events"] > .result { margin-right: 470px; }
 .panel svg.over-point:active { cursor: grabbing; }
 
 /* the Scatter events tab */
-.events-body { display: flex; gap: 12px; align-items: flex-start; }
-.events-body .side { width: 200px; }
-.events-area {
+.scatter-events-body { display: flex; gap: 12px; align-items: flex-start; }
+.scatter-events-body .side { width: 200px; }
+.scatter-events-area {
   flex: 1; min-width: 0; position: relative;
   display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 8px; align-items: start;
 }
 /* the rate track, the spectrogram and the pooled picture share one time axis; the band x rate picture stands beside them */
-.events-area > canvas.rate, .events-area > canvas.stft, .events-area > canvas.mod-pooled { grid-column: 1; }
-.events-area > canvas.mod-frame { grid-column: 2; grid-row: 2 / span 2; height: 100%; min-height: 388px; }
-.events-area > .hint { grid-column: 1 / -1; }
-.events-area canvas.stft { margin-top: 0; height: 190px; }
+.scatter-events-area > canvas.rate, .scatter-events-area > canvas.stft, .scatter-events-area > canvas.mod-pooled { grid-column: 1; }
+.scatter-events-area > canvas.mod-frame { grid-column: 2; grid-row: 2 / span 2; height: 100%; min-height: 388px; }
+.scatter-events-area > .hint { grid-column: 1 / -1; }
+.scatter-events-area canvas.stft { margin-top: 0; height: 190px; }
 canvas.rate {
   display: block; width: 100%; height: 140px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
   cursor: crosshair; touch-action: none;
 }
 canvas.mod-pooled { cursor: crosshair; touch-action: none; }
-.events-area canvas.stft { cursor: crosshair; }
+.scatter-events-area canvas.stft { cursor: crosshair; }
 .side .knob .ends { flex-basis: 100%; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: -4px; }
 .side .tone-field[hidden] { display: none; }
 select.tone { width: 100%; }
@@ -370,8 +370,8 @@ canvas.mod-pooled, canvas.mod-frame {
 .side .draw, .side .flat { display: block; width: 100%; margin-top: 4px; }
 .side select.event { width: 100%; }
 @media (max-width: 720px) {
-  .events-body { flex-direction: column-reverse; }
-  .events-body .side { width: 100%; }
-  .events-area { grid-template-columns: minmax(0, 1fr); }
-  .events-area > canvas.mod-frame { grid-column: 1; grid-row: auto; height: 260px; min-height: 0; }
+  .scatter-events-body { flex-direction: column-reverse; }
+  .scatter-events-body .side { width: 100%; }
+  .scatter-events-area { grid-template-columns: minmax(0, 1fr); }
+  .scatter-events-area > canvas.mod-frame { grid-column: 1; grid-row: auto; height: 260px; min-height: 0; }
 }
