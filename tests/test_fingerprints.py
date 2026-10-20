@@ -29,6 +29,7 @@ FS = 16000
 DURATION = 1.0
 N_STRETCHES = 16
 BAND_EDGES_HZ = np.geomspace(50, FS / 2, 25)
+FLOOR_POWER = 1e-20  # -200 dB: below it is roundoff, which differs between NumPy versions
 
 
 def _speech_params() -> dict:
@@ -90,8 +91,8 @@ def fingerprint(samples: np.ndarray, fs: float) -> dict:
     bands = [power[(frequencies >= lo) & (frequencies < hi)].mean() for lo, hi in zip(BAND_EDGES_HZ, BAND_EDGES_HZ[1:])]
     return {
         "n_samples": int(samples.size),
-        "stretch_db": [round(float(10 * np.log10(np.mean(part**2) + 1e-30)), 4) for part in stretches],
-        "band_db": [round(float(10 * np.log10(level + 1e-30)), 4) for level in bands],
+        "stretch_db": [round(float(10 * np.log10(np.mean(part**2) + FLOOR_POWER)), 4) for part in stretches],
+        "band_db": [round(float(10 * np.log10(level + FLOOR_POWER)), 4) for level in bands],
     }
 
 
