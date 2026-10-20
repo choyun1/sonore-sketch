@@ -95,7 +95,9 @@ def synth_envelopes(duration, carrier, bands, seed=1):
 def plain(duration, carrier, seed=1):
     if carrier == "harmonic":
         return synth_envelopes(duration, carrier, [], seed)
-    return target(duration).to_sound(carrier=carrier, fs=FS, rng=seed)
+    if carrier == "noise":  # sonore 0.8: a noise is passed as a Sound
+        return target(duration).to_sound(carrier=so.gaussian_noise(duration, FS, rng=seed), rng=seed)
+    return target(duration).to_sound(carrier="tone", fs=FS, rng=seed)
 
 
 def post_subbands(sound, bands):

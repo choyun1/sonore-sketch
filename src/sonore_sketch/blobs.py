@@ -3,7 +3,7 @@
 A drawing is a list of Gaussian blobs on a modulation spectrum, rate [Hz,
 signed] by density [cycles/octave] (docs/design/tabs/blobs.md)::
 
-    {"blobs": 1, "sonore": "0.6.0", "duration": 3.0, "fs": 16000,
+    {"blobs": 1, "sonore": "0.8.0", "duration": 3.0, "fs": 16000,
      "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
      "carrier": "tones", "f0": 100, "iterations": 0, "rms_depth": 0.2, "seed": 1,
      "items": [{"rate": 4, "density": 0, "rate_width": 0.5,
@@ -246,7 +246,7 @@ def _toward_blobs(sound: so.Sound, drawn: so.ModulationSpectrum, bands: list) ->
     rebuilt = drawn.to_envelopes(phase=phase, quiet=True).data[:, 1:-1, 0]  # clipped at 0, edges dropped
     values = np.zeros((envelopes.shape[0], bank.n_filters))
     values[:, 1:-1] = gain * rebuilt
-    out = (so.Envelopes(values, ENV_FS, bank) * subbands.tfs()).to_sound()
+    out = (so.TemporalEnvelope(values, ENV_FS, bank) * subbands.tfs()).to_sound()
     return so.Sound(out.data[: sound.n_samples], sound.fs)
 
 
@@ -259,10 +259,11 @@ def depth_that_fits(message: str) -> float | None:
 def _carried(state: Mapping[str, Any]) -> so.Sound:
     if state.get("carrier") == "harmonic":
         return _on_harmonics(state)
+    fs, seed = float(state["fs"]), int(state.get("seed", 1))
     return target(state).to_sound(
-        carrier=state.get("carrier", "tones"),
-        fs=float(state["fs"]),
-        rng=int(state.get("seed", 1)),
+        carrier=shared.modulation_carrier(state.get("carrier", "tones"), float(state["duration"]), fs, seed),
+        fs=fs,
+        rng=seed,
         iterations=int(state.get("iterations", 0)),
     )
 

@@ -8,7 +8,7 @@ the server cannot be reached (app/engine.js, FallbackEngine).
 
 It answers the same two requests as tools/serve.py's local engine:
 
-    GET  /api/version      {"versions": "sonore 0.7.0, Python 3.12.3"}
+    GET  /api/version      {"versions": "sonore 0.8.0, Python 3.12.3"}
     POST /api/synthesize   {"tab": ..., "state": ...}  ->  page.handle's result as JSON
 
 and adds what a public server needs: CORS for the page's own sites only, a

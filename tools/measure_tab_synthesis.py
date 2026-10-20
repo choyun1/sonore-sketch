@@ -30,7 +30,9 @@ WARM_REPEATS = 3
 def blobs(carrier):
     def synthesize(duration):
         target = so.ModulationSpectrum.from_blobs([so.ModulationBlob(4.0, 0.5)], duration)
-        return target.to_sound(carrier=carrier, fs=FS, rng=1)
+        if carrier == "noise":  # sonore 0.8: a noise is passed as a Sound
+            return target.to_sound(carrier=so.gaussian_noise(duration, FS, rng=1), rng=1)
+        return target.to_sound(carrier="tone", fs=FS, rng=1)
 
     return synthesize
 

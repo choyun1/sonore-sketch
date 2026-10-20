@@ -55,9 +55,9 @@ print(f"sonore {so.__version__}, numpy {np.__version__}, fs {FS} Hz, {F_LO:g}-{F
 print("\n1. speed")
 print(f"  {'case':<28s} {'1 s':>8s} {'3 s':>8s} {'10 s':>8s}   (warm median of {WARM_REPEATS})")
 cases = {
-    "tones, 0 iterations": lambda d: target(BLOBS, d).to_sound(carrier="tones", fs=FS, rng=1),
-    "noise, 0 iterations": lambda d: target(BLOBS, d).to_sound(carrier="noise", fs=FS, rng=1),
-    "tones, 5 iterations": lambda d: target(BLOBS, d).to_sound(carrier="tones", fs=FS, rng=1, iterations=5),
+    "tones, 0 iterations": lambda d: target(BLOBS, d).to_sound(carrier="tone", fs=FS, rng=1),
+    "noise, 0 iterations": lambda d: target(BLOBS, d).to_sound(carrier=so.gaussian_noise(d, FS, rng=1), rng=1),
+    "tones, 5 iterations": lambda d: target(BLOBS, d).to_sound(carrier="tone", fs=FS, rng=1, iterations=5),
 }
 sounds = {d: cases["tones, 0 iterations"](d) for d in (1.0, 3.0, 10.0)}
 cases["analysis of the result"] = lambda d: so.ModulationSpectrum.octave(sounds[d], f_lo=F_LO, f_hi=F_HI)
@@ -70,7 +70,7 @@ for name, function in cases.items():
 
 print("\n2. where the energy lands (measured on the result, tones carrier)")
 for duration in (0.6, 1.0, 3.0, 10.0):
-    sound = target(BLOBS, duration).to_sound(carrier="tones", fs=FS, rng=1)
+    sound = target(BLOBS, duration).to_sound(carrier="tone", fs=FS, rng=1)
     measured = so.ModulationSpectrum.octave(sound, f_lo=F_LO, f_hi=F_HI)
     peaks = [peak_near(measured, b.rate, b.density) for b in BLOBS]
     resolution = measured.w_t[1] - measured.w_t[0]
@@ -80,9 +80,9 @@ for duration in (0.6, 1.0, 3.0, 10.0):
 print("\n3. the deepest drawing one draw allows (rng=1)")
 for name, blobs in (("one blob", BLOBS[:1]), ("three blobs", [*BLOBS, so.ModulationBlob(-6.0, 2.0)])):
     try:
-        target(blobs, 3.0).to_sound(carrier="tones", fs=FS, rng=1)  # default rms_depth 0.2
+        target(blobs, 3.0).to_sound(carrier="tone", fs=FS, rng=1)  # default rms_depth 0.2
         spectrum = so.ModulationSpectrum.from_blobs(blobs, 3.0, f_lo=F_LO, f_hi=F_HI, rms_depth=0.99)
-        spectrum.to_sound(carrier="tones", fs=FS, rng=1)
+        spectrum.to_sound(carrier="tone", fs=FS, rng=1)
         print(f"  {name}: 0.99 fits")
     except ValueError as error:
         fits = re.search(r"at most ([0-9.]+) fits", str(error))
@@ -95,12 +95,12 @@ inside = near & (drawn.level >= drawn.level[near].max() - 6)  # within 6 dB of t
 outside = near & (drawn.level <= drawn.level[near].max() - 30)  # 30 dB or more below it
 print(f"  drawn: {inside.sum()} cells within 6 dB of the peak, {outside.sum()} cells 30 dB or more below it")
 for name, options in (
-    ("tones", dict(carrier="tones")),
-    ("noise", dict(carrier="noise")),
-    ("tones, 5 iterations", dict(carrier="tones", iterations=5)),
-    ("noise, 5 iterations", dict(carrier="noise", iterations=5)),
+    ("tones", dict(carrier="tone")),
+    ("noise", dict(carrier=so.gaussian_noise(3.0, FS, rng=1))),
+    ("tones, 5 iterations", dict(carrier="tone", iterations=5)),
+    ("noise, 5 iterations", dict(carrier=so.gaussian_noise(3.0, FS, rng=1), iterations=5)),
 ):
-    sound = drawn.to_sound(fs=FS, rng=1, **options)
+    sound = drawn.to_sound(rng=1, **({"fs": FS} if options["carrier"] == "tone" else {}), **options)
     measured = so.ModulationSpectrum.octave(sound, f_lo=F_LO, f_hi=F_HI)
     power = 10 ** (measured.level / 10)
     contrast = 10 * np.log10(power[inside].mean() / power[outside].mean())

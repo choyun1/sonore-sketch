@@ -29,6 +29,7 @@ FS = 16000
 DURATION = 1.0
 N_STRETCHES = 16
 BAND_EDGES_HZ = np.geomspace(50, FS / 2, 25)
+FLOOR_POWER = 1e-20  # -200 dB: below it is roundoff, which differs between NumPy versions
 
 
 def _speech_params() -> dict:
@@ -44,7 +45,7 @@ def _speech_params() -> dict:
 
 
 def _cases() -> dict[str, dict]:
-    common = {"sonore": "0.7.0", "duration": DURATION, "fs": FS}
+    common = {"sonore": "0.8.0", "duration": DURATION, "fs": FS}
     painting = {
         "painted": painted.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256,
         "floor_db": -60, "f0": painted.EXAMPLE_F0, "seed": 1, "levels": painted.encode_levels(painted.example_levels()),
@@ -90,8 +91,8 @@ def fingerprint(samples: np.ndarray, fs: float) -> dict:
     bands = [power[(frequencies >= lo) & (frequencies < hi)].mean() for lo, hi in zip(BAND_EDGES_HZ, BAND_EDGES_HZ[1:])]
     return {
         "n_samples": int(samples.size),
-        "stretch_db": [round(float(10 * np.log10(np.mean(part**2) + 1e-30)), 4) for part in stretches],
-        "band_db": [round(float(10 * np.log10(level + 1e-30)), 4) for level in bands],
+        "stretch_db": [round(float(10 * np.log10(np.mean(part**2) + FLOOR_POWER)), 4) for part in stretches],
+        "band_db": [round(float(10 * np.log10(level + FLOOR_POWER)), 4) for level in bands],
     }
 
 

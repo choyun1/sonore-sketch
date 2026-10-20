@@ -1,6 +1,6 @@
 <h1><a href="https://choyun1.github.io/sonore/gallery/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-mark-dark.svg"><img alt="sonore" src="docs/logo/sonore-sketch-banner-mark-light.svg" height="56"></picture></a><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-name-dark.svg"><img alt="sonore-sketch" src="docs/logo/sonore-sketch-banner-name-light.svg" height="56"></picture></h1>
 
-[![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.7](https://img.shields.io/badge/sonore-0.7-blue)](https://pypi.org/project/sonore/) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
+[![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.8](https://img.shields.io/badge/sonore-0.8-blue)](https://pypi.org/project/sonore/) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
 
 **A visual front end for sonore's sound synthesis.**
 
@@ -220,7 +220,7 @@ sound = page.synthesize(json.load(open("sketch.json")))
 
 ## How the sound is made
 
-Every sound is made by sonore 0.7, in `src/sonore_sketch/` (one module per
+Every sound is made by sonore 0.8, in `src/sonore_sketch/` (one module per
 tab). The design documents in `docs/design/` hold the measurements behind
 each choice; this section is the method in one place, one tab at a time.
 
@@ -432,10 +432,10 @@ without it: removing every rate above 4 Hz leaves 2.5 dB less power at
    moved by up to 15 ms to line its waveform up with what precedes it, and
    with ramps that keep the level across a join of unlike segments
    (sonore's `splice`).
-4. Each segment is used at most once, so the quilt is as long as the
-   source's whole segments. Sometimes the rule runs out of choices before
-   the last one; then the quilt has one segment fewer. The rest of the
-   page's duration, less than two segments, is silent.
+4. Each segment is used at most once, and one is kept spare so that the
+   rule always has a choice left, so the quilt is all but one of the
+   source's whole segments. The rest of the page's duration, less than two
+   segments, is silent.
 
 ## References
 
@@ -496,7 +496,7 @@ The page is static: `index.html` and the ES modules in `app/`, with no
 build step and no JavaScript dependencies. The Python half, which the page
 runs under Pyodide, is in `src/sonore_sketch/` (one module per tab,
 `sources.py` and `shared.py`, which the tabs share, and `page.py`, which
-the page calls). It needs sonore 0.7.
+the page calls). It needs sonore 0.8.
 
 ```
 pip install -e ".[test]" playwright

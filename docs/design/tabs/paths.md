@@ -197,7 +197,7 @@ stroke. The HRIR file is 1.2 MB, fetched once when the tab opens.
 
 ### Data model
 
-`{"paths": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000, "source":
+`{"paths": 1, "sonore": "0.8.0", "duration": 3.0, "fs": 16000, "source":
 "noise", "room": "dry", "stroke": [[t, x, y], ...], "elevation": 0 or
 [times, degrees]}`. As built, the page's `fs` stays the page's, and the
 tab renders at 32 kHz whatever it says (W5). The raw stroke is stored (times in the stroke's own seconds, meters), not
