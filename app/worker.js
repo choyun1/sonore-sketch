@@ -13,7 +13,7 @@
 
 import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
 
-const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (tracks.md, M6)
+const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (draw_speech.md, M6)
 const SONORE_VERSION = "0.8.0"; // keep in step with pyproject.toml (app.md, D5)
 // The wheel's file on PyPI (from https://pypi.org/project/sonore/<version>/#files),
 // which is fetched directly: PyPI's by-name address redirects without the
@@ -191,7 +191,7 @@ onmessage = async ({ data: { id, request } }) => {
   let work = null;
   try {
     await loading;
-    if (request.tab === "paths") await loadHrirs();
+    if (request.tab === "draw_path") await loadHrirs();
     if (id !== latest) return postMessage({ id, type: "dropped" });
     work = steps(JSON.stringify(request));
     let result;

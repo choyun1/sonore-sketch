@@ -1,5 +1,5 @@
-"""The sound the two Erase tabs erase from (docs/design/tabs/edit.md, E1;
-docs/design/tabs/mask.md, F2): a Klatt syllable train made here at the
+"""The sound the two Erase tabs erase from (docs/design/tabs/erase_modulation.md, E1;
+docs/design/tabs/erase_spectrogram.md, F2): a Klatt syllable train made here at the
 page's duration, the Draw speech tab's sound, or a recording opened in the
 page (its ``recording``: name, rate and 16-bit samples as base64).
 """
@@ -15,16 +15,16 @@ from typing import Any
 import numpy as np
 import sonore as so
 
-from . import tracks
+from . import draw_speech
 from .shared import number
 
-SOURCES = ("syllables", "speech", "file")  # E1, F2
+SOURCES = ("syllables", "draw_speech", "file")  # E1, F2
 
 
 def syllables(duration: float, fs: float) -> so.Sound:
     """A Klatt syllable train (E1, a): one syllable every 0.22 s, each a
     voicing burst whose F1 and F2 move between two vowels, F0 falling from
-    130 to 90 Hz (tools/measure_edit.py measured this source)."""
+    130 to 90 Hz (tools/measure_erase_modulation.py measured this source)."""
     starts = np.arange(0.0, max(duration - 0.15, 1e-9), 0.22)
     times, av, f1, f2 = [0.0], [0.0], [300.0], [900.0]
     for i, start in enumerate(starts):
@@ -40,10 +40,10 @@ def syllables(duration: float, fs: float) -> so.Sound:
     f1.append(300)
     f2.append(900)
     document = {
-        "trackdraw": tracks.FORMAT, "sonore": so.__version__, "duration": duration, "fs": fs, "mode": "klatt",
+        "trackdraw": draw_speech.FORMAT, "sonore": so.__version__, "duration": duration, "fs": fs, "mode": "klatt",
         "params": {"F0": [[0, duration], [130, 90]], "AV": [times, av], "F1": [times, f1], "F2": [times, f2], "F3": 2500},
     }
-    return tracks.synthesize(document)
+    return draw_speech.synthesize(document)
 
 
 def recording(state: Mapping[str, Any]) -> so.Sound:
@@ -77,11 +77,11 @@ def source(state: Mapping[str, Any], silent: str = "there is no modulation to er
     kind = state["source"]
     if kind == "syllables":
         sound = syllables(duration, fs)
-    elif kind == "speech":
-        speech = state.get("speech")
+    elif kind == "draw_speech":
+        speech = state.get("draw_speech")
         if not isinstance(speech, Mapping):
             raise ValueError("the Draw speech tab's drawing is missing")
-        sound = tracks.synthesize({"trackdraw": tracks.FORMAT, "duration": duration, "fs": fs, **speech})
+        sound = draw_speech.synthesize({"trackdraw": draw_speech.FORMAT, "duration": duration, "fs": fs, **speech})
     else:
         sound = recording(state)
     if not sound.rms > 0:

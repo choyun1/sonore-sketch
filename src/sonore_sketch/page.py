@@ -16,31 +16,58 @@ from typing import Any
 import numpy as np
 import sonore as so
 
-from . import blobs, edit, events, mask, painted, paths, quilt, shared, tracks
+from . import (
+    draw_modulation, draw_path, draw_spectrogram, draw_speech, erase_modulation, erase_spectrogram, quilt_sound, scatter_events, shared,
+)
 
 TABS = {
-    "tracks": tracks.synthesize, "painted": painted.synthesize, "mask": mask.synthesize,
-    "blobs": blobs.synthesize, "edit": edit.synthesize, "paths": paths.synthesize,
-    "events": events.synthesize, "quilt": quilt.synthesize,
+    "draw_speech": draw_speech.synthesize, "draw_spectrogram": draw_spectrogram.synthesize, "erase_spectrogram": erase_spectrogram.synthesize,
+    "draw_modulation": draw_modulation.synthesize, "erase_modulation": erase_modulation.synthesize, "draw_path": draw_path.synthesize,
+    "scatter_events": scatter_events.synthesize, "quilt_sound": quilt_sound.synthesize,
 }
 
-# The page's document (docs/design/tabs/painted.md, "Data model"), as
+# The page's document (docs/design/tabs/draw_spectrogram.md, "Data model"), as
 # app/document.js writes it: duration and fs for the page, a section per tab.
 APP = "sonore-sketch"
-VERSION = 2
+VERSION = 3
+
+# The tabs' ids in version-2 documents (before 2026-10-20), each with the id
+# it has now; a source naming a tab used the same ids, but "speech" for Draw
+# speech (app/document.js, OLD_TAB_IDS).
+OLD_TAB_IDS = {
+    "tracks": "draw_speech", "painted": "draw_spectrogram", "mask": "erase_spectrogram", "blobs": "draw_modulation",
+    "edit": "erase_modulation", "paths": "draw_path", "events": "scatter_events", "quilt": "quilt_sound", "speech": "draw_speech",
+}
+
+
+def rename_old_tabs(document: Mapping[str, Any]) -> dict[str, Any]:
+    """A version-2 ``document`` as version 3: its sections, the tab it was
+    saved on and every source that names a tab, under the tabs' ids of now."""
+    renamed = {**document, "version": VERSION, "tab": OLD_TAB_IDS.get(document.get("tab"), document.get("tab"))}
+    for old, new in OLD_TAB_IDS.items():
+        if old not in document or old == "speech":
+            continue
+        section = renamed.pop(old)
+        if isinstance(section, Mapping) and section.get("source") in OLD_TAB_IDS:
+            section = {**section, "source": OLD_TAB_IDS[section["source"]]}
+        renamed[new] = section
+    return renamed
 
 
 def upgrade(document: Mapping[str, Any]) -> dict[str, Any]:
-    """``document`` as a version-2 page document. A TrackDraw document
-    (format 1, the Draw speech tab's own) becomes its ``tracks`` section."""
-    if document.get("trackdraw") == tracks.FORMAT:
+    """``document`` as a version-3 page document. A TrackDraw document
+    (format 1, the Draw speech tab's own) becomes its ``draw_speech``
+    section, and a version-2 one has its tabs renamed (:func:`rename_old_tabs`)."""
+    if document.get("app") == APP and document.get("version") == 2:
+        return upgrade(rename_old_tabs(document))
+    if document.get("trackdraw") == draw_speech.FORMAT:
         return {
             "app": APP, "version": VERSION, "sonore": document.get("sonore"),
-            "duration": document["duration"], "fs": document["fs"], "tab": "tracks",
-            "tracks": {"mode": document.get("mode", "klatt"), "params": dict(document.get("params", {}))},
+            "duration": document["duration"], "fs": document["fs"], "tab": "draw_speech",
+            "draw_speech": {"mode": document.get("mode", "klatt"), "params": dict(document.get("params", {}))},
         }
     if document.get("app") != APP or document.get("version") != VERSION:
-        raise ValueError(f"not a sonore-sketch document of version {VERSION}, or a TrackDraw document of format {tracks.FORMAT}")
+        raise ValueError(f"not a sonore-sketch document of version {VERSION}, or a TrackDraw document of format {draw_speech.FORMAT}")
     return dict(document)
 
 
@@ -48,32 +75,32 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
     """The state ``tab`` (default: the tab the document was saved on) draws
     on, which is what that tab's ``synthesize`` takes."""
     page = upgrade(document)
-    tab = tab or page.get("tab", "tracks")
-    if tab == "tracks":
-        return {"trackdraw": tracks.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["tracks"]}
-    if tab == "painted" and "painted" in page:
-        return {"painted": painted.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["painted"]}
-    if tab == "blobs" and "blobs" in page:
-        return {"blobs": blobs.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["blobs"]}
-    if tab == "events" and "events" in page:
-        return {"events": events.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["events"]}
-    if tab == "paths" and "paths" in page:
+    tab = tab or page.get("tab", "draw_speech")
+    if tab == "draw_speech":
+        return {"trackdraw": draw_speech.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["draw_speech"]}
+    if tab == "draw_spectrogram" and "draw_spectrogram" in page:
+        return {"draw_spectrogram": draw_spectrogram.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["draw_spectrogram"]}
+    if tab == "draw_modulation" and "draw_modulation" in page:
+        return {"draw_modulation": draw_modulation.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["draw_modulation"]}
+    if tab == "scatter_events" and "scatter_events" in page:
+        return {"scatter_events": scatter_events.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["scatter_events"]}
+    if tab == "draw_path" and "draw_path" in page:
         # the source's own drawing goes with the state, as on the Erase tabs
-        state = {"paths": paths.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["paths"]}
-        if state.get("source") == "speech":
-            state["speech"] = page["tracks"]
+        state = {"draw_path": draw_path.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["draw_path"]}
+        if state.get("source") == "draw_speech":
+            state["draw_speech"] = page["draw_speech"]
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
         return state
-    if tab in ("edit", "mask", "quilt") and tab in page:
+    if tab in ("erase_modulation", "erase_spectrogram", "quilt_sound") and tab in page:
         # the source's own drawing goes with the state: the Draw speech tab's, or the page's recording
-        section_format = {"edit": edit.FORMAT, "mask": mask.FORMAT, "quilt": quilt.FORMAT}[tab]
+        section_format = {"erase_modulation": erase_modulation.FORMAT, "erase_spectrogram": erase_spectrogram.FORMAT, "quilt_sound": quilt_sound.FORMAT}[tab]
         state = {tab: section_format, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page[tab]}
-        if state.get("source") == "speech":
-            state["speech"] = page["tracks"]
+        if state.get("source") == "draw_speech":
+            state["draw_speech"] = page["draw_speech"]
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
-        if tab == "quilt" and state.get("source") in quilt.DRAWN and state["source"] in page:
+        if tab == "quilt_sound" and state.get("source") in quilt_sound.DRAWN and state["source"] in page:
             state["drawing"] = page[state["source"]]  # the tab's own drawing, made into its sound
         return state
     if tab in TABS:
@@ -85,11 +112,11 @@ def synthesize(document: Mapping[str, Any], tab: str | None = None) -> so.Sound:
     """The sound of a saved document (a file from the page's Save), as the
     page makes it for ``tab`` (default: the tab it was saved on)."""
     page = upgrade(document)
-    tab = tab or page.get("tab", "tracks")
+    tab = tab or page.get("tab", "draw_speech")
     return TABS[tab](tab_state(page, tab))
 
 # The result's spectrogram: wideband, 5 ms Hann, as on the Seeing speech page
-# (docs/design/tabs/tracks.md, "What sonore provides").
+# (docs/design/tabs/draw_speech.md, "What sonore provides").
 WINDOW_S = 0.005
 N_FFT = 512
 MAX_WINDOWS = 1200
@@ -123,12 +150,12 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     tab's, the left ear's, and the right ear's as ``samples_right``), a
     spectrogram (:func:`spectrogram`, of the channels' mean), and the
     seconds synthesis took; on the Draw modulation tab also the result's measured
-    modulation spectrum (``blobs.measured_picture``), and on the Erase
-    modulation tab the source's and the result's (``edit.plane_picture``)
+    modulation spectrum (``draw_modulation.measured_picture``), and on the Erase
+    modulation tab the source's and the result's (``erase_modulation.plane_picture``)
     and the fraction of envelope values sonore clipped; on the Erase
     spectrogram tab the source's and the result's spectrograms in the mask's
-    own STFT (``mask.pictures``); on the Scatter events tab the result's
-    modulation spectrogram (``events.modulation``); on the Quilt a sound tab
+    own STFT (``erase_spectrogram.pictures``); on the Scatter events tab the result's
+    modulation spectrogram (``scatter_events.modulation``); on the Quilt a sound tab
     the source's spectrogram (:func:`spectrogram`, as ``source_stft``) and
     how many segments the quilt has (``segments``), each ``segment_s`` long.
     """
@@ -144,16 +171,16 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
     if tab not in TABS:
         raise ValueError(f"unknown tab {tab!r}; known: {sorted(TABS)}")
     start = time.perf_counter()
-    if tab == "blobs":  # its measured modulation spectrum takes about a third of the time
-        sound = yield from shared.scaled(blobs.steps(request["state"]), 0.65)
-    elif tab == "mask":
-        sound, source_stft, result_stft = yield from shared.scaled(mask.steps(request["state"]), 0.9)
-    elif tab == "edit":
-        sound, original, clipped = yield from shared.scaled(edit.steps(request["state"]), 0.9)
-    elif tab == "events":
-        sound, modulation = yield from shared.scaled(events.steps(request["state"]), 0.9)
-    elif tab == "quilt":
-        sound, original, segments = yield from shared.scaled(quilt.steps(request["state"]), 0.9)
+    if tab == "draw_modulation":  # its measured modulation spectrum takes about a third of the time
+        sound = yield from shared.scaled(draw_modulation.steps(request["state"]), 0.65)
+    elif tab == "erase_spectrogram":
+        sound, source_stft, result_stft = yield from shared.scaled(erase_spectrogram.steps(request["state"]), 0.9)
+    elif tab == "erase_modulation":
+        sound, original, clipped = yield from shared.scaled(erase_modulation.steps(request["state"]), 0.9)
+    elif tab == "scatter_events":
+        sound, modulation = yield from shared.scaled(scatter_events.steps(request["state"]), 0.9)
+    elif tab == "quilt_sound":
+        sound, original, segments = yield from shared.scaled(quilt_sound.steps(request["state"]), 0.9)
     else:
         yield 0.0, "Synthesizing"
         sound = TABS[tab](request["state"])
@@ -167,17 +194,17 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
     }
     if sound.n_channels == 2:  # the Draw path tab's two ears
         result["samples_right"] = np.ascontiguousarray(sound.data[:, 1], dtype="<f4").tobytes()
-    if tab == "blobs":  # the result's measured modulation spectrum, for under the plane (blobs.md, B7)
-        result["modulation"] = blobs.measured_picture(blobs.measured(sound, request["state"]))
-    if tab == "edit":  # the source's modulation spectrum and the result's, on the plane (edit.md, E7, E9)
-        result["source_modulation"] = edit.plane_picture(original)
-        result["modulation"] = edit.plane_picture(edit.analyze(sound, request["state"]))
+    if tab == "draw_modulation":  # the result's measured modulation spectrum, for under the plane (draw_modulation.md, B7)
+        result["modulation"] = draw_modulation.measured_picture(draw_modulation.measured(sound, request["state"]))
+    if tab == "erase_modulation":  # the source's modulation spectrum and the result's, on the plane (erase_modulation.md, E7, E9)
+        result["source_modulation"] = erase_modulation.plane_picture(original)
+        result["modulation"] = erase_modulation.plane_picture(erase_modulation.analyze(sound, request["state"]))
         result["clipped"] = clipped
-    if tab == "events":  # the result's modulation spectrogram (events.md, E7)
+    if tab == "scatter_events":  # the result's modulation spectrogram (scatter_events.md, E7)
         result["modulation_frames"], result["modulation_pooled"] = modulation["frames"], modulation["pooled"]
-    if tab == "quilt":  # the source, to compare the quilt with, and the segments the quilt is made of
+    if tab == "quilt_sound":  # the source, to compare the quilt with, and the segments the quilt is made of
         result["source_stft"], result["segments"] = spectrogram(original), segments
         result["segment_s"] = round(float(request["state"]["segment"]) * sound.fs) / sound.fs
-    if tab == "mask":  # the source's and the result's spectrograms in the mask's own STFT (mask.md)
-        result["source_stft"], result["result_stft"] = mask.pictures(source_stft, result_stft)
+    if tab == "erase_spectrogram":  # the source's and the result's spectrograms in the mask's own STFT (erase_spectrogram.md)
+        result["source_stft"], result["result_stft"] = erase_spectrogram.pictures(source_stft, result_stft)
     return result

@@ -1,4 +1,4 @@
-"""Measure a painted grid as the Painted tab would use it (docs/design/tabs/painted.md).
+"""Measure a painted grid as the Painted tab would use it (docs/design/tabs/draw_spectrogram.md).
 
 This script runs sonore to measure it; it is not an independent check. A
 painting is a grid of levels in dB over time (columns) and octaves above

@@ -5,14 +5,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sonore_sketch import page, tracks
+from sonore_sketch import draw_speech, page
 
-from test_tracks import DOCUMENT
+from test_draw_speech import DOCUMENT
 
 PAGE = {
-    "app": "sonore-sketch", "version": 2, "sonore": "0.8.0",
-    "duration": DOCUMENT["duration"], "fs": DOCUMENT["fs"], "tab": "tracks",
-    "tracks": {"mode": "klatt", "params": DOCUMENT["params"]},
+    "app": "sonore-sketch", "version": 3, "sonore": "0.8.0",
+    "duration": DOCUMENT["duration"], "fs": DOCUMENT["fs"], "tab": "draw_speech",
+    "draw_speech": {"mode": "klatt", "params": DOCUMENT["params"]},
 }
 
 
@@ -21,16 +21,30 @@ def test_a_trackdraw_document_upgrades_to_a_page_document():
 
 
 def test_the_tracks_state_of_a_page_document_is_the_trackdraw_document():
-    assert page.tab_state(PAGE, "tracks") == DOCUMENT
+    assert page.tab_state(PAGE, "draw_speech") == DOCUMENT
 
 
 def test_a_saved_page_sounds_as_its_tab_does():
-    np.testing.assert_array_equal(page.synthesize(PAGE).data, tracks.synthesize(DOCUMENT).data)
+    np.testing.assert_array_equal(page.synthesize(PAGE).data, draw_speech.synthesize(DOCUMENT).data)
+
+
+def test_a_version_2_document_opens_with_the_tabs_renamed():
+    # before 2026-10-20 the tabs had other ids, in files and links as in the code
+    old = {
+        "app": "sonore-sketch", "version": 2, "sonore": "0.8.0", "duration": DOCUMENT["duration"], "fs": DOCUMENT["fs"],
+        "tab": "edit", "tracks": PAGE["draw_speech"], "edit": {"source": "speech", "iterations": 2},
+        "quilt": {"source": "blobs", "segment": 0.06, "seed": 1}, "mask": {"source": "file"},
+    }
+    assert page.upgrade(old) == {
+        **PAGE, "tab": "erase_modulation", "erase_modulation": {"source": "draw_speech", "iterations": 2},
+        "quilt_sound": {"source": "draw_modulation", "segment": 0.06, "seed": 1}, "erase_spectrogram": {"source": "file"},
+    }
+    assert page.tab_state(old)["draw_speech"] == PAGE["draw_speech"]
 
 
 @pytest.mark.parametrize(
     "document, message",
-    [({"app": "sonore-sketch", "version": 3}, "version 2"), ({"hello": 1}, "not a sonore-sketch"), ({**PAGE, "tab": "nope"}, "unknown tab")],
+    [({"app": "sonore-sketch", "version": 4}, "version 3"), ({"hello": 1}, "not a sonore-sketch"), ({**PAGE, "tab": "nope"}, "unknown tab")],
 )
 def test_other_documents_are_refused(document, message):
     with pytest.raises(ValueError, match=message):
@@ -63,7 +77,7 @@ def test_the_sonore_version_is_the_same_everywhere():
     # the worker installs it, documents are stamped with it, and pyproject.toml pins it (app.md, D5)
     root = Path(__file__).resolve().parents[1]
     worker = re.search(r'SONORE_VERSION = "([^"]+)"', (root / "app" / "worker.js").read_text()).group(1)
-    stamp = re.search(r'SONORE_VERSION = "([^"]+)"', (root / "app" / "tracks" / "model.js").read_text()).group(1)
+    stamp = re.search(r'SONORE_VERSION = "([^"]+)"', (root / "app" / "draw_speech" / "model.js").read_text()).group(1)
     pin = re.search(r'"sonore([<>=][^"]+)"', (root / "pyproject.toml").read_text()).group(1)
     assert worker == stamp
     major, minor = (int(part) for part in worker.split(".")[:2])
@@ -72,13 +86,13 @@ def test_the_sonore_version_is_the_same_everywhere():
 
 def test_the_longest_duration_is_the_same_everywhere():
     # one limit for every tab, and the page says what it is (app.md, D10)
-    from sonore_sketch import blobs, edit, events, mask, painted, paths, quilt
+    from sonore_sketch import draw_modulation, draw_path, draw_spectrogram, erase_modulation, erase_spectrogram, quilt_sound, scatter_events
 
     root = Path(__file__).resolve().parents[1]
-    longest = tracks.MAX_DURATION
-    assert {m.MAX_DURATION for m in (blobs, edit, events, mask, painted, paths, quilt)} == {longest}
+    longest = draw_speech.MAX_DURATION
+    assert {m.MAX_DURATION for m in (draw_modulation, draw_path, draw_spectrogram, erase_modulation, erase_spectrogram, quilt_sound, scatter_events)} == {longest}
     seconds = f"{longest:g}"
-    assert re.search(r"MAX_DURATION = (\S+);", (root / "app" / "tracks" / "model.js").read_text()).group(1) == seconds
+    assert re.search(r"MAX_DURATION = (\S+);", (root / "app" / "draw_speech" / "model.js").read_text()).group(1) == seconds
     assert re.search(r"MAX_RECORDING_S = (\S+);", (root / "app" / "sources.js").read_text()).group(1) == seconds
     html = (root / "index.html").read_text()
     label = re.search(r'<label class="duration".*?</label>', html, re.S).group(0)
@@ -96,11 +110,11 @@ def test_the_page_colors_levels_with_matplotlibs_magma_as_sonore_does():
 
 
 def test_handle_steps_reports_progress_and_returns_handles_result():
-    from sonore_sketch import blobs
+    from sonore_sketch import draw_modulation
 
-    state = {"blobs": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
-             "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": blobs.EXAMPLE_ITEMS}
-    work, fractions = page.handle_steps({"tab": "blobs", "state": state}), []
+    state = {"draw_modulation": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+             "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": draw_modulation.EXAMPLE_ITEMS}
+    work, fractions = page.handle_steps({"tab": "draw_modulation", "state": state}), []
     while True:
         try:
             fractions.append(next(work)[0])
@@ -108,23 +122,23 @@ def test_handle_steps_reports_progress_and_returns_handles_result():
             result = done.value
             break
     assert fractions == sorted(fractions) and fractions[0] == 0 and fractions[-1] < 1
-    expected = page.handle({"tab": "blobs", "state": state})
+    expected = page.handle({"tab": "draw_modulation", "state": state})
     assert result["samples"] == expected["samples"] and "modulation" in result
 
 
 def test_handle_steps_says_what_it_does_next():
-    from sonore_sketch import blobs
+    from sonore_sketch import draw_modulation
 
-    state = {"blobs": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
-             "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": blobs.EXAMPLE_ITEMS}
-    texts = [text for _, text in page.handle_steps({"tab": "blobs", "state": state})]
+    state = {"draw_modulation": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+             "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": draw_modulation.EXAMPLE_ITEMS}
+    texts = [text for _, text in page.handle_steps({"tab": "draw_modulation", "state": state})]
     assert texts == ["Synthesizing", "Iteration 1 of 2", "Iteration 2 of 2", "Measuring the result"]
 
 
 def test_a_document_without_its_tabs_section_says_so():
-    document = {**PAGE, "tab": "painted"}
-    document.pop("painted", None)
-    with pytest.raises(ValueError, match="no 'painted' section"):
+    document = {**PAGE, "tab": "draw_spectrogram"}
+    document.pop("draw_spectrogram", None)
+    with pytest.raises(ValueError, match="no 'draw_spectrogram' section"):
         page.synthesize(document)
 
 

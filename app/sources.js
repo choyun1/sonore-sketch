@@ -1,5 +1,5 @@
 // The sounds the Erase tabs erase from, and the recording the page holds
-// (docs/design/tabs/edit.md, E1, after the Erase spectrogram design's F1,
+// (docs/design/tabs/erase_modulation.md, E1, after the Erase spectrogram design's F1,
 // F3, F6). Both Erase tabs take the same sources and share the page's
 // recording, so their Source controls are made here too.
 //
@@ -8,10 +8,10 @@
 
 import { absolutePeak } from "./audio.js";
 
-export const SOURCES = ["syllables", "speech", "file"];
+export const SOURCES = ["syllables", "draw_speech", "file"];
 // The order every Source list keeps (Cho, 2026-10-17): sounds made here
 // first, then the tabs' sounds in the order of the tabs, then a file last.
-export const SOURCE_LABELS = { syllables: "Syllable train", speech: "Draw speech tab's sound", file: "From a file…" };
+export const SOURCE_LABELS = { syllables: "Syllable train", draw_speech: "Draw speech tab's sound", file: "From a file…" };
 export const MAX_RECORDING_S = 30; // F6: a recording sets the duration, up to the page's limit
 
 // --- recordings --------------------------------------------------------------------

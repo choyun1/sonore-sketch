@@ -42,10 +42,10 @@ FILES = json.loads((ROOT / "src" / "sonore_sketch" / "files.json").read_text())
 
 # One synthesis that goes through sonore, NumPy and SciPy's compiled code.
 RUN = """
-from sonore_sketch import page, blobs
-state = {"blobs": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
-         "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": blobs.EXAMPLE_ITEMS}
-len(page.handle({"tab": "blobs", "state": state})["samples"])
+from sonore_sketch import page, draw_modulation
+state = {"draw_modulation": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+         "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": draw_modulation.EXAMPLE_ITEMS}
+len(page.handle({"tab": "draw_modulation", "state": state})["samples"])
 """
 
 STEP = r"""

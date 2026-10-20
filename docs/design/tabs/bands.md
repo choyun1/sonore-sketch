@@ -1,6 +1,6 @@
 # Bands on the Modulation tab: band-limiting the blobs
 
-An addition to the Modulation tab (`blobs.md`). Today the carrier fills
+An addition to the Modulation tab (`draw_modulation.md`). Today the carrier fills
 every band from 100 to 6400 Hz, so wherever a blob sits on the plane, the
 sound covers the whole spectrogram. Cho asked (2026-10-05) for a way to
 band-limit it, perhaps as drawn tracks: a time-varying filter like a
@@ -9,7 +9,7 @@ formant, with up to about five bands. This note designs that.
 Status: decided (2026-10-05). Cho accepted every recommendation (K1–K7),
 and, for K7, chose that the measured modulation spectrum be analyzed within
 the bands. Built: steps 1 and 2 of the order of work, and the measured
-plane (`blobs.md`, B7) with K7's analysis within the bands (K-M4).
+plane (`draw_modulation.md`, B7) with K7's analysis within the bands (K-M4).
 
 This project is AI-assisted: the document and `tools/measure_bands.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -26,7 +26,7 @@ through a window, not a sheet across the whole range.
 
 ## How the claims are verified
 
-As in `blobs.md`: **[measure]** is printed by `tools/measure_bands.py`
+As in `draw_modulation.md`: **[measure]** is printed by `tools/measure_bands.py`
 (sonore 0.5.0 natively, 16 kHz, 100–6400 Hz, 12 bands per octave, the two
 starting blobs, rng 1, on a 4-core Linux cloud container, so not an
 independent check); **[read]** is read from sonore's source;
@@ -56,7 +56,7 @@ bands the tab sounds as it does now.
 
 The last two are a time-varying filter after synthesis; they work on any
 carrier, after iterations, and would work on a recording (the parked
-Filter recording tab, `mask.md`) without change. `so.Mask` already does
+Filter recording tab, `erase_spectrogram.md`) without change. `so.Mask` already does
 the multiplying [read: `sonore/views/mask.py`].
 
 ## Measurements
@@ -76,7 +76,7 @@ octave or more outside it, 3 s:
 The floor of −60 dB sets the limit; the routes differ by about 2 dB.
 
 **K-M2. Static bands keep the blobs; a moving band adds modulation of its
-own.** [measure] The B-M4 contrast of `blobs.md` (measured power where
+own.** [measure] The B-M4 contrast of `draw_modulation.md` (measured power where
 the drawing is within 6 dB of its peak over where it is 30 dB or more
 below), leaving out |rate| < 1 Hz, where a band's own spectral shape
 lands; tones, 3 s. "Band only" analyzes just the band's own range.
@@ -111,7 +111,7 @@ band, warm median of three:
 **K-M4. Measured within the bands, a moving band no longer hides the
 blobs.** [measure] The same contrast on the result's measured plane, tones,
 3 s, analyzed over the whole range or within the bands
-(`sonore_sketch.blobs.measured`: each band's envelope divided by the gain
+(`sonore_sketch.draw_modulation.measured`: each band's envelope divided by the gain
 the bands gave it, relative to its mean, weighted by that gain):
 
 | Band | whole range | within the bands |
@@ -241,7 +241,7 @@ loop. With bands drawn, the Iterations setting now does that: impose the
 blobs on the sound's envelopes *relative to the bands' gain* (as
 `measured` reads them, so the bands' motion is not what the blobs fight),
 give the gain back, put the bands on again, and repeat
-(`sonore_sketch.blobs._toward_blobs`). Without bands, iterations are
+(`sonore_sketch.draw_modulation._toward_blobs`). Without bands, iterations are
 `to_sound`'s, as before; the harmonic carrier takes them only with bands
 (K-M5b, below).
 
@@ -318,11 +318,11 @@ A static band's shape lands at rate 0, which the plane leaves out.
 2. The page: bands on the spectrogram panel, gestures, side panel, the
    page's own gain for the strips, the page check adding a band and
    hearing it. The Edit modulation work in the Handoff doc thread touches
-   `app/blobs/`; this step goes after it lands, or is rebased onto it.
+   `app/draw_modulation/`; this step goes after it lands, or is rebased onto it.
 
 ## References
 
-- `blobs.md` (the Modulation tab, B-M4, B7), `mask.md` (Filter recording,
+- `draw_modulation.md` (the Modulation tab, B-M4, B7), `erase_spectrogram.md` (Filter recording,
   parked).
 - sonore: `sonore/views/mask.py` (`Mask`), `sonore/frames/gabor.py`
   (`STFT`), `sonore/views/modulation.py` (`to_sound`).

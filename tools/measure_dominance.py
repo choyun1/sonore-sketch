@@ -36,7 +36,7 @@ import numpy as np
 import sonore as so
 from scipy.optimize import nnls
 
-from sonore_sketch import blobs as tab
+from sonore_sketch import draw_modulation as tab
 
 FS = 16000
 DURATION = 3.0
@@ -62,7 +62,7 @@ CASES = {
 
 
 def state(bands, depth=0.2):
-    return {"blobs": 1, "duration": DURATION, "fs": FS, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+    return {"draw_modulation": 1, "duration": DURATION, "fs": FS, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
             "carrier": "tones", "iterations": 0, "rms_depth": depth, "seed": 1,
             "items": tab.B9_ITEMS, "bands": bands}
 

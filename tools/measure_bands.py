@@ -17,7 +17,7 @@ The script prints:
 
 1. Rejection: the result's long-term level inside a static band over the
    level more than half an octave outside it, per route and carrier.
-2. Whether the blobs survive: the B-M4 contrast of blobs.md (drawn peak over
+2. Whether the blobs survive: the B-M4 contrast of draw_modulation.md (drawn peak over
    the rest), leaving out |rate| < 1 Hz, measured over the whole range and
    over the band's own range, for no band, static bands of 2 and 1 octaves,
    and a band gliding 1 octave per second.
@@ -35,7 +35,7 @@ import numpy as np
 import sonore as so
 
 FS = 16000
-F_LO, F_HI = 100.0, 6400.0  # the Draw modulation tab's carrier range (blobs.md, B9)
+F_LO, F_HI = 100.0, 6400.0  # the Draw modulation tab's carrier range (draw_modulation.md, B9)
 BPO = 12
 FLOOR_DB = -60.0
 SKIRT = 1 / 6  # octaves, the raised-cosine edge on each side
@@ -201,15 +201,15 @@ for duration in (3.0, 10.0):
         f()
         print(f"  {duration:4.1f} s {name:<10s} {statistics.median(timed(f) for _ in range(WARM_REPEATS)):6.2f} s")
 
-print("\n4. the measured plane within the bands (sonore_sketch.blobs.measured): B-M4 contrast as in 2, tones, 3 s")
-from sonore_sketch import blobs as tab  # noqa: E402
+print("\n4. the measured plane within the bands (sonore_sketch.draw_modulation.measured): B-M4 contrast as in 2, tones, 3 s")
+from sonore_sketch import draw_modulation as tab  # noqa: E402
 
 for name, bands in {
     "1 oct at 1 kHz": [{"points": [[0, 1000]], "width": 1, "level": 0}],
     "1 oct gliding 500->4000 Hz": [{"points": [[0, 500], [3, 4000]], "width": 1, "level": 0}],
     "2 oct gliding 300->2400 Hz": [{"points": [[0, 300], [3, 2400]], "width": 2, "level": 0}],
 }.items():
-    state = {"blobs": 1, "duration": 3.0, "fs": FS, "f_lo": F_LO, "f_hi": F_HI, "bands_per_octave": BPO, "carrier": "tones",
+    state = {"draw_modulation": 1, "duration": 3.0, "fs": FS, "f_lo": F_LO, "f_hi": F_HI, "bands_per_octave": BPO, "carrier": "tones",
              "iterations": 0, "rms_depth": 0.2, "seed": 1, "items": tab.B9_ITEMS, "bands": bands}
     drawn, sound = tab.target(state), tab.synthesize(state)
     near = ((np.abs(drawn.w_t) <= 32) & (np.abs(drawn.w_t) >= 1))[None, :] & (drawn.w_f <= 4)[:, None]

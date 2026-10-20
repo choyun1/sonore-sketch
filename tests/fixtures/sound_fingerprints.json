@@ -1,5 +1,5 @@
 {
- "tracks": {
+ "draw_speech": {
   "n_samples": 16000,
   "stretch_db": [
    -0.2595,
@@ -46,7 +46,7 @@
    -49.9631
   ]
  },
- "painted, tones": {
+ "draw_spectrogram, tones": {
   "n_samples": 16000,
   "stretch_db": [
    -19.9954,
@@ -93,7 +93,7 @@
    -33.1632
   ]
  },
- "painted, harmonic": {
+ "draw_spectrogram, harmonic": {
   "n_samples": 16000,
   "stretch_db": [
    -9.2427,
@@ -140,7 +140,7 @@
    -32.8702
   ]
  },
- "painted, noise": {
+ "draw_spectrogram, noise": {
   "n_samples": 16000,
   "stretch_db": [
    -14.0748,
@@ -187,7 +187,7 @@
    -33.313
   ]
  },
- "mask, syllables": {
+ "erase_spectrogram, syllables": {
   "n_samples": 16000,
   "stretch_db": [
    -0.8133,
@@ -234,7 +234,7 @@
    -49.9705
   ]
  },
- "blobs, tones": {
+ "draw_modulation, tones": {
   "n_samples": 16000,
   "stretch_db": [
    -0.5158,
@@ -281,7 +281,7 @@
    -200.0
   ]
  },
- "blobs, noise, B9, 2 iterations": {
+ "draw_modulation, noise, B9, 2 iterations": {
   "n_samples": 16000,
   "stretch_db": [
    -0.5121,
@@ -328,7 +328,7 @@
    -17.2187
   ]
  },
- "blobs, harmonic": {
+ "draw_modulation, harmonic": {
   "n_samples": 16000,
   "stretch_db": [
    0.2678,
@@ -375,7 +375,7 @@
    11.7596
   ]
  },
- "blobs, tones, band, 2 iterations": {
+ "draw_modulation, tones, band, 2 iterations": {
   "n_samples": 16000,
   "stretch_db": [
    -0.3306,
@@ -422,7 +422,7 @@
    -9.9671
   ]
  },
- "blobs, harmonic, band, 1 iteration": {
+ "draw_modulation, harmonic, band, 1 iteration": {
   "n_samples": 16000,
   "stretch_db": [
    0.3279,
@@ -469,7 +469,7 @@
    -43.34
   ]
  },
- "edit, source, 2 iterations": {
+ "erase_modulation, source, 2 iterations": {
   "n_samples": 16000,
   "stretch_db": [
    -2.2348,
@@ -516,7 +516,7 @@
    -17.3688
   ]
  },
- "edit, tones": {
+ "erase_modulation, tones": {
   "n_samples": 16000,
   "stretch_db": [
    0.3977,

@@ -11,7 +11,7 @@ accumulated sample by sample, theta_k(i) = theta_k(i-1) + 2 pi F_k(i) T. A
 time window below 30 Hz drops that tone. The question is whether
 ``so.harmonic_complex(duration, fs, (times, F_k), harmonics=[1])`` is that
 sinusoid, and what it does differently. Each line prints a measurement
-number (M1-M5, as in docs/design/tabs/tracks.md) and the value.
+number (M1-M5, as in docs/design/tabs/draw_speech.md) and the value.
 
     python tools/measure_sine_wave_route.py
 """

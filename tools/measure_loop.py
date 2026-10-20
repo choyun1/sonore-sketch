@@ -20,7 +20,7 @@ Lim do, gets some of that back. Three ways to spend ``n`` iterations:
 
 The script prints, per band case and iteration count:
 
-1. The B-M4 contrast of blobs.md on the measured plane within the bands
+1. The B-M4 contrast of draw_modulation.md on the measured plane within the bands
    (measured power where the drawing is within 6 dB of its peak over where
    it is 30 dB or more below, |rate| from 1 to 32 Hz, density <= 4), tones
    and noise, 3 s, the drawing the tab starts with.
@@ -37,7 +37,7 @@ import time
 import numpy as np
 import sonore as so
 
-from sonore_sketch import blobs as tab
+from sonore_sketch import draw_modulation as tab
 
 FS = 16000
 ITERATIONS = (0, 1, 2, 5, 10)
@@ -54,7 +54,7 @@ CASES = {
 
 
 def state(bands, carrier="tones", iterations=0):
-    return {"blobs": 1, "duration": 3.0, "fs": FS, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+    return {"draw_modulation": 1, "duration": 3.0, "fs": FS, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
             "carrier": carrier, "iterations": iterations, "rms_depth": 0.2, "seed": 1,
             "items": tab.B9_ITEMS, "bands": bands}
 

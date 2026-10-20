@@ -7,7 +7,7 @@ Each tab is one of sonore's ways back to sound, given a point-and-click
 surface. sonore does the synthesis; this project is only the interface.
 
 Status: accepted. Proposed 2026-10-04, replacing the TrackDraw-only
-proposal of 2026-10-03, which is now the Tracks tab (`tabs/tracks.md`).
+proposal of 2026-10-03, which is now the Tracks tab (`tabs/draw_speech.md`).
 Cho merged it on 2026-10-05 (TrackDraw PR #3), which accepts the
 recommendations below, and the name is settled (D1). As of 2026-10-06
 every step of the order of work is built: the shell and all five tabs,
@@ -39,7 +39,7 @@ code (`philosophy.md`, "Heavy dependencies are optional").
 
 ## How the claims are verified
 
-As in `tabs/tracks.md`: **[measure]** numbers come from a script in
+As in `tabs/draw_speech.md`: **[measure]** numbers come from a script in
 `tools/` that runs sonore (it says so in its docstring); **[estimate]**
 numbers give their basis. The native numbers here were measured on a
 4-core Linux cloud container, Python 3.11.15, NumPy 2.4.6, with sonore's
@@ -73,7 +73,7 @@ then the modulation spectrum (a transform of the spectrogram's envelope).
 
 | Tab | You draw | sonore call | In sonore 0.4.0? |
 |---|---|---|---|
-| **Tracks** (TrackDraw) | F1–F5, F0, AV, bandwidths as tracks over time, optionally over a recording's spectrogram | `so.klatt_synthesize`; sine-wave speech by a new function (`tabs/tracks.md`, D6) | Yes |
+| **Tracks** (TrackDraw) | F1–F5, F0, AV, bandwidths as tracks over time, optionally over a recording's spectrogram | `so.klatt_synthesize`; sine-wave speech by a new function (`tabs/draw_speech.md`, D6) | Yes |
 | **Painted spectrogram** | Level painted on time × log-frequency | `so.ripple_sound(pattern, ...)` with the painting as `pattern(t, x)` | Yes |
 | **Spectrogram mask** | A mask painted over a recording's spectrogram (erase a band, a moment, a harmonic) | `(stft * mask).to_sound()`, least squares (`GaborFrame`) | Yes |
 | **Modulation blobs** | Gaussian blobs on rate (Hz, signed) × density (cycles/octave): center, two widths, level; carrier, depth, seed | `ModulationSpectrum.from_blobs(...).to_sound(carrier=...)` | No: on sonore's main branch, unreleased |
@@ -90,7 +90,7 @@ docstring).
 
 **M1. Synthesis in the browser is fast enough; loading is the cost.**
 [measure] Cho's run of `tools/measure_pyodide_latency.py` (2026-10-03,
-Pyodide 314.0.7, details in `tabs/tracks.md`, M6): 1 s of Klatt speech in
+Pyodide 314.0.7, details in `tabs/draw_speech.md`, M6): 1 s of Klatt speech in
 0.13–0.22 s and 3 s in 0.36–0.48 s, but 16 s to load on a first visit and
 9 s on a reload, of which about 4 s is `import sonore` each time.
 [measure] 2026-10-13, `tools/measure_load.py` on a GitHub Actions runner
@@ -149,7 +149,7 @@ The duration is a setting of the whole page, from a fraction of a second
 up to a limit (D10), shown on the time axis of every tab. Lengthening or
 shortening it stretches what is drawn: track breakpoints and painted
 columns scale with it, as the paper's `dur` did (exactly for breakpoints,
-`tabs/tracks.md`, C3), and a modulation spectrum is redrawn on the new grid
+`tabs/draw_speech.md`, C3), and a modulation spectrum is redrawn on the new grid
 (`from_blobs` takes the duration). A tab over a recording takes the
 recording's length, up to the same limit.
 
@@ -159,7 +159,7 @@ Tabs are built from three primitives. They are the only drawing code, so
 each one is worth getting right once:
 
 - **Tracks**: a value over time, as breakpoints (point, line and freehand
-  tools; `tabs/tracks.md`, D4 and D10).
+  tools; `tabs/draw_speech.md`, D4 and D10).
 - **Blobs**: shapes on a plane, placed, dragged, resized by handles, deleted.
   Each blob is a `ModulationBlob` (rate, density, two widths, level).
 - **Paint**: a grid painted with a brush (size, softness, add or erase),
@@ -332,12 +332,12 @@ stretched to 2 s, as any change of duration stretches every tab's drawing,
 so 0.6 s gives it back as it was spoken.
 
 The Tracks tab's own decisions (scope, track model, file format, sine-wave
-speech upstream, drawing interaction) are in `tabs/tracks.md`.
+speech upstream, drawing interaction) are in `tabs/draw_speech.md`.
 The Painted tab's and the Paint primitive's decisions are in
-`tabs/painted.md`.
+`tabs/draw_spectrogram.md`.
 The Draw modulation tab's and the Blobs primitive's decisions are in
-`tabs/blobs.md`, the Erase modulation tab's in `tabs/edit.md`, and the
-Erase spectrogram (Mask) tab's in `tabs/mask.md`.
+`tabs/draw_modulation.md`, the Erase modulation tab's in `tabs/erase_modulation.md`, and the
+Erase spectrogram (Mask) tab's in `tabs/erase_spectrogram.md`.
 
 ## Order of work
 
@@ -348,7 +348,7 @@ After the decisions, each step a PR for Cho:
 2. The shell: tabs, the duration setting, the worker with Pyodide and
    sonore, playback, the result picture, save and open, load progress
    (D2–D4, D6, D10).
-3. The Tracks tab (`tabs/tracks.md`, its order of work).
+3. The Tracks tab (`tabs/draw_speech.md`, its order of work).
 4. The Paint primitive, then the Painted and Mask tabs.
 5. The Blobs primitive and tab, once sonore 0.5.0 is released (D5).
 6. Edit a modulation spectrum.

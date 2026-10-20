@@ -26,9 +26,9 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 SETTLE_S = 12
 SHOTS = {
-    "tracks": ("draw-speech.png", "dark"),
-    "painted": ("draw-spectrogram.png", "light"),
-    "paths": ("draw-path.png", "dark"),
+    "draw_speech": ("draw-speech.png", "dark"),
+    "draw_spectrogram": ("draw-spectrogram.png", "light"),
+    "draw_path": ("draw-path.png", "dark"),
 }
 
 

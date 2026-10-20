@@ -10,15 +10,15 @@ import { Log } from "./log.js";
 import { drawWaveform } from "./plot.js";
 import { encodeState, stateFromHash, tabFromHash } from "./share.js";
 import { clearTab, defaultPage, forLink, isStartingPage, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
-import { createBlobsTab } from "./blobs/tab.js";
-import { createEditTab } from "./edit/tab.js";
-import { createEventsTab } from "./events/tab.js";
-import { createMaskTab } from "./mask/tab.js";
-import { createPaintedTab } from "./painted/tab.js";
-import { createPathsTab } from "./paths/tab.js";
-import { createQuiltTab } from "./quilt/tab.js";
-import { SONORE_VERSION, clampDuration } from "./tracks/model.js";
-import { createTracksTab } from "./tracks/tab.js";
+import { createDrawModulationTab } from "./draw_modulation/tab.js";
+import { createEraseModulationTab } from "./erase_modulation/tab.js";
+import { createScatterEventsTab } from "./scatter_events/tab.js";
+import { createEraseSpectrogramTab } from "./erase_spectrogram/tab.js";
+import { createDrawSpectrogramTab } from "./draw_spectrogram/tab.js";
+import { createDrawPathTab } from "./draw_path/tab.js";
+import { createQuiltSoundTab } from "./quilt_sound/tab.js";
+import { SONORE_VERSION, clampDuration } from "./draw_speech/model.js";
+import { createDrawSpeechTab } from "./draw_speech/tab.js";
 
 const AUTOPLAY_MAX_S = 3; // longer sounds play on Play only (app.md, D10)
 
@@ -123,34 +123,34 @@ const hasRecording = () => Boolean(history.present.recording);
 // `play`: hear this edit whatever its length and Auto-play (New draw asks to hear another draw)
 const commitFrom = (id) => (state, { play = false } = {}) => change(withTabState(history.present, id, state), { play });
 const tabs = {
-  tracks: createTracksTab(byId("tab-tracks"), { commit: commitFrom("tracks") }),
-  painted: createPaintedTab(byId("tab-painted"), { commit: commitFrom("painted"), log }),
-  mask: createMaskTab(byId("tab-mask"), {
-    commit: commitFrom("mask"),
-    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "mask")),
+  draw_speech: createDrawSpeechTab(byId("tab-draw_speech"), { commit: commitFrom("draw_speech") }),
+  draw_spectrogram: createDrawSpectrogramTab(byId("tab-draw_spectrogram"), { commit: commitFrom("draw_spectrogram"), log }),
+  erase_spectrogram: createEraseSpectrogramTab(byId("tab-erase_spectrogram"), {
+    commit: commitFrom("erase_spectrogram"),
+    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "erase_spectrogram")),
     hasRecording,
     log,
   }),
-  blobs: createBlobsTab(byId("tab-blobs"), { commit: commitFrom("blobs") }),
-  edit: createEditTab(byId("tab-edit"), {
-    commit: commitFrom("edit"),
-    // a recording belongs to the page, and sets its duration (edit.md, E1)
+  draw_modulation: createDrawModulationTab(byId("tab-draw_modulation"), { commit: commitFrom("draw_modulation") }),
+  erase_modulation: createEraseModulationTab(byId("tab-erase_modulation"), {
+    commit: commitFrom("erase_modulation"),
+    // a recording belongs to the page, and sets its duration (erase_modulation.md, E1)
     openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds)),
     hasRecording,
     log,
   }),
-  paths: createPathsTab(byId("tab-paths"), { commit: commitFrom("paths"), hasRecording }),
-  events: createEventsTab(byId("tab-events"), { commit: commitFrom("events") }),
-  quilt: createQuiltTab(byId("tab-quilt"), {
-    commit: commitFrom("quilt"),
-    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "quilt")),
+  draw_path: createDrawPathTab(byId("tab-draw_path"), { commit: commitFrom("draw_path"), hasRecording }),
+  scatter_events: createScatterEventsTab(byId("tab-scatter_events"), { commit: commitFrom("scatter_events") }),
+  quilt_sound: createQuiltSoundTab(byId("tab-quilt_sound"), {
+    commit: commitFrom("quilt_sound"),
+    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "quilt_sound")),
     hasRecording,
     log,
   }),
 };
 // The tab shown is not an edit (undo does not switch tabs); it is saved with
 // the document, so a link opens on the tab it was made on.
-let tab = tabs[initial.tab] ?? tabs.tracks;
+let tab = tabs[initial.tab] ?? tabs.draw_speech;
 const tabButtons = [...document.querySelectorAll(".tabs [data-tab]")];
 
 function showTab() {
@@ -244,7 +244,7 @@ function afterChange({ play = false } = {}) {
 const progress = document.createElement("div");
 progress.className = "synth-progress";
 progress.innerHTML = `<div class="bar"></div><span class="label"></span>`;
-let requests = 0; // counts synthesize() calls: only the newest shows its progress
+let latestRequest = 0; // counts synthesize() calls: only the newest shows its progress
 let running = null; // {play, key, made} while a synthesis is under way
 
 let progressStarted = 0; // when the shown synthesis started (performance.now())
@@ -304,7 +304,7 @@ async function madeAhead(id, key) {
 
 async function synthesize({ play }) {
   const page = history.present;
-  const asked = tab;
+  const askedTab = tab;
   const state = tabState(page, tab.id);
   const key = `${tab.id} ${JSON.stringify(state)}`;
   if (running?.key === key) {
@@ -312,7 +312,7 @@ async function synthesize({ play }) {
     running.play ||= play;
     return running.made.catch(() => null);
   }
-  const mine = ++requests;
+  const thisRequest = ++latestRequest;
   if (result?.key === key) {
     running = null;
     showProgress(null);
@@ -320,7 +320,7 @@ async function synthesize({ play }) {
     return result.sound;
   }
   const blocked = await tab.blocked?.();
-  if (mine !== requests) return null; // a newer drawing came while this tab read its own
+  if (thisRequest !== latestRequest) return null; // a newer drawing came while this tab read its own
   if (blocked) {
     running = null;
     showProgress(null);
@@ -329,20 +329,20 @@ async function synthesize({ play }) {
     status(blocked);
     return null;
   }
-  const ahead = await madeAhead(tab.id, key);
-  if (mine !== requests) return null;
-  if (ahead) {
+  const madeAheadSound = await madeAhead(tab.id, key);
+  if (thisRequest !== latestRequest) return null;
+  if (madeAheadSound) {
     running = null;
     showProgress(null);
-    result = { key, page, sound: ahead };
+    result = { key, page, sound: madeAheadSound };
     showResult();
     status(ready ? `Made ${page.duration} s ahead of time.` : "Made ahead of time: press Play. Your own drawings are made once sonore has loaded.");
     if (!player.playing) {
       ui.play.disabled = false;
       ui.play.textContent = "▶ Play";
     }
-    if (play) start(ahead);
-    return ahead;
+    if (play) start(madeAheadSound);
+    return madeAheadSound;
   }
   if (!ready) {
     running = null;
@@ -352,29 +352,29 @@ async function synthesize({ play }) {
   }
   status(page.duration > 1 ? `Synthesizing ${page.duration} s…` : "Synthesizing…");
   const askedAt = performance.now();
-  const made = engine.synthesize({ tab: tab.id, state }, (fraction, text) => mine === requests && showProgress(fraction, text));
+  const made = engine.synthesize({ tab: tab.id, state }, (fraction, text) => thisRequest === latestRequest && showProgress(fraction, text));
   const asking = (running = { play, key, made });
   showProgress(undefined);
   let sound;
   try {
     sound = await made;
   } catch (error) {
-    if (mine !== requests) return null; // a newer drawing is being made; this one's failure no longer matters
+    if (thisRequest !== latestRequest) return null; // a newer drawing is being made; this one's failure no longer matters
     running = null;
     showProgress(null);
     status(`Synthesis failed: ${error.message} (see Log; Reset starts again)`, true);
     log.error(`synthesis failed: ${error.message}`, error.detail ?? "");
-    if (tab === asked && history.present === page) tab.failed?.(error.message);
+    if (tab === askedTab && history.present === page) tab.failed?.(error.message);
     return null;
   }
-  if (mine === requests) {
+  if (thisRequest === latestRequest) {
     running = null;
     showProgress(null);
   }
   if (!sound) return null; // a newer drawing replaced this request
   // The drawing changed while this was made, to one that asks for no sound
   // (nothing drawn) or to another tab: this sound is no longer what is shown.
-  if (tab !== asked || history.present !== page) return null;
+  if (tab !== askedTab || history.present !== page) return null;
   result = { key, page, sound };
   showResult();
   // the whole wait, pictures of the result included; the log also has synthesis alone
