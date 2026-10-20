@@ -4,7 +4,7 @@ Take a sound, analyze its modulation spectrum, cut parts of it with a mask
 painted on rate x density, and hear the sound rebuilt from what is left
 (docs/design/tabs/edit.md)::
 
-    {"edit": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000,
+    {"edit": 1, "sonore": "0.8.0", "duration": 3.0, "fs": 16000,
      "source": "syllables", "carrier": "source", "iterations": 5, "seed": 1,
      "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
      "columns": 193, "rows": 48, "floor_db": -60, "levels": "<base64 of deflated bytes>",
@@ -183,7 +183,9 @@ def steps(state: Mapping[str, Any]) -> Iterator[shared.Step]:
         if carrier == "source":
             sound = edited.to_sound(carrier=original)
         else:
-            sound = edited.to_sound(carrier=carrier, fs=float(state["fs"]), rng=int(state.get("seed", 1)))
+            fs, seed = float(state["fs"]), int(state.get("seed", 1))
+            carried = shared.modulation_carrier(carrier, original.duration, fs, seed)
+            sound = edited.to_sound(carrier=carried, fs=fs, rng=seed)
     clipped = clipped_fraction(caught)
     yield 3 / total, shared.iteration_text(0, iterations)
     for i in range(iterations):  # to_sound's own iterations, one at a time (as on the Draw modulation tab)

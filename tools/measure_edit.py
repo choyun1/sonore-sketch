@@ -71,8 +71,8 @@ cases = {
     "analysis (octave)": lambda d: analyze(sources[d]),
     "gain + source, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier=sources[d]),
     "gain + source, 5 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier=sources[d], iterations=5),
-    "gain + tones, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier="tones", fs=FS, rng=1),
-    "gain + noise, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier="noise", fs=FS, rng=1),
+    "gain + tones, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier="tone", fs=FS, rng=1),
+    "gain + noise, 0 iterations": lambda d: analyze(sources[d]).with_gain(lowpass).to_sound(carrier=so.gaussian_noise(d, FS, rng=1), rng=1),
 }
 for name, function in cases.items():
     cells = []
@@ -97,9 +97,9 @@ for name, options in (
     ("source, 0 iterations", dict(carrier=source)),
     ("source, 5 iterations", dict(carrier=source, iterations=5)),
     ("source, 20 iterations", dict(carrier=source, iterations=20)),
-    ("tones, 0 iterations", dict(carrier="tones", fs=FS, rng=1)),
-    ("tones, 5 iterations", dict(carrier="tones", fs=FS, rng=1, iterations=5)),
-    ("noise, 0 iterations", dict(carrier="noise", fs=FS, rng=1)),
+    ("tones, 0 iterations", dict(carrier="tone", fs=FS, rng=1)),
+    ("tones, 5 iterations", dict(carrier="tone", fs=FS, rng=1, iterations=5)),
+    ("noise, 0 iterations", dict(carrier=so.gaussian_noise(source.duration, FS, rng=1), rng=1)),
 ):
     result = original.with_gain(lowpass).to_sound(**options)
     print(f"  {name:<24s} {before - band_power(analyze(result)):5.1f} dB less")
@@ -112,7 +112,7 @@ def sweeps(ms):
     up = 10 * np.log10(np.mean(10 ** (ms.level[np.ix_(d, r & (ms.w_t < 0))] / 10)))
     return down - up
 print(f"  source {sweeps(original):5.1f} dB")
-for name, options in (("source, 0 iterations", dict(carrier=source)), ("source, 5 iterations", dict(carrier=source, iterations=5)), ("tones, 0 iterations", dict(carrier="tones", fs=FS, rng=1))):
+for name, options in (("source, 0 iterations", dict(carrier=source)), ("source, 5 iterations", dict(carrier=source, iterations=5)), ("tones, 0 iterations", dict(carrier="tone", fs=FS, rng=1))):
     result = original.with_gain(lambda r, d: (r * d <= 0).astype(float)).to_sound(**options)
     print(f"  {name:<24s} {sweeps(analyze(result)):5.1f} dB")
 

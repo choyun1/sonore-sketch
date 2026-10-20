@@ -1,5 +1,6 @@
 """What more than one tab's module needs: checking a number, running a tab's
-steps, and a mask of cuts stored as text.
+steps, the tones and noise carriers of a modulation spectrum, and a mask of
+cuts stored as text.
 """
 
 from __future__ import annotations
@@ -12,11 +13,27 @@ from collections.abc import Iterator, Mapping
 from typing import Any
 
 import numpy as np
+import sonore as so
 
 
 def number(value: Any) -> bool:
     """Whether ``value`` is a finite number (and not a bool)."""
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+# --- the tones and noise carriers ------------------------------------------------------
+
+
+def modulation_carrier(name: str, duration: float, fs: float, seed: int) -> str | so.Sound:
+    """What ``ModulationSpectrum.to_sound`` takes for the page's "tones" and
+    "noise" carriers. Since sonore 0.8 it has a ``"tone"`` carrier and no
+    ``"noise"``: a noise is passed as a Sound (with ``rng``, so only its fine
+    structure is used), here a white noise drawn from ``seed``."""
+    if name == "tones":
+        return "tone"
+    if name == "noise":
+        return so.gaussian_noise(duration, fs, rng=seed)
+    raise ValueError(f"no modulation carrier called {name!r}")
 
 
 # --- a tab's steps ---------------------------------------------------------------------

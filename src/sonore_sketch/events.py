@@ -5,7 +5,7 @@ One short event is copied at random times by ``so.event_train``, at a drawn
 rate, with sliders for how regular the timing is and how much each copy's
 level and pitch vary (docs/design/tabs/events.md)::
 
-    {"events": 1, "sonore": "0.7.0", "duration": 3.0, "fs": 16000,
+    {"events": 1, "sonore": "0.8.0", "duration": 3.0, "fs": 16000,
      "event": "chirp", "length": 0.03, "f_low": 2000, "f_high": 6000,
      "tone": "pure", "frequency": 1000, "harmonics": 8,
      "noise_low": 100, "noise_high": 7500, "decay": 0.008, "cutoff": 2000,

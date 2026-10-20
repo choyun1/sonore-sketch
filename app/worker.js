@@ -14,12 +14,12 @@
 import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
 
 const PYODIDE_VERSION = "314.0.7"; // what Cho measured on 2026-10-03 (tracks.md, M6)
-const SONORE_VERSION = "0.7.0"; // keep in step with pyproject.toml (app.md, D5)
+const SONORE_VERSION = "0.8.0"; // keep in step with pyproject.toml (app.md, D5)
 // The wheel's file on PyPI (from https://pypi.org/project/sonore/<version>/#files),
 // which is fetched directly: PyPI's by-name address redirects without the
 // header that lets a page fetch it. Change it with SONORE_VERSION (tests/test_page.py checks).
 const SONORE_WHEEL =
-  "https://files.pythonhosted.org/packages/ff/ce/3035d3609ca822be92e2ed8d4871cc83edb8569aba4424d1b374aa93d2ab/sonore-0.7.0-py3-none-any.whl";
+  "https://files.pythonhosted.org/packages/e2/f2/d8ede42dd19d19bd7a9343f60a2f2f6a0060fb48ffe8713c17671462b478/sonore-0.8.0-py3-none-any.whl";
 // The package's modules are listed in src/sonore_sketch/files.json (tests/test_page.py
 // checks it), fetched with the modules rather than written here: just after a
 // deploy the browser can still run its kept copy of this file, and an old list

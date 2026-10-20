@@ -39,7 +39,7 @@ def free_port() -> int:
 # The Draw speech example before it said "sonore": an /aɪ/-like glide, as a
 # TrackDraw link, which the page still opens.
 GLIDE = {
-    "trackdraw": 1, "sonore": "0.7.0", "duration": 0.6, "fs": 16000, "mode": "klatt",
+    "trackdraw": 1, "sonore": "0.8.0", "duration": 0.6, "fs": 16000, "mode": "klatt",
     "params": {
         "F0": [[0, 0.6], [125, 95]], "AV": [[0, 0.03, 0.55, 0.6], [0, 60, 60, 0]],
         "F1": [[0, 0.15, 0.45, 0.6], [700, 700, 400, 380]], "F2": [[0, 0.15, 0.45, 0.6], [1100, 1100, 2000, 2100]],

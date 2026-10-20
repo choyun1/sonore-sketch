@@ -4,13 +4,13 @@ import sonore as so
 
 from sonore_sketch import page, quilt, sources
 
-STATE = {"quilt": 1, "sonore": "0.7.0", "duration": 2.0, "fs": 16000, "source": "syllables", "segment": 0.06, "seed": 1}
+STATE = {"quilt": 1, "sonore": "0.8.0", "duration": 2.0, "fs": 16000, "source": "syllables", "segment": 0.06, "seed": 1}
 
 
 def test_the_quilt_is_sonores_of_the_source_padded_to_the_duration():
     sound, original, count = quilt.shared.finish(quilt.steps(STATE))
     assert sound.n_samples == original.n_samples == 32000
-    assert count == 33  # every whole 60 ms segment of 2 s, each once
+    assert count == 32  # all but one of the 33 whole 60 ms segments of 2 s, each once
     made = so.quilt(original, 0.06, count * 0.06, rng=1).data[:, 0]
     kept = sound.data[: made.size, 0]
     np.testing.assert_allclose(kept, made * np.sqrt(np.mean(kept**2) / np.mean(made**2)), atol=1e-6)  # only the level differs
@@ -28,11 +28,11 @@ def test_a_quilt_is_not_the_source_in_order():
     assert abs(np.corrcoef(sound.data[:, 0], original.data[:, 0])[0, 1]) < 0.5
 
 
-def test_when_sonore_runs_out_of_segments_the_quilt_has_one_fewer():
-    # 2 s of 30 ms segments, seed 0: a quilt of all 66 runs out of choices near its end
+def test_the_quilt_has_one_segment_fewer_than_the_source_on_every_seed():
+    # 2 s of 30 ms segments: 66 whole segments, and sonore keeps one spare
     state = {**STATE, "segment": 0.03}
     counts = {quilt.shared.finish(quilt.steps({**state, "seed": seed}))[2] for seed in range(20)}
-    assert counts <= {65, 66} and 66 in counts
+    assert counts == {65}
 
 
 def test_too_few_segments_say_what_to_change():
@@ -44,13 +44,13 @@ def test_the_page_result_holds_the_source_and_the_segments():
     result = page.handle({"tab": "quilt", "state": STATE})
     picture = result["source_stft"]
     assert len(picture["data"]) == picture["n_freqs"] * picture["n_windows"]
-    assert result["segments"] == 33 and result["segment_s"] == 0.06
+    assert result["segments"] == 32 and result["segment_s"] == 0.06
 
 
 def test_a_page_document_gives_the_quilt_state_its_source():
     tracks = {"mode": "klatt", "params": {"F0": 120}}
     section = {"source": "speech", "segment": 0.06, "seed": 1}
-    document = {"app": "sonore-sketch", "version": 2, "sonore": "0.7.0", "duration": 1.0, "fs": 16000, "tab": "quilt",
+    document = {"app": "sonore-sketch", "version": 2, "sonore": "0.8.0", "duration": 1.0, "fs": 16000, "tab": "quilt",
                 "tracks": tracks, "quilt": section, "recording": {"name": "x", "fs": 16000, "pcm16": ""}}
     state = page.tab_state(document)
     assert state["speech"] == tracks and "recording" not in state and state["quilt"] == quilt.FORMAT
@@ -101,7 +101,7 @@ def test_odd_recordings_make_a_finite_quilt_at_the_page_level(samples):
 
 def test_a_source_of_exactly_three_segments_still_makes_a_quilt():
     sound, _, count = quilt.shared.finish(quilt.steps({**STATE, "duration": 0.18}))
-    assert 2 <= count <= 3 and sound.rms > 0
+    assert count == 2 and sound.rms > 0
 
 
 @pytest.mark.parametrize("tab", ["painted", "blobs", "events"])
