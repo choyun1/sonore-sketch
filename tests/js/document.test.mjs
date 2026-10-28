@@ -14,12 +14,14 @@ test("the default page holds the Draw speech tab's default drawing", () => {
 test("Draw speech starts at its word's 0.6 s, every other tab at 2 s", () => {
   assert.equal(defaultPage().duration, 0.6);
   assert.equal(START_DURATION, 2);
-  for (const tab of ["draw_spectrogram", "erase_spectrogram", "draw_modulation", "erase_modulation", "draw_path", "scatter_events", "quilt_sound", "match_texture"]) {
+  for (const tab of ["draw_voice", "draw_spectrogram", "erase_spectrogram", "draw_modulation", "erase_modulation", "draw_path", "scatter_events", "quilt_sound", "match_texture"]) {
     const page = defaultPage(tab);
     assert.equal(page.duration, 2, tab);
     assert.equal(page.tab, tab);
-    assert.deepEqual({ ...page, duration: 0.6, tab: "draw_speech", draw_speech: defaultPage().draw_speech }, defaultPage()); // the same drawings
-    assert.deepEqual(stretchPage(page, 0.6).draw_speech, defaultPage().draw_speech); // the word, stretched to 2 s
+    const { draw_speech: speech, draw_voice: voice } = defaultPage();
+    assert.deepEqual({ ...page, duration: 0.6, tab: "draw_speech", draw_speech: speech, draw_voice: voice }, defaultPage()); // the same drawings
+    assert.deepEqual(stretchPage(page, 0.6).draw_speech, speech); // the word, stretched to 2 s
+    assert.deepEqual(stretchPage(page, 0.6).draw_voice, voice); // and the voice
   }
 });
 

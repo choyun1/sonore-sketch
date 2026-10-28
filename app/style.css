@@ -383,3 +383,23 @@ canvas.mod-pooled, canvas.mod-frame {
   .scatter-events-area { grid-template-columns: minmax(0, 1fr); }
   .scatter-events-area > canvas.mod-frame { grid-column: 1; grid-row: auto; height: 260px; min-height: 0; }
 }
+
+/* the Draw a voice tab: the source's tracks, the filter's moments and the result share one time axis; the filter's curve under them */
+.draw-voice-body { display: flex; gap: 12px; align-items: flex-start; }
+.draw-voice-area { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.draw-voice-area canvas {
+  display: block; width: 100%;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.draw-voice-area canvas.pitch { height: 140px; cursor: crosshair; touch-action: none; }
+.draw-voice-area canvas.breath { height: 100px; cursor: crosshair; touch-action: none; }
+.draw-voice-area canvas.moments { height: 30px; background: none; border: none; cursor: pointer; touch-action: none; }
+.draw-voice-area canvas.filter { height: min(34vh, 240px); min-height: 180px; cursor: crosshair; touch-action: none; }
+.draw-voice-area canvas.stft { height: 170px; margin-top: 0; }
+.draw-voice-body .side .add, .draw-voice-body .side .remove { display: block; width: 100%; margin-top: 4px; }
+.draw-voice-body .side select.vowel { width: 100%; }
+.draw-voice-body .side .moment-name { margin: 0 0 4px; font-size: 12px; }
+.draw-voice-body .side .check { display: flex; padding: 2px 0; }
+@media (max-width: 720px) {
+  .draw-voice-body { flex-direction: column-reverse; align-items: stretch; }
+}

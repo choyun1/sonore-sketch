@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sonore_sketch import draw_modulation, erase_modulation, erase_spectrogram, page, draw_spectrogram, draw_speech
+from sonore_sketch import draw_modulation, draw_voice, erase_modulation, erase_spectrogram, page, draw_spectrogram, draw_speech
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "sound_fingerprints.json"
@@ -66,8 +66,17 @@ def _cases() -> dict[str, dict]:
         "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12, "columns": erase_modulation.COLUMNS, "rows": erase_modulation.ROWS,
         "floor_db": erase_modulation.FLOOR_DB, "levels": erase_modulation.EXAMPLE_LEVELS,
     }
+    f = draw_voice.points()
+    e = draw_voice.erb_number(f)
+    vowel = [np.round(np.clip(-40 + sum(40 * np.exp(-0.5 * (e - draw_voice.erb_number(p)) ** 2) for p in peaks), -60, 0), 1).tolist()
+             for peaks in ((700, 1100, 2500), (300, 2300, 3000))]
+    voice = {
+        "draw_voice": draw_voice.FORMAT, **common, "f0": [[0, 0.4, 0.4001, 0.55, 0.5501, DURATION], [130, 110, 0, 0, 120, 95]],
+        "breathiness": [[0, DURATION], [0.001, 0.3]], "filter": {"f": f.tolist(), "moments": [0.2, 0.8], "db": vowel}, "seed": 1,
+    }
     return {
         "draw_speech": ("draw_speech", {"trackdraw": draw_speech.FORMAT, **common, "mode": "klatt", "seed": 3, "params": _speech_params()}),
+        "draw_voice, unvoiced gap, breathier": ("draw_voice", voice),
         "draw_spectrogram, tones": ("draw_spectrogram", {**painting, "carrier": "tones"}),
         "draw_spectrogram, harmonic": ("draw_spectrogram", {**painting, "carrier": "harmonic"}),
         "draw_spectrogram, noise": ("draw_spectrogram", {**painting, "carrier": "noise"}),

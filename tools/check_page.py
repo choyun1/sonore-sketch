@@ -384,7 +384,7 @@ def main() -> None:
             page.keyboard.press("Home")
             expect(page.locator("#tab-draw_speech")).to_be_visible()
             assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "draw_speech"
-            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 8
+            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 9
             expect(status).to_contain_text("Made", timeout=60_000)
             print("tabs: the arrow keys and Home move between the tabs")
 
@@ -409,6 +409,7 @@ def main() -> None:
             assert drawn[0][1] < 0 < drawn[-1][1] and drawn[-1][2] > drawn[0][2] > 0, (drawn[0], drawn[-1])  # left to right, ahead, moving away
             assert all(later[0] >= earlier[0] for earlier, later in zip(drawn, drawn[1:]))
             expect(status).to_contain_text("Made", timeout=120_000)
+            page.locator("canvas.elevation").scroll_into_view_if_needed()  # ten tabs' labels take two lines, which pushes it below 900 px
             lift = page.locator("canvas.elevation").bounding_box()
             page.mouse.move(lift["x"] + 60, lift["y"] + lift["height"] - 40)
             page.mouse.down()
@@ -555,6 +556,55 @@ def main() -> None:
             expect(status).to_contain_text("Made", timeout=60_000)
             print("Match a texture: the result, its source and the bars are drawn; iterations and the groups kept apply")
 
+            # The Draw a voice tab: a pitch stroke, an unvoiced stretch, a
+            # breathiness stroke, a curve drawn, a vowel, a moment added and
+            # moved are each saved and heard; Clear leaves a steady buzz.
+            page.click(".tabs [data-tab=draw_voice]")
+            expect(page.locator("#tab-draw_voice")).to_be_visible()
+            expect(status).to_contain_text("Made", timeout=60_000)
+            voice = lambda: page_document_in(page)["draw_voice"]  # noqa: E731
+            duration = page_document_in(page)["duration"]
+
+            def drag(selector, points):
+                box = page.locator(f"#tab-draw_voice {selector}").bounding_box()
+                page.mouse.move(box["x"] + points[0][0] * box["width"], box["y"] + points[0][1] * box["height"])
+                page.mouse.down()
+                for x, y in points[1:]:
+                    page.mouse.move(box["x"] + x * box["width"], box["y"] + y * box["height"], steps=6)
+                page.mouse.up()
+
+            before = voice()["f0"]
+            drag("canvas.pitch", [(0.3, 0.3), (0.5, 0.2)])
+            assert voice()["f0"] != before and max(voice()["f0"][1]) > 150
+            page.check("#tab-draw_voice input[value=unvoice]")
+            drag("canvas.pitch", [(0.7, 0.5), (0.8, 0.5)])
+            assert 0 in voice()["f0"][1]
+            drag("canvas.breath", [(0.4, 0.3), (0.6, 0.3)])
+            assert max(voice()["breathiness"][1]) > 0.3
+            curve = voice()["filter"]["db"][0]
+            drag("canvas.filter", [(0.3, 0.2), (0.6, 0.6)])
+            assert voice()["filter"]["db"][0] != curve
+            page.select_option("#tab-draw_voice .vowel", "e")
+            assert voice()["filter"]["db"][0] != curve
+            page.click("#tab-draw_voice .add")
+            assert len(voice()["filter"]["moments"]) == 4
+            moments = voice()["filter"]["moments"]
+            box = page.locator("#tab-draw_voice canvas.moments").bounding_box()
+            x_of = lambda t: box["x"] + 52 + t / duration * (box["width"] - 62)  # noqa: E731
+            page.mouse.move(x_of(moments[-1]), box["y"] + box["height"] / 2)
+            page.mouse.down()
+            page.mouse.move(x_of(moments[-1]) - 20, box["y"] + box["height"] / 2, steps=4)
+            page.mouse.up()
+            assert voice()["filter"]["moments"][-1] < moments[-1]
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.click("#clear")
+            assert voice()["f0"] == [[0], [100]] and len(voice()["filter"]["moments"]) == 1
+            expect(status).to_contain_text("Made", timeout=60_000)
+            assert page.evaluate("[...document.querySelector('#tab-draw_voice canvas.stft').getContext('2d').getImageData(120, 80, 1, 1).data].some((v) => v > 0)")
+            page.click(".tabs [data-tab=draw_speech]")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("Draw a voice: pitch, unvoicing, breathiness, a drawn curve, a vowel, adding and moving a moment, and Clear work")
+
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore
             # refuses offers the depth that fits; New draw, Delete, Clear, Undo.
@@ -659,7 +709,7 @@ def main() -> None:
             section = page_document_in(page)["draw_modulation"]
             assert section["carrier"] == "harmonic" and section["f0"] == 150, section
             colors = page.evaluate(
-                """() => { const c = document.querySelector('canvas.stft');
+                """() => { const c = document.querySelector('#tab-draw_modulation canvas.stft');
                     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
                     const seen = new Set(); for (let i = 0; i < d.length; i += 4) seen.add(d[i] * 65536 + d[i + 1] * 256 + d[i + 2]);
                     return seen.size; }"""

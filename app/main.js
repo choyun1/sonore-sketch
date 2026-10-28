@@ -20,6 +20,7 @@ import { createQuiltSoundTab } from "./quilt_sound/tab.js";
 import { createMatchTextureTab } from "./match_texture/tab.js";
 import { SONORE_VERSION, clampDuration } from "./draw_speech/model.js";
 import { createDrawSpeechTab } from "./draw_speech/tab.js";
+import { createDrawVoiceTab } from "./draw_voice/tab.js";
 
 const AUTOPLAY_MAX_S = 3; // longer sounds play on Play only (app.md, D10)
 
@@ -125,6 +126,7 @@ const hasRecording = () => Boolean(history.present.recording);
 const commitFrom = (id) => (state, { play = false } = {}) => change(withTabState(history.present, id, state), { play });
 const tabs = {
   draw_speech: createDrawSpeechTab(byId("tab-draw_speech"), { commit: commitFrom("draw_speech") }),
+  draw_voice: createDrawVoiceTab(byId("tab-draw_voice"), { commit: commitFrom("draw_voice") }),
   draw_spectrogram: createDrawSpectrogramTab(byId("tab-draw_spectrogram"), { commit: commitFrom("draw_spectrogram"), log }),
   erase_spectrogram: createEraseSpectrogramTab(byId("tab-erase_spectrogram"), {
     commit: commitFrom("erase_spectrogram"),

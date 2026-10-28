@@ -9,9 +9,10 @@ The sound comes from `so.source_filter_synthesize`, the harmonics-plus-noise
 resynthesis sonore uses after its WORLD-style analysis (F0 track,
 CheapTrick envelope, D4C aperiodicity).
 
-Status: proposed. Cho asked for this tab on 2026-10-28, from the list of
-ideas for new tabs offered with Match a texture. Nothing is built yet; the
-decisions (S1-S11) are for Cho.
+Status: the drawn tab is built (see "As built" at the end). Cho asked for
+this tab on 2026-10-28, from the list of ideas for new tabs offered with
+Match a texture, and accepted every recommendation (S1-S11) the same day.
+Starting from a sound (S6) is the next step.
 
 This project is AI-assisted: the document and `tools/measure_draw_voice.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -176,6 +177,8 @@ At the page's duration and rate, on a 5 ms grid with a 1024-point FFT:
 is being confused with Draw speech; the README line and the tab's first
 sentence say the difference (the filter is a curve, not resonances).
 
+*Decided (2026-10-28):* as recommended.
+
 **S2. How the filter is drawn.** (a) Envelope curves (dB over frequency)
 at moments placed on the time axis, blended between moments; the page
 starts with three and the reader can add, move and remove them; (b) a
@@ -186,11 +189,15 @@ it, and blending between moments makes a diphthong or a word from a few
 curves. (b) is Draw spectrogram again with the harmonics laid under it,
 and (c) is (a) with one moment.
 
+*Decided (2026-10-28):* as recommended.
+
 **S3. The curve's points and axes.** 48 points equally spaced on the ERB
 scale from 50 Hz to 8 kHz (V3), on a dB axis 60 dB tall; a point dragged
 below the axis sits at its floor.
 *Recommended:* as stated. 32 points would do for drawn vowels, but 48
 keeps a measured envelope (S6) to within 1.5 dB.
+
+*Decided (2026-10-28):* as recommended.
 
 **S4. What the source has.** (a) A pitch line (50 to 500 Hz on a log axis,
 erased stretches unvoiced) and a breathiness line (the share of noise,
@@ -203,12 +210,16 @@ noise" needs no rule to explain. (b) invents a rule sonore does not have.
 (c) would mix the source into the filter, which is the thing the tab
 separates; it can come later if wanted.
 
+*Decided (2026-10-28):* as recommended.
+
 **S5. The starting drawing.** (a) /a/, /i/, /u/ at 10%, 50% and 90% of
 the sound on a falling pitch with a rise in the middle, breathiness 0.1%
 (the drawn voice measured above); (b) one /a/ on a flat 120 Hz;
 (c) the Draw speech tab's word, measured (needs S6).
 *Recommended:* (a). It moves, so the first sound already shows the filter
 changing and the pitch changing separately.
+
+*Decided (2026-10-28):* as recommended.
 
 **S6. Starting from a sound.** (a) Not offered; (b) a Source list (as on
 Quilt a sound) and "Take the source": the sound's F0 and its power-weighted
@@ -223,6 +234,8 @@ at long durations (V4: about 25 to 30 s in the browser for 30 s), so it
 runs once per Take or Copy, with the page's progress label, not on every
 stroke. (d) would need a second kind of filter on the page.
 
+*Decided (2026-10-28):* as recommended.
+
 **S7. The buzz.** sonore starts every harmonic in cosine phase, so each
 period is a single sharp pulse, buzzier than a voice. (a) Accept it, as
 sonore's own resynthesis does; (b) a small sonore change: pass
@@ -232,19 +245,27 @@ sonore's own resynthesis does; (b) a small sonore change: pass
 *Recommended:* (a) for this tab, and (b) raised with sonore separately if
 Cho wants it. (c) would copy sonore's level bookkeeping into sonore-sketch.
 
+*Decided (2026-10-28):* as recommended.
+
 **S8. Duration.** The page's duration, up to 30 s (V1: about 7 to 11 s in
 the browser at 30 s), without a slow note.
 *Recommended:* as stated, one rule for every tab.
+
+*Decided (2026-10-28):* as recommended.
 
 **S9. Where it goes.** (a) Right after Draw speech, its neighbour in
 subject; (b) last, after Match a texture.
 *Recommended:* (a). Tab id `draw_voice`, link `#tab=draw-a-voice`. Its
 sound is not offered as a source to other tabs in this step.
 
+*Decided (2026-10-28):* as recommended.
+
 **S10. The noise's seed.** (a) A fixed seed, saved, with no New draw
 button; (b) a New draw button, as Scatter events has.
 *Recommended:* (a). Only the breathy and unvoiced parts use the noise, and
 a new draw of it is barely audible.
+
+*Decided (2026-10-28):* as recommended.
 
 **S11. What is saved.** `{"draw_voice": 1, "sonore": "0.8.0", "duration",
 "fs", "f0": [[times], [Hz, 0 unvoiced]], "breathiness": [[times],
@@ -253,10 +274,12 @@ moment]]}, "seed": 1}`, times in seconds, as Draw speech saves its tracks.
 *Recommended:* as stated, with the frequencies saved, not implied, so a
 later change to S3 still opens old files.
 
+*Decided (2026-10-28):* as recommended.
+
 ## Order of work
 
-1. Cho answers S1-S11.
-2. The drawn tab: `src/sonore_sketch/draw_voice.py`, `app/draw_voice/`,
+1. Cho answers S1-S11 (done, 2026-10-28).
+2. The drawn tab (done): `src/sonore_sketch/draw_voice.py`, `app/draw_voice/`,
    tests (unvoiced gaps are noise; the result's spectrum follows a steady
    drawn curve, as V2), an output fingerprint, the worker's file list,
    the README's tabs table, a screenshot and an example drawing.
@@ -264,6 +287,29 @@ later change to S3 still opens old files.
    filter here.
 4. Time it in the browser (Cho, locally), to replace the [estimate]s in V1
    and V4.
+
+## As built
+
+- `src/sonore_sketch/draw_voice.py` and `app/draw_voice/`. The pitch line
+  holds 0 for unvoiced: between two breakpoints at 0 the voice is
+  unvoiced, and between a voiced breakpoint and one at 0 the voiced one's
+  pitch is held, so it never glides down to 0. Unvoice puts 0 at the
+  stretch's ends and keeps the line's pitch 1 ms outside them.
+- The filter's points are saved with each document (S11) and checked to be
+  increasing, so a later change to S3 still opens old files. A single
+  moment is held over the whole sound.
+- The starting curves (S5) are made in `app/draw_voice/model.js` from the
+  vowels' formants as resonances in cascade with a -6 dB per octave slope
+  above 200 Hz (flat below, so the first formant is the peak), held at
+  -60 dB. The vowel menu has five of Peterson & Barney's men's vowels.
+- Clear leaves a steady 100 Hz through one flat curve at -30 dB, the
+  middle of the axis, as Draw speech's Clear leaves a schwa.
+- With a tenth tab the tab buttons' labels take two lines at 1280 px.
+- `tests/test_draw_voice.py` checks the drawn filter is heard (V2), an
+  unvoiced stretch is noise, breathiness fills between the harmonics and
+  the filter blends between moments; `tests/test_fingerprints.py` pins a
+  1 s case with an unvoiced gap and rising breathiness.
+- Not yet timed in the browser: V1's browser figures are still an estimate.
 
 ## References
 

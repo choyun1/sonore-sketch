@@ -28,6 +28,7 @@ export function stateFromHash(hash) {
 // the tabs had before 2026-10-20 (OLD_TAB_IDS).
 export const TAB_NAMES = {
   "draw-speech": "draw_speech",
+  "draw-a-voice": "draw_voice",
   "draw-spectrogram": "draw_spectrogram",
   "erase-spectrogram": "erase_spectrogram",
   "draw-modulation": "draw_modulation",
