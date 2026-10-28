@@ -14,7 +14,7 @@ FIXTURE = ROOT / "tests" / "fixtures" / "blob_power.json"
 
 def state(**changes):
     return {
-        "draw_modulation": 1, "sonore": "0.8.0", "duration": 1.0, "fs": 16000,
+        "draw_modulation": 1, "sonore": "0.9.0", "duration": 1.0, "fs": 16000,
         "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
         "carrier": "tones", "iterations": 0, "rms_depth": 0.2, "seed": 1,
         "items": [dict(item) for item in draw_modulation.B9_ITEMS],  # the drawing the measurements use
@@ -161,7 +161,7 @@ def test_bad_states_are_refused(changes, message):
 def test_a_saved_page_on_the_modulation_tab_sounds_as_the_tab_does():
     section = {k: v for k, v in state().items() if k not in ("draw_modulation", "sonore", "duration", "fs")}
     document = {
-        "app": "sonore-sketch", "version": 3, "sonore": "0.8.0", "duration": 1.0, "fs": 16000,
+        "app": "sonore-sketch", "version": 3, "sonore": "0.9.0", "duration": 1.0, "fs": 16000,
         "tab": "draw_modulation", "draw_speech": {"mode": "klatt", "params": {}}, "draw_modulation": section,
     }
     assert np.array_equal(page.synthesize(document).data, draw_modulation.synthesize(state()).data)

@@ -4,7 +4,7 @@ Cut a sound into short segments and put them back in a new order, each
 next to one whose start continues the last one's end as the sound itself
 went on, joined with cross-fades: a sound quilt (Overath et al., 2015)::
 
-    {"quilt_sound": 1, "sonore": "0.8.0", "duration": 2.0, "fs": 16000,
+    {"quilt_sound": 1, "sonore": "0.9.0", "duration": 2.0, "fs": 16000,
      "source": "syllables", "segment": 0.06, "seed": 1,
      "draw_speech": {"mode": "klatt", "params": {...}},          # with source "draw_speech"
      "recording": {"name": "...", "fs": 16000, "pcm16": "<base64>"},  # with source "file"

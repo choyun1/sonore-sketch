@@ -3,7 +3,7 @@
 Take a sound, paint over parts of its spectrogram to turn them down or
 remove them, and hear what is left (docs/design/tabs/erase_spectrogram.md)::
 
-    {"erase_spectrogram": 1, "sonore": "0.8.0", "duration": 1.8, "fs": 16000,
+    {"erase_spectrogram": 1, "sonore": "0.9.0", "duration": 1.8, "fs": 16000,
      "source": "syllables", "rows": 256, "columns": 256, "floor_db": -60,
      "window": 0.032, "levels": "<base64 of deflated bytes>",
      "draw_speech": {"mode": "klatt", "params": {...}},          # with source "draw_speech"

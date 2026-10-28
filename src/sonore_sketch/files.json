@@ -1,1 +1,1 @@
-["__init__.py", "draw_modulation.py", "draw_path.py", "draw_spectrogram.py", "draw_speech.py", "draw_voice.py", "erase_modulation.py", "erase_spectrogram.py", "match_texture.py", "page.py", "quilt_sound.py", "scatter_events.py", "shared.py", "sources.py"]
+["__init__.py", "draw_modulation.py", "draw_path.py", "draw_room.py", "draw_spectrogram.py", "draw_speech.py", "draw_voice.py", "erase_modulation.py", "erase_spectrogram.py", "match_texture.py", "page.py", "quilt_sound.py", "scatter_events.py", "shared.py", "sources.py"]

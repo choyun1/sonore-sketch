@@ -39,7 +39,7 @@ def free_port() -> int:
 # The Draw speech example before it said "sonore": an /aɪ/-like glide, as a
 # TrackDraw link, which the page still opens.
 GLIDE = {
-    "trackdraw": 1, "sonore": "0.8.0", "duration": 0.6, "fs": 16000, "mode": "klatt",
+    "trackdraw": 1, "sonore": "0.9.0", "duration": 0.6, "fs": 16000, "mode": "klatt",
     "params": {
         "F0": [[0, 0.6], [125, 95]], "AV": [[0, 0.03, 0.55, 0.6], [0, 60, 60, 0]],
         "F1": [[0, 0.15, 0.45, 0.6], [700, 700, 400, 380]], "F2": [[0, 0.15, 0.45, 0.6], [1100, 1100, 2000, 2100]],
@@ -384,7 +384,7 @@ def main() -> None:
             page.keyboard.press("Home")
             expect(page.locator("#tab-draw_speech")).to_be_visible()
             assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "draw_speech"
-            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 9
+            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 10
             expect(status).to_contain_text("Made", timeout=60_000)
             print("tabs: the arrow keys and Home move between the tabs")
 
@@ -555,6 +555,45 @@ def main() -> None:
             page.click(".tabs [data-tab=draw_speech]")
             expect(status).to_contain_text("Made", timeout=60_000)
             print("Match a texture: the result, its source and the bars are drawn; iterations and the groups kept apply")
+
+            # The Draw a room tab: the room and the result are made and drawn
+            # with the measured RT60; a stroke on the curve, a room to start
+            # from, the RT60 box and the direct sound are each saved and heard;
+            # Clear flattens the curve at its median.
+            page.click(".tabs [data-tab=draw_room]")
+            expect(page.locator("#tab-draw_room")).to_be_visible()
+            expect(status).to_contain_text("Made", timeout=60_000)
+            room = lambda: page_document_in(page)["draw_room"]  # noqa: E731
+            expect(page.locator("#tab-draw_room .room-note")).to_contain_text("bands measured")
+            for canvas_name in ("room-stft", "result-stft"):
+                assert page.evaluate(f"[...document.querySelector('#tab-draw_room canvas.{canvas_name}').getContext('2d').getImageData(120, 80, 1, 1).data].some((v) => v > 0)"), canvas_name
+            before = room()["rt60"]
+            box = page.locator("#tab-draw_room canvas.rt60-curve").bounding_box()
+            page.mouse.move(box["x"] + 0.2 * box["width"], box["y"] + 0.3 * box["height"])
+            page.mouse.down()
+            page.mouse.move(box["x"] + 0.5 * box["width"], box["y"] + 0.3 * box["height"], steps=8)
+            page.mouse.up()
+            assert room()["rt60"] != before and max(room()["rt60"]) > 2, room()["rt60"]
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.select_option("#tab-draw_room .start", "flat")
+            assert len(set(room()["rt60"])) == 1
+            expect(page.locator("#tab-draw_room .start")).to_have_value("")
+            page.fill("#tab-draw_room .rt60", "2")
+            page.press("#tab-draw_room .rt60", "Enter")
+            assert room()["rt60"][0] == 2
+            page.fill("#tab-draw_room .slider-value", "10")
+            page.press("#tab-draw_room .slider-value", "Enter")
+            assert room()["drr_db"] == 10
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.select_option("#tab-draw_room .start", "real")
+            page.click("#clear")
+            assert len(set(room()["rt60"])) == 1
+            page.select_option("#tab-draw_room .source", "clap")
+            assert room()["source"] == "clap"
+            expect(status).to_contain_text("Made", timeout=60_000)
+            page.click(".tabs [data-tab=draw_speech]")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("Draw a room: the room, its measured RT60 and the result are drawn; a stroke, a room to start from, the RT60 box, the direct sound, Clear and the clap work")
 
             # The Draw a voice tab: a pitch stroke, an unvoiced stretch, a
             # breathiness stroke, a curve drawn, a vowel, a moment added and

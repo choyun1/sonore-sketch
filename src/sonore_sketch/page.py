@@ -17,13 +17,15 @@ import numpy as np
 import sonore as so
 
 from . import (
-    draw_modulation, draw_path, draw_spectrogram, draw_speech, draw_voice, erase_modulation, erase_spectrogram, match_texture, quilt_sound, scatter_events, shared,
+    draw_modulation, draw_path, draw_room, draw_spectrogram, draw_speech, draw_voice, erase_modulation, erase_spectrogram, match_texture, quilt_sound,
+    scatter_events, shared,
 )
 
 TABS = {
     "draw_speech": draw_speech.synthesize, "draw_voice": draw_voice.synthesize, "draw_spectrogram": draw_spectrogram.synthesize, "erase_spectrogram": erase_spectrogram.synthesize,
     "draw_modulation": draw_modulation.synthesize, "erase_modulation": erase_modulation.synthesize, "draw_path": draw_path.synthesize,
     "scatter_events": scatter_events.synthesize, "quilt_sound": quilt_sound.synthesize, "match_texture": match_texture.synthesize,
+    "draw_room": draw_room.synthesize,
 }
 
 # The page's document (docs/design/tabs/draw_spectrogram.md, "Data model"), as
@@ -94,18 +96,18 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
         return state
-    if tab in ("erase_modulation", "erase_spectrogram", "quilt_sound", "match_texture") and tab in page:
+    if tab in ("erase_modulation", "erase_spectrogram", "quilt_sound", "match_texture", "draw_room") and tab in page:
         # the source's own drawing goes with the state: the Draw speech tab's, or the page's recording
         section_format = {
             "erase_modulation": erase_modulation.FORMAT, "erase_spectrogram": erase_spectrogram.FORMAT, "quilt_sound": quilt_sound.FORMAT,
-            "match_texture": match_texture.FORMAT,
+            "match_texture": match_texture.FORMAT, "draw_room": draw_room.FORMAT,
         }[tab]
         state = {tab: section_format, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page[tab]}
         if state.get("source") == "draw_speech":
             state["draw_speech"] = page["draw_speech"]
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
-        if tab in ("quilt_sound", "match_texture") and state.get("source") in quilt_sound.DRAWN and state["source"] in page:
+        if tab in ("quilt_sound", "match_texture", "draw_room") and state.get("source") in quilt_sound.DRAWN and state["source"] in page:
             state["drawing"] = page[state["source"]]  # the tab's own drawing, made into its sound
         return state
     if tab in TABS:
@@ -166,7 +168,9 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     on the Match a texture tab the source's spectrogram (``source_stft``) and
     how well the result's statistics match the source's (``match``: dB per
     class of ``match_texture.BARS``, in that order) with which were imposed
-    (``imposed``). A Draw a voice request with ``"measure": true`` makes the
+    (``imposed``); on the Draw a room tab the room's impulse response's
+    spectrogram (``room_stft``) and its RT60 measured back
+    (``measured``: ``draw_room.measured``). A Draw a voice request with ``"measure": true`` makes the
     source's sound instead and measures its voice (``voice``:
     ``draw_voice.measure_steps``).
     """
@@ -194,6 +198,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         sound, original, segments = yield from shared.scaled(quilt_sound.steps(request["state"]), 0.9)
     elif tab == "match_texture":
         sound, original, matched = yield from shared.scaled(match_texture.steps(request["state"]), 0.95)
+    elif tab == "draw_room":
+        sound, ir = yield from shared.scaled(draw_room.steps(request["state"]), 0.8)
     elif tab == "draw_voice" and request.get("measure"):  # the source's voice, to take or copy from (draw_voice.md, S6)
         sound, voice = yield from shared.scaled(draw_voice.measure_steps(request["state"]), 0.9)
     else:
@@ -225,6 +231,9 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         result["source_stft"] = spectrogram(original)
         result["match"] = [round(matched[name], 2) for name in match_texture.BARS]
         result["imposed"] = [name in kept for name in match_texture.BARS]
+    if tab == "draw_room":  # the room, as a spectrogram and as the RT60 it was measured to have (draw_room.md, R9)
+        yield 0.85, "Measuring the room"
+        result["room_stft"], result["measured"] = spectrogram(ir), draw_room.measured(ir)
     if tab == "draw_voice" and request.get("measure"):
         result["voice"] = voice
     if tab == "erase_spectrogram":  # the source's and the result's spectrograms in the mask's own STFT (erase_spectrogram.md)

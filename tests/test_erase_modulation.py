@@ -7,7 +7,7 @@ import sonore as so
 from sonore_sketch import erase_modulation, page, sources
 
 STATE = {
-    "erase_modulation": 1, "sonore": "0.8.0", "duration": 1.0, "fs": 16000, "source": "syllables", "carrier": "source",
+    "erase_modulation": 1, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "source": "syllables", "carrier": "source",
     "iterations": 1, "seed": 1, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
     "columns": erase_modulation.COLUMNS, "rows": erase_modulation.ROWS, "floor_db": erase_modulation.FLOOR_DB, "levels": erase_modulation.EXAMPLE_LEVELS,
 }
@@ -92,7 +92,7 @@ def test_a_link_without_the_recording_says_to_open_it_again():
 def test_a_page_document_gives_the_edit_state_its_source():
     tracks = {"mode": "klatt", "params": {"F0": 120}}
     section = {k: v for k, v in STATE.items() if k not in ("erase_modulation", "sonore", "duration", "fs")}
-    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.8.0", "duration": 1.0, "fs": 16000, "tab": "erase_modulation",
+    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "tab": "erase_modulation",
                 "draw_speech": tracks, "erase_modulation": {**section, "source": "draw_speech"}, "recording": {"name": "x", "fs": 16000, "pcm16": ""}}
     state = page.tab_state(document)
     assert state["draw_speech"] == tracks and "recording" not in state

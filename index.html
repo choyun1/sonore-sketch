@@ -35,6 +35,9 @@
       <button role="tab" id="tab-button-draw_path" aria-selected="false" aria-controls="tab-draw_path" tabindex="-1" data-tab="draw_path"
         data-caption="Draw where a sound goes around you, seen from above, and how high it is over time, and hear it move. Use headphones."
         title="A path around the listener, heard through sonore's move_sound and the MIT KEMAR head-related impulse responses (Gardner &amp; Martin, 1995)">Draw path</button>
+      <button role="tab" id="tab-button-draw_room" aria-selected="false" aria-controls="tab-draw_room" tabindex="-1" data-tab="draw_room"
+        data-caption="Draw how long a room rings at each frequency and hear a sound in it: real rooms ring longest in the middle, and a room drawn otherwise soon sounds unreal (after Traer &amp; McDermott, 2016). Use headphones."
+        title="A room's reverberation time across frequency, heard through sonore's synth_ir">Draw a room</button>
       <button role="tab" id="tab-button-scatter_events" aria-selected="false" aria-controls="tab-scatter_events" tabindex="-1" data-tab="scatter_events"
         data-caption="Copy one short event at random times, draw how many come each second, and hear single events pile up into a texture."
         title="One event copied at random times, levels and pitches, heard through sonore's event_train and measured with its texture statistics">Scatter events</button>
@@ -80,6 +83,7 @@
     <section class="tab-body" id="tab-draw_modulation" role="tabpanel" aria-labelledby="tab-button-draw_modulation" hidden></section>
     <section class="tab-body" id="tab-erase_modulation" role="tabpanel" aria-labelledby="tab-button-erase_modulation" hidden></section>
     <section class="tab-body" id="tab-draw_path" role="tabpanel" aria-labelledby="tab-button-draw_path" hidden></section>
+    <section class="tab-body" id="tab-draw_room" role="tabpanel" aria-labelledby="tab-button-draw_room" hidden></section>
     <section class="tab-body" id="tab-scatter_events" role="tabpanel" aria-labelledby="tab-button-scatter_events" hidden></section>
     <section class="tab-body" id="tab-quilt_sound" role="tabpanel" aria-labelledby="tab-button-quilt_sound" hidden></section>
     <section class="tab-body" id="tab-match_texture" role="tabpanel" aria-labelledby="tab-button-match_texture" hidden></section>
