@@ -32,7 +32,7 @@ def encode(result: dict) -> dict:
     result = dict(result, samples=base64.b64encode(result["samples"]).decode())
     if "samples_right" in result:
         result["samples_right"] = base64.b64encode(result["samples_right"]).decode()
-    for key in ("spectrogram", "modulation", "source_modulation", "source_stft", "result_stft", "modulation_frames", "modulation_pooled"):
+    for key in ("spectrogram", "modulation", "source_modulation", "source_stft", "result_stft", "room_stft", "modulation_frames", "modulation_pooled"):
         if key in result:
             result[key] = dict(result[key], data=base64.b64encode(result[key]["data"]).decode())
     return result

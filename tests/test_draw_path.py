@@ -16,7 +16,7 @@ from sonore_sketch.page import handle
 
 
 def state(stroke, **changes):
-    return {"draw_path": 1, "sonore": "0.8.0", "duration": 1.0, "fs": 16000, "source": "noise", "room": "dry",
+    return {"draw_path": 1, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "source": "noise", "room": "dry",
             "stroke": stroke, "elevation": 0, **changes}
 
 

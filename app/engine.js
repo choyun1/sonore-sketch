@@ -17,7 +17,9 @@
 // (spectrogramPicture; both in pictures.js), and on the Quilt a sound tab
 // sourceStft, segments (how many the quilt has) and segmentSeconds (each one's length),
 // and on the Match a texture tab sourceStft, match (dB per class of statistics,
-// match_texture/model.js BARS) and imposed (whether each was); a Draw a voice
+// match_texture/model.js BARS) and imposed (whether each was), on the Draw a
+// room tab roomStft (the room's impulse response, spectrogramPicture) and
+// measured ({f, rt60}: its RT60 measured back, null where a band has none); a Draw a voice
 // measuring request gives voice, its source's measured voice (draw_voice/model.js).
 
 import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
@@ -188,6 +190,8 @@ export function readResult(body) {
     match: body.match ?? null,
     imposed: body.imposed ?? null,
     voice: body.voice ?? null,
+    roomStft: body.room_stft && readPicture(body.room_stft, spectrogramPicture),
+    measured: body.measured ?? null,
     modulationFrames: body.modulation_frames && readPicture(body.modulation_frames, modulationSpectrogramPicture),
     modulationPooled: body.modulation_pooled && readPicture(body.modulation_pooled, modulationSpectrogramPicture),
   };

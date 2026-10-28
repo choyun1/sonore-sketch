@@ -11,7 +11,7 @@ from sonore_sketch.page import handle
 
 
 def state(**changes):
-    return {"scatter_events": 1, "sonore": "0.8.0", "duration": 2.0, "fs": 16000, **scatter_events.DEFAULTS, **changes}
+    return {"scatter_events": 1, "sonore": "0.9.0", "duration": 2.0, "fs": 16000, **scatter_events.DEFAULTS, **changes}
 
 
 @pytest.mark.parametrize("kind", scatter_events.EVENTS)

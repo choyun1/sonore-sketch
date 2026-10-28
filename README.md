@@ -1,6 +1,6 @@
 <h1><a href="https://choyun1.github.io/sonore/gallery/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-mark-dark.svg"><img alt="sonore" src="docs/logo/sonore-sketch-banner-mark-light.svg" height="56"></picture></a><picture><source media="(prefers-color-scheme: dark)" srcset="docs/logo/sonore-sketch-banner-name-dark.svg"><img alt="sonore-sketch" src="docs/logo/sonore-sketch-banner-name-light.svg" height="56"></picture></h1>
 
-[![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.8](https://img.shields.io/badge/sonore-0.8-blue)](https://pypi.org/project/sonore/) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
+[![tests](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/test.yml) [![pages](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/choyun1/sonore-sketch/actions/workflows/pages.yml) [![sonore 0.9](https://img.shields.io/badge/sonore-0.9-blue)](https://pypi.org/project/sonore/) [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.txt)
 
 **A visual front end for sonore's sound synthesis.**
 
@@ -13,7 +13,7 @@ rate and hear separate events pile up into a texture; or cut a sound into
 short segments and hear them put back in a new order, as a sound quilt. sonore does the synthesis, in your
 browser (Python under Pyodide); this project is only the interface.
 
-**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: ten tabs, each a different
+**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: eleven tabs, each a different
 route to sound, with nothing to install.
 
 **[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
@@ -23,6 +23,10 @@ that makes every sound here, can do, each sound playable next to its plots.
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-speech"><img alt="The Draw speech tab: formant tracks over the spectrogram of sonore saying its name, with the F0 and voicing tracks below" src="docs/screenshots/draw-speech.png"></a><br><sub><b>Draw speech</b>: formant, F0, voicing and noise tracks, spoken by Klatt's synthesizer</sub></td>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-spectrogram"><img alt="The Draw spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/draw-spectrogram.png"></a><br><sub><b>Draw spectrogram</b>: a sound whose spectrogram is the painting</sub></td>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-path"><img alt="The Draw path tab: a path drawn round the listener, seen from above, from front left to front right, with its speed and elevation tracks below" src="docs/screenshots/draw-path.png"></a><br><sub><b>Draw path</b>: a sound moving round your head, for headphones</sub></td>
+</tr><tr>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-a-voice"><img alt="The Draw a voice tab: a pitch line and a breathiness track over time, the filter's curve at one of three moments, and the voice's spectrogram" src="docs/screenshots/draw-a-voice.png"></a><br><sub><b>Draw a voice</b>: a voice's source and filter, drawn apart</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-a-room"><img alt="The Draw a room tab: a real room's RT60 across frequency with the RT60 measured back as dots, the room's impulse response, and a syllable train heard in it" src="docs/screenshots/draw-a-room.png"></a><br><sub><b>Draw a room</b>: how long a room rings at each frequency</sub></td>
+<td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=match-a-texture"><img alt="The Match a texture tab: rain and noise made to have its texture statistics, one above the other as spectrograms, with the result's waveform" src="docs/screenshots/match-a-texture.png"></a><br><sub><b>Match a texture</b>: noise with a sound's statistics and nothing else</sub></td>
 </tr></table>
 
 sonore-sketch is under active development, and so is sonore. A saved
@@ -60,6 +64,7 @@ different sound from it.
 | **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 | **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
+| **[Draw a room](https://choyun1.github.io/sonore-sketch/#tab=draw-a-room)** | a room's RT60 (how long it rings) across frequency, from a real room, a flat one or an inverted one, and how loud the direct sound is | a sound in that room, its tail in each ear on its own, and the RT60 measured back from the room made (sonore's `synth_ir`; Traer & McDermott, 2016) | built |
 | **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and their modulation spectrogram, which follows the sound as it plays (sonore's `ModulationSpectrogram`; Atlas & Shamma, 2003) | built |
 | **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, rain, a recording, or the sound of the Draw speech, Draw spectrogram, Draw modulation or Scatter events tab), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
 | **[Match a texture](https://choyun1.github.io/sonore-sketch/#tab=match-a-texture)** | nothing: a sound (as on Quilt a sound), which groups of its texture statistics to keep, the iterations and a seed | noise made to have those statistics of the sound and nothing else (sonore's texture synthesis; McDermott & Simoncelli, 2011), and how well each class matches | built |
@@ -201,6 +206,23 @@ or a room's reverberation. The head is MIT's KEMAR mannequin, measured at
 delay, and height comes through weakly, since it is heard through the
 shape of your own ears, and these are the mannequin's.
 
+**Draw a room.** Use headphones. It starts with the syllable train in a
+real room of 1 s: mid frequencies ring longest, lows and highs die sooner.
+Drag on the curve to draw how long the room rings at each frequency, its
+RT60 (the time it takes to fall 60 dB), from 0.1 to 10 s, on log axes from
+50 Hz to 8 kHz. **Start from** redraws the curve as a real room, a flat one
+(the same RT60 everywhere) or a real room inverted (slow where real rooms
+are fast, which listeners hear as wrong), and **RT60** sets the curve's
+median, scaling the curve you drew. **Direct sound** is how loud the sound
+comes straight to you against the room's tail, from −20 dB (far away) to
+20 dB (close). The **source** is a clap (one click, the room alone), any
+of Quilt a sound's, or a recording. Each ear hears its own tail, and the
+result runs on until the room has died away. The dots over the curve are
+the RT60 measured from the room made; below about 300 Hz, and in very
+short rooms, they follow the curve less closely. **New draw** makes
+another room with the same curve, and Clear makes the curve flat at its
+median.
+
 **Scatter events.** Choose the **event** and its knobs: a chirp (its first
 and last frequency), a tone pip (a pure tone at one frequency, or a
 harmonic complex: its F0 and how many harmonics) or a noise burst (the
@@ -263,7 +285,7 @@ sound = page.synthesize(json.load(open("sketch.json")))
 
 ## How the sound is made
 
-Every sound is made by sonore 0.8, in `src/sonore_sketch/` (one module per
+Every sound is made by sonore 0.9, in `src/sonore_sketch/` (one module per
 tab). The design documents in `docs/design/` hold the measurements behind
 each choice; this section is the method in one place, one tab at a time.
 
@@ -452,6 +474,26 @@ without it: removing every rate above 4 Hz leaves 2.5 dB less power at
    cues that change most with elevation lie above 8 kHz (W-M4). It is
    played and saved in stereo, both ears at one gain.
 
+### Draw a room
+
+1. The curve is 64 RT60s, equally spaced in log frequency from 50 Hz to
+   8 kHz. sonore's `synth_ir` reads it at the centers of its 32 cosine
+   bands (20 Hz to 8 kHz at 16 kHz), linearly in log frequency and log
+   RT60, held flat below 50 Hz. A real room is sonore's own
+   (`band_rt60s`), the regressions of Traer & McDermott (2016) on 271
+   rooms, scaled so its median is the RT60 asked for.
+2. `synth_ir` splits Gaussian noise drawn from the seed into those bands,
+   multiplies each by an exponential decay that falls 60 dB in its band's
+   RT60, starting at the paper's level for that band, and sums them: two
+   such tails, one per ear, and one direct sound at the chosen ratio to
+   their energy.
+3. The source, at the page's duration, is convolved with it and brought to
+   the page's level; the tail runs on past the duration.
+4. `so.measure_rt60` measures the room back, from its tail alone: each of
+   30 bands' Schroeder decay from −5 to −25 dB, extended to −60 dB. In
+   most bands it is within about 5% of the curve
+   (`docs/design/tabs/draw_room.md`, V3).
+
 ### Scatter events
 
 1. The event is made with sonore's own functions (`exponential_chirp`,
@@ -598,7 +640,7 @@ The page is static: `index.html` and the ES modules in `app/`, with no
 build step and no JavaScript dependencies. The Python half, which the page
 runs under Pyodide, is in `src/sonore_sketch/` (one module per tab,
 `sources.py` and `shared.py`, which the tabs share, and `page.py`, which
-the page calls). It needs sonore 0.8.
+the page calls). It needs sonore 0.9.
 
 Each tab has one name, from its label on the page, used everywhere: its
 folder in `app/`, its Python module, its section in a saved file, its tests
@@ -613,6 +655,7 @@ and its design document.
 | Draw modulation | `app/draw_modulation/` | `draw_modulation.py` | `test_draw_modulation.py`, `draw_modulation.test.mjs` |
 | Erase modulation | `app/erase_modulation/` | `erase_modulation.py` | `test_erase_modulation.py`, `erase_modulation.test.mjs` |
 | Draw path | `app/draw_path/` | `draw_path.py` | `test_draw_path.py`, `draw_path.test.mjs` |
+| Draw a room | `app/draw_room/` | `draw_room.py` | `test_draw_room.py`, `draw_room.test.mjs` |
 | Scatter events | `app/scatter_events/` | `scatter_events.py` | `test_scatter_events.py`, `scatter_events.test.mjs` |
 | Quilt a sound | `app/quilt_sound/` | `quilt_sound.py` | `test_quilt_sound.py`, `quilt_sound.test.mjs` |
 | Match a texture | `app/match_texture/` | `match_texture.py` | `test_match_texture.py`, `match_texture.test.mjs` |
@@ -679,7 +722,7 @@ Every tab is designed before it is built, in `docs/design/`: `app.md` for
 the page as a whole, and `tabs/` for each tab (`draw_speech.md` for Draw speech, `draw_voice.md` for Draw a voice,
 `draw_spectrogram.md` for Draw spectrogram, `draw_modulation.md` and `bands.md` for Draw modulation,
 `erase_spectrogram.md` for Erase spectrogram, `erase_modulation.md` for Erase modulation, `draw_path.md`
-for Draw path, `scatter_events.md` for Scatter events, `match_texture.md` for Match a texture).
+for Draw path, `draw_room.md` for Draw a room, `scatter_events.md` for Scatter events, `match_texture.md` for Match a texture).
 Each records the measurements behind it, made by the scripts in `tools/`,
 and the decisions Cho made.
 

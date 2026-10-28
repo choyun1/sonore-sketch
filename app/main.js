@@ -16,6 +16,7 @@ import { createScatterEventsTab } from "./scatter_events/tab.js";
 import { createEraseSpectrogramTab } from "./erase_spectrogram/tab.js";
 import { createDrawSpectrogramTab } from "./draw_spectrogram/tab.js";
 import { createDrawPathTab } from "./draw_path/tab.js";
+import { createDrawRoomTab } from "./draw_room/tab.js";
 import { createQuiltSoundTab } from "./quilt_sound/tab.js";
 import { createMatchTextureTab } from "./match_texture/tab.js";
 import { SONORE_VERSION, clampDuration } from "./draw_speech/model.js";
@@ -164,6 +165,12 @@ const tabs = {
     log,
   }),
   draw_path: createDrawPathTab(byId("tab-draw_path"), { commit: commitFrom("draw_path"), hasRecording }),
+  draw_room: createDrawRoomTab(byId("tab-draw_room"), {
+    commit: commitFrom("draw_room"),
+    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "draw_room")),
+    hasRecording,
+    log,
+  }),
   scatter_events: createScatterEventsTab(byId("tab-scatter_events"), { commit: commitFrom("scatter_events") }),
   quilt_sound: createQuiltSoundTab(byId("tab-quilt_sound"), {
     commit: commitFrom("quilt_sound"),

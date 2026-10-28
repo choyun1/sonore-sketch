@@ -3,7 +3,7 @@
 A path is a stroke drawn on a top view of the listener, and an elevation
 track over the same time (docs/design/tabs/draw_path.md)::
 
-    {"draw_path": 1, "sonore": "0.8.0", "duration": 3.0, "fs": 16000,
+    {"draw_path": 1, "sonore": "0.9.0", "duration": 3.0, "fs": 16000,
      "source": "noise", "room": "dry",
      "stroke": [[t, x, y], ...], "elevation": 0 or [times, degrees],
      "speed": null or [fractions, speeds], "smoothing": 0.15}

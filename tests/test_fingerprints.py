@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sonore_sketch import draw_modulation, draw_voice, erase_modulation, erase_spectrogram, page, draw_spectrogram, draw_speech
+from sonore_sketch import draw_modulation, draw_room, draw_voice, erase_modulation, erase_spectrogram, page, draw_spectrogram, draw_speech
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "sound_fingerprints.json"
@@ -45,7 +45,7 @@ def _speech_params() -> dict:
 
 
 def _cases() -> dict[str, dict]:
-    common = {"sonore": "0.8.0", "duration": DURATION, "fs": FS}
+    common = {"sonore": "0.9.0", "duration": DURATION, "fs": FS}
     painting = {
         "draw_spectrogram": draw_spectrogram.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256,
         "floor_db": -60, "f0": draw_spectrogram.EXAMPLE_F0, "seed": 1, "levels": draw_spectrogram.encode_levels(draw_spectrogram.example_levels()),
@@ -90,6 +90,10 @@ def _cases() -> dict[str, dict]:
         "erase_modulation, tones": ("erase_modulation", {**editing, "carrier": "tones", "iterations": 0}),
         "match_texture, syllables, 2 iterations": ("match_texture", {
             "match_texture": 1, **common, "source": "syllables", "keep": ["marginals", "modulation", "correlations"], "iterations": 2, "seed": 1,
+        }),
+        "draw_room, syllables, boomy room": ("draw_room", {
+            "draw_room": 1, **common, "source": "syllables", "drr_db": 0.0, "seed": 1,
+            "rt60": np.round(np.geomspace(2.0, 0.3, draw_room.N_POINTS), 3).tolist(),
         }),
     }
 

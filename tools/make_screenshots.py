@@ -1,9 +1,10 @@
-"""Take the README's screenshots: Draw speech, Draw spectrogram and Draw path.
+"""Take the README's screenshots: Draw speech, Draw spectrogram and Draw path,
+then Draw a voice, Draw a room and Match a texture.
 
 Each tab is shown as it opens (its example), 1280 × 823, with the local
-engine, and saved to docs/screenshots/. Draw speech and Draw path are taken
-in the dark theme and Draw spectrogram in the light one, so the README shows
-both. Retake them when the header, the toolbar or a tab's example changes.
+engine, and saved to docs/screenshots/. The themes alternate along each row
+of the README's two (dark, light, dark, then light, dark, light), so it
+shows both. Retake them when the header, the toolbar or a tab's example changes.
 
     pip install -e . playwright
     python tools/make_screenshots.py
@@ -29,6 +30,9 @@ SHOTS = {
     "draw_speech": ("draw-speech.png", "dark"),
     "draw_spectrogram": ("draw-spectrogram.png", "light"),
     "draw_path": ("draw-path.png", "dark"),
+    "draw_voice": ("draw-a-voice.png", "light"),
+    "draw_room": ("draw-a-room.png", "dark"),
+    "match_texture": ("match-a-texture.png", "light"),
 }
 
 

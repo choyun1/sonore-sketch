@@ -34,6 +34,7 @@ export const TAB_NAMES = {
   "draw-modulation": "draw_modulation",
   "erase-modulation": "erase_modulation",
   "draw-path": "draw_path",
+  "draw-a-room": "draw_room",
   "scatter-events": "scatter_events",
   "quilt-a-sound": "quilt_sound",
   "match-a-texture": "match_texture",

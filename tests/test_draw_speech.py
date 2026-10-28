@@ -8,7 +8,7 @@ from sonore_sketch import page, draw_speech
 
 DOCUMENT = {
     "trackdraw": 1,
-    "sonore": "0.8.0",
+    "sonore": "0.9.0",
     "duration": 0.6,
     "fs": 16000,
     "mode": "klatt",

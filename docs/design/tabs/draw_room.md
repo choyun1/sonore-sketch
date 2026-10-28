@@ -8,10 +8,10 @@ rate, which listeners cannot tell from a real room's. The tab lets the
 reader bend the curve away from a real room's and hear when the room
 stops sounding real.
 
-Status: decided (2026-10-28). Cho asked for this tab on 2026-10-28 ("draw
-a voice and draw a room sound nice") and accepted every recommendation
-(R1-R11) the same day. Nothing is built yet: the tab waits for the sonore
-change in R2 and a sonore release.
+Status: built (see "As built" at the end). Cho asked for this tab on
+2026-10-28 ("draw a voice and draw a room sound nice") and accepted every
+recommendation (R1-R11) the same day. The sonore change in R2 was
+released in sonore 0.9.0 the same day.
 
 This project is AI-assisted: the document and `tools/measure_draw_room.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -268,6 +268,32 @@ saved.
 *Recommended:* as stated.
 
 *Decided (2026-10-28):* as recommended.
+
+## As built
+
+- `src/sonore_sketch/draw_room.py` and `app/draw_room/`, on sonore 0.9.0,
+  whose `synth_ir` and `band_rt60s` take `rt60=(freqs, rt60s)` (R2). The
+  tab sits after Draw path; its link is `#tab=draw-a-room`.
+- "A real room" on the page is sonore's `band_rt60s` (ecological) for the
+  RT60 asked for, scaled so the curve's median is that RT60 exactly, since
+  sonore's own median comes within about 6% of it. The page holds the
+  paper's fit at its 30 frequencies up to 8.6 kHz and reads it as sonore
+  does; `tests/js/draw_room.test.mjs` checks it against sonore at 0.1 to
+  10 s. "Inverted" is sonore's `max + min - real`, scaled the same way.
+- The RT60 box is the median of the 64 points drawn (R4). Clear makes the
+  curve flat at that median.
+- The clap (R5) is one click 50 ms in, so the result is the room's impulse
+  response itself (`tests/test_draw_room.py` checks it).
+- The dots (R9) are `so.measure_rt60` of the room made, with the direct
+  sound taken out first (the unit impulse `synth_ir` puts at the start); a
+  note under the plots counts the bands within 20% of the curve.
+- `tests/test_draw_room.py` checks that the room is sonore's from the
+  curve, that the result keeps the whole tail in two independent channels,
+  that a boomy curve measures boomy, and that the direct sound's level
+  moves the share of the tail; `tests/test_fingerprints.py` pins a 1 s
+  case.
+- Not yet timed in the browser: V2's browser figures are still an
+  estimate.
 
 ## Order of work
 
