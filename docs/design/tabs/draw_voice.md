@@ -9,10 +9,9 @@ The sound comes from `so.source_filter_synthesize`, the harmonics-plus-noise
 resynthesis sonore uses after its WORLD-style analysis (F0 track,
 CheapTrick envelope, D4C aperiodicity).
 
-Status: the drawn tab is built (see "As built" at the end). Cho asked for
+Status: built, starting from a sound (S6) included (see "As built" at the end). Cho asked for
 this tab on 2026-10-28, from the list of ideas for new tabs offered with
 Match a texture, and accepted every recommendation (S1-S11) the same day.
-Starting from a sound (S6) is the next step.
 
 This project is AI-assisted: the document and `tools/measure_draw_voice.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -283,8 +282,8 @@ later change to S3 still opens old files.
    tests (unvoiced gaps are noise; the result's spectrum follows a steady
    drawn curve, as V2), an output fingerprint, the worker's file list,
    the README's tabs table, a screenshot and an example drawing.
-3. If S6 is (b) or (c): the Source list, Take the source and Copy the
-   filter here.
+3. S6 (c) (done): the Source list, Take the source and Copy the filter
+   here.
 4. Time it in the browser (Cho, locally), to replace the [estimate]s in V1
    and V4.
 
@@ -309,7 +308,27 @@ later change to S3 still opens old files.
   unvoiced stretch is noise, breathiness fills between the harmonics and
   the filter blends between moments; `tests/test_fingerprints.py` pins a
   1 s case with an unvoiced gap and rising breathiness.
-- Not yet timed in the browser: V1's browser figures are still an estimate.
+- S6: the section saves its `source` (Draw speech's sound until one is
+  chosen), which is not heard: the page leaves it out of the state it
+  synthesizes (`soundState` in `app/document.js`), so choosing a source
+  does not make the voice again. Take and Copy send the page's usual
+  request with `"measure": true` and the source's own drawing or recording
+  (`measureState`); `draw_voice.measure_steps` makes the source as Quilt a
+  sound does and gives back its pitch, noise share and filter every 5 ms.
+  The page keeps the last measurement while the source's sound stays the
+  same, so Copy after Take does not measure again.
+- Taking the source: each voiced run of the pitch is simplified in Hz to
+  within a quarter of a semitone at the run's lowest pitch, and each
+  unvoiced run becomes 0 at its first and last window. A line that would
+  pass 2000 breakpoints is simplified more loosely, then its shortest
+  voiced or unvoiced runs merged into their neighbours. The breathiness is
+  taken from the voiced windows only (unvoiced ones are all noise when
+  heard), within 0.02.
+- Copying the filter takes the measured window nearest the moment, read
+  onto the section's points in dB over the ERB scale, with the loudest
+  voiced window at 0 dB and the floor at -60 dB.
+- Not yet timed in the browser: V1's and V4's browser figures are still
+  estimates.
 
 ## References
 

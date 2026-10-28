@@ -7,7 +7,8 @@
 // level over frequency (an ERB axis) at each of a few moments, marked on the
 // strip under the tracks: choose one to draw its curve, drag it to move it,
 // double-click the strip to add one where you click. Under them, the
-// result's spectrogram.
+// result's spectrogram. Or take them from a sound (S6): its pitch and
+// breathiness for the source, or its filter at the chosen moment.
 
 import {
   drawAxisName,
@@ -21,9 +22,12 @@ import {
   pointerPosition,
   soundSeconds,
 } from "../plot.js";
+import { attachSourceControls, sourceFieldset } from "../sources.js";
+import { LABELS } from "../quilt_sound/model.js";
 import { extendStroke, replaceSpan, simplify } from "../draw_speech/model.js";
 import {
   DB_RANGE,
+  DEFAULT_SOURCE,
   F0_RANGE,
   F_RANGE,
   MAX_MOMENTS,
@@ -35,6 +39,7 @@ import {
   erbNumber,
   moveMoment,
   nearestPointIndex,
+  nearestWindow,
   pitchAt,
   removeMoment,
   trackPoints,
@@ -42,7 +47,9 @@ import {
   voicedRuns,
   withEnds,
   vowelCurve,
+  withCopiedCurve,
   withCurve,
+  withTakenSource,
   withTrack,
 } from "./model.js";
 
@@ -57,7 +64,9 @@ const PITCH_TOLERANCE = 0.01; // octaves a simplified pitch stroke may stray
 const SHARE_TOLERANCE = 0.01; // of the share
 const GRAB_PX = 8; // how near a moment's mark a press grabs it
 
-export function createDrawVoiceTab(root, { commit }) {
+// `measure(onStep)` measures the voice of the chosen source (S6), or gives
+// null when a newer sound took its place; `recording()` is the page's.
+export function createDrawVoiceTab(root, { commit, openRecording, hasRecording, recording, measure, log }) {
   let state = null;
   let sound = null;
   let chosen = 0; // the moment whose curve is shown and drawn
@@ -89,12 +98,18 @@ export function createDrawVoiceTab(root, { commit }) {
           <button type="button" class="add" title="Add a moment halfway along the longest stretch without one, with the curve heard there">Add moment</button>
           <button type="button" class="remove" title="Remove the chosen moment (the last one stays)">Remove moment</button>
         </fieldset>
+        ${sourceFieldset("The sound to take a voice from", LABELS)}
+        <fieldset><legend>From the source</legend>
+          <button type="button" class="take" title="Make the pitch and breathiness lines the source's: its pitch, unvoiced where it is, and its share of noise">Take the source</button>
+          <button type="button" class="copy" title="Make the chosen moment's curve the source's filter at that time">Copy the filter here</button>
+          <p class="hint measure-note"></p>
+        </fieldset>
         <p class="hint">The source: drag on the pitch track to draw the pitch, or with Unvoice to take it out, and on the breathiness track to set how much of the voice is noise. The filter: each mark under the tracks is a moment with its own curve, and between moments the curve blends from one to the next. Choose a mark and draw its curve below; drag a mark to move it; double-click the strip to add one. Change the pitch and the vowel stays; change the curve and the pitch stays. Space plays.</p>
       </aside>
     </div>`;
   const query = (selector) => root.querySelector(selector);
   const canvases = { pitch: query("canvas.pitch"), breath: query("canvas.breath"), moments: query("canvas.moments"), filter: query("canvas.filter"), stft: query("canvas.stft") };
-  const ui = { vowel: query(".vowel"), add: query(".add"), remove: query(".remove"), momentName: query(".moment-name"), brushes: [...root.querySelectorAll("input[name=voice-brush]")] };
+  const ui = { take: query(".take"), copy: query(".copy"), measureNote: query(".measure-note"), vowel: query(".vowel"), add: query(".add"), remove: query(".remove"), momentName: query(".moment-name"), brushes: [...root.querySelectorAll("input[name=voice-brush]")] };
 
   const style = (name, fallback) => getComputedStyle(root).getPropertyValue(name).trim() || fallback;
   const accent = () => style("--accent", "#2e86ab");
@@ -104,6 +119,52 @@ export function createDrawVoiceTab(root, { commit }) {
 
   // --- the side panel ------------------------------------------------------------------
 
+  // the Source list reads and sets the section's source, Draw speech's sound until one is chosen
+  const showSource = attachSourceControls(root, {
+    state: () => ({ ...state, source: state.source ?? DEFAULT_SOURCE, recording: recording() }),
+    commit: ({ recording: _recording, ...next }) => commit(next),
+    openRecording,
+    hasRecording,
+    log,
+  });
+
+  // Measure the source, then make the change `apply(section, voice)` gives
+  // to the section as it is then (S6).
+  async function fromSource(apply, done) {
+    ui.take.disabled = ui.copy.disabled = true;
+    ui.measureNote.textContent = "Measuring the source…";
+    try {
+      const voice = await measure((fraction, text) => {
+        if (typeof fraction === "number") ui.measureNote.textContent = `${text}… ${Math.round(100 * fraction)}%`;
+      });
+      if (!voice) {
+        ui.measureNote.textContent = "Another sound was made first: press again.";
+        return;
+      }
+      ui.measureNote.textContent = done(voice);
+      commit(apply(state, voice));
+    } catch (error) {
+      ui.measureNote.textContent = `Could not measure the source: ${error.message}`;
+      log?.error(`could not measure the Draw a voice source: ${error.message}`);
+    } finally {
+      ui.take.disabled = ui.copy.disabled = false;
+    }
+  }
+  const sourceName = () => {
+    const source = state.source ?? DEFAULT_SOURCE;
+    return { syllables: "the syllable train", rain: "the rain", file: "the recording" }[source] ?? `the ${LABELS[source]}`;
+  };
+  ui.take.addEventListener("click", () => fromSource(withTakenSource, () => `Took the pitch and breathiness of ${sourceName()}.`));
+  ui.copy.addEventListener("click", () => {
+    const at = chosen;
+    const moment = () => Math.min(at, state.filter.moments.length - 1);
+    fromSource((section, voice) => withCopiedCurve(section, moment(), voice), (voice) => {
+      const t = state.filter.moments[moment()];
+      const unvoiced = voice.f0[nearestWindow(voice, t)] === 0 ? " It is unvoiced there; drag the moment to where the voice is to copy a vowel." : "";
+      return `Copied the filter of ${sourceName()} at ${t.toFixed(2)} s to moment ${moment() + 1}.${unvoiced}`;
+    });
+  });
+
   function showSettings() {
     const { moments } = section().filter;
     chosen = Math.min(chosen, moments.length - 1);
@@ -111,6 +172,7 @@ export function createDrawVoiceTab(root, { commit }) {
     ui.remove.disabled = moments.length <= 1;
     ui.add.disabled = moments.length >= MAX_MOMENTS;
     ui.vowel.value = "";
+    showSource();
     for (const input of ui.brushes) input.checked = input.value === brush;
   }
   for (const input of ui.brushes) input.addEventListener("change", () => (brush = input.value));

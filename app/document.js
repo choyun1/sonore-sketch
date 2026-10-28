@@ -160,6 +160,26 @@ export function tabState(page, tab) {
   throw new Error(`unknown tab ${tab}`);
 }
 
+// The state a tab's sound is made from: its state, but on Draw a voice
+// without the source it takes its voice from, which is not heard (S6).
+export function soundState(page, tab) {
+  const state = tabState(page, tab);
+  if (tab !== "draw_voice") return state;
+  const { source: _source, ...heard } = state;
+  return heard;
+}
+
+// What Draw a voice measures to take its source or copy its filter from a
+// sound (S6): its state with the source's own drawing or recording, as on
+// Quilt a sound (sonore_sketch.draw_voice.measure_steps).
+export function measureState(page) {
+  const state = { ...tabState(page, "draw_voice"), source: page.draw_voice.source ?? drawVoice.DEFAULT_SOURCE };
+  if (state.source === "draw_speech") state.draw_speech = page.draw_speech;
+  if (state.source === "file" && page.recording) state.recording = page.recording;
+  if (quiltSound.DRAWN.includes(state.source)) state.drawing = page[state.source];
+  return state;
+}
+
 // A new page with a tab's state put back.
 export function withTabState(page, tab, state) {
   if (tab === "draw_speech") {
@@ -179,7 +199,7 @@ export function withTabState(page, tab, state) {
     return { ...page, scatter_events: section };
   }
   if (tab === "draw_voice") {
-    const { draw_voice: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
+    const { draw_voice: _format, sonore: _sonore, duration: _duration, fs: _fs, recording: _recording, ...section } = state;
     return { ...page, draw_voice: section };
   }
   if (tab === "erase_modulation" || tab === "erase_spectrogram" || tab === "draw_path" || tab === "quilt_sound" || tab === "match_texture") {

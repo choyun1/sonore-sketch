@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { clearTab, defaultPage, openDocument, stretchPage, tabState } from "../../app/document.js";
+import { clearTab, defaultPage, measureState, openDocument, soundState, stretchPage, tabState, withRecording, withTabState } from "../../app/document.js";
 import {
   DB_RANGE, MAX_MOMENTS, MIN_GAP, N_POINTS, addMoment, check, curveAt, defaultSection, drawOnCurve, drawPitch, erbNumber, moveMoment,
-  pitchAt, points, removeMoment, unvoice, voicedRuns, vowelCurve, withEnds, withTrack,
+  measuredCurve, pitchAt, points, removeMoment, takenBreathiness, takenPitch, unvoice, voicedRuns, vowelCurve, withCopiedCurve, withEnds,
+  withTakenSource, withTrack,
 } from "../../app/draw_voice/model.js";
 
 test("the starting voice is ah, ee, oo on a falling pitch, and checks", () => {
@@ -96,4 +97,64 @@ test("a saved page with a bad voice does not open", () => {
   const older = { ...page };
   delete older.draw_voice;
   assert.deepEqual(openDocument(older).draw_voice, page.draw_voice); // a page saved before the tab gets its starting voice
+});
+
+// --- taken from a sound (S6) ---------------------------------------------------------
+
+// A measured voice: 120 Hz gliding to 240 Hz over 0.2-0.4 s, unvoiced from 0.5 to 0.6 s.
+function measured() {
+  const t = Array.from({ length: 161 }, (_, i) => Number((i * 0.005).toFixed(4)));
+  const f0 = t.map((time) => (time >= 0.5 && time <= 0.6 ? 0 : time < 0.2 ? 120 : time < 0.4 ? 120 * 2 ** ((time - 0.2) / 0.2) : 240));
+  const breathiness = t.map((time) => (time >= 0.5 && time <= 0.6 ? 0.9 : 0.1));
+  const f = points();
+  const db = t.map((time) => f.map((frequency) => (time < 0.3 ? (frequency < 1000 ? 0 : -40) : -20)));
+  return { t, f0, breathiness, f, db };
+}
+
+test("a taken pitch line follows the measured one, unvoiced where it is", () => {
+  const voice = measured();
+  const line = takenPitch(voice);
+  assert.ok(line.length < 20, `${line.length} breakpoints`);
+  voice.t.forEach((time, i) => {
+    const heard = pitchAt(line, time);
+    if (voice.f0[i] === 0 && time > 0.5 && time < 0.6) assert.equal(heard, 0, `at ${time}`);
+    if (voice.f0[i] > 0) assert.ok(Math.abs(Math.log2(heard / voice.f0[i])) < 0.03, `at ${time}: ${heard} for ${voice.f0[i]}`);
+  });
+  assert.deepEqual(takenPitch({ t: [0, 1], f0: [0, 0] }), [[0, 0], [1, 0]]);
+});
+
+test("a long jittery pitch still fits the breakpoint limit", () => {
+  const t = Array.from({ length: 6001 }, (_, i) => i * 0.005);
+  const line = takenPitch({ t, f0: t.map((_, i) => (i % 7 === 3 ? 0 : 100 + 60 * Math.sin(i))) });
+  assert.ok(line.length <= 2000 && line.length > 2);
+});
+
+test("the taken breathiness skips the unvoiced windows, and the section checks", () => {
+  const voice = measured();
+  assert.deepEqual(takenBreathiness(voice), [[0, 0.1], [0.8, 0.1]]);
+  const section = withTakenSource(defaultSection(), voice);
+  check({ draw_voice: 1, ...section, source: "file" });
+  assert.deepEqual(section.filter, defaultSection().filter);
+});
+
+test("copying the filter takes the window nearest the moment, onto the section's points", () => {
+  const voice = measured();
+  const section = withCopiedCurve(defaultSection(), 0, voice); // the moment at 0.2 s
+  assert.deepEqual(section.filter.db[0], voice.db[40]);
+  assert.deepEqual(section.filter.db.slice(1), defaultSection().filter.db.slice(1));
+  const coarse = measuredCurve(voice, 1.8, [40, 1000, 9000]);
+  assert.deepEqual(coarse, [-20, -20, -20]);
+});
+
+test("the source is not heard, and what is measured carries the source's own sound", () => {
+  const page = defaultPage("draw_voice");
+  const chosen = withTabState(page, "draw_voice", { ...tabState(page, "draw_voice"), source: "scatter_events" });
+  assert.equal(tabState(chosen, "draw_voice").source, "scatter_events");
+  assert.deepEqual(soundState(chosen, "draw_voice"), soundState(page, "draw_voice"));
+  assert.deepEqual(measureState(chosen).drawing, chosen.scatter_events);
+  assert.deepEqual(measureState(page).draw_speech, page.draw_speech); // Draw speech's sound until one is chosen
+  const opened = withRecording(page, { name: "a.wav", fs: 16000, pcm16: "AAAA" }, 1.5, "draw_voice");
+  assert.equal(opened.draw_voice.source, "file");
+  assert.equal(measureState(opened).recording.name, "a.wav");
+  assert.equal(withTabState(opened, "draw_voice", { ...tabState(opened, "draw_voice"), recording: opened.recording }).draw_voice.recording, undefined);
 });

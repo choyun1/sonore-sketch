@@ -601,9 +601,21 @@ def main() -> None:
             assert voice()["f0"] == [[0], [100]] and len(voice()["filter"]["moments"]) == 1
             expect(status).to_contain_text("Made", timeout=60_000)
             assert page.evaluate("[...document.querySelector('#tab-draw_voice canvas.stft').getContext('2d').getImageData(120, 80, 1, 1).data].some((v) => v > 0)")
+            # S6: the source and the filter taken from Draw speech's sound (the Source list's first choice here)
+            expect(page.locator("#tab-draw_voice .source")).to_have_value("draw_speech")
+            page.click("#tab-draw_voice .take")
+            expect(page.locator("#tab-draw_voice .measure-note")).to_contain_text("Took the pitch", timeout=120_000)
+            assert len(voice()["f0"][0]) > 2 and 0 in voice()["f0"][1], voice()["f0"]  # the word's pitch, unvoiced at its consonants
+            curve = voice()["filter"]["db"][0]
+            page.click("#tab-draw_voice .copy")
+            expect(page.locator("#tab-draw_voice .measure-note")).to_contain_text("Copied the filter", timeout=60_000)
+            assert voice()["filter"]["db"][0] != curve
+            page.select_option("#tab-draw_voice .source", "syllables")
+            assert voice()["source"] == "syllables"
+            expect(status).to_contain_text("Made", timeout=60_000)
             page.click(".tabs [data-tab=draw_speech]")
             expect(status).to_contain_text("Made", timeout=60_000)
-            print("Draw a voice: pitch, unvoicing, breathiness, a drawn curve, a vowel, adding and moving a moment, and Clear work")
+            print("Draw a voice: pitch, unvoicing, breathiness, a drawn curve, a vowel, adding and moving a moment, Clear, and taking the source and the filter from a sound work")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore

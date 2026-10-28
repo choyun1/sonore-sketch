@@ -129,7 +129,12 @@ heard); drag a mark to move it; double-click the strip, or **Add moment**,
 to add one with the curve heard there; **Set to a vowel** gives the chosen
 moment a vowel's curve (Peterson & Barney's, 1952, men's formants). It starts as ah, ee, oo on a falling pitch. Change
 the pitch and the vowels stay; change the curves and the pitch stays.
-**Clear** leaves a steady 100 Hz buzz through one flat curve.
+**Clear** leaves a steady 100 Hz buzz through one flat curve. Or start
+from a sound: choose it in the **Source** list (as on Quilt a sound) and
+**Take the source** to make the pitch and breathiness its own, or **Copy
+the filter here** to make the chosen moment's curve its filter at that
+time. Put one voice's source under another's filter, or a voice's filter
+over a drawn pitch.
 
 **Draw spectrogram.** It starts with "sonore" written by hand on the
 harmonic carrier at 50 Hz. Drag to paint at the brush's level (0 dB is the
@@ -284,6 +289,14 @@ synthesizer, given as breakpoints and interpolated in time
    (`docs/design/tabs/draw_voice.md`, V2). They start in cosine phase, so
    each period is a sharp pulse, a little buzzier than a voice. The result
    is brought to one RMS.
+4. Taking from a sound measures it as sonore analyses a voice: its pitch
+   with `so.f0_track`, its filter with `so.pitch_adaptive_envelope`
+   (CheapTrick) and its noise share with `so.band_aperiodicity` (D4C)
+   averaged over frequency, weighted by the envelope's power. The pitch
+   becomes a line within a quarter of a semitone, unvoiced where the sound
+   is; a copied curve is the envelope at the window nearest the moment, its
+   loudest voiced window at 0 dB. Measuring takes about a second per second
+   of sound natively.
 
 ### Draw spectrogram
 
