@@ -1,5 +1,5 @@
 // A new random seed, for the buttons that hear another draw (Draw
-// modulation's and Scatter events' New draw, Quilt a sound's New order):
+// modulation's, Scatter events' and Match a texture's New draw, Quilt a sound's New order):
 // a whole number below SEED_LIMIT, short enough to read and type, never
 // the one in use.
 //

@@ -59,18 +59,20 @@ def check(state: Mapping[str, Any]) -> None:
         raise ValueError(f"'seed' must be a whole number from 0 up, not {seed!r}")
 
 
-def source(state: Mapping[str, Any]) -> so.Sound:
-    """The sound the quilt is made from, at the page's duration and rate."""
+def source(state: Mapping[str, Any], silent: str = "there is nothing to quilt") -> so.Sound:
+    """The sound the quilt is made from, at the page's duration and rate;
+    when it is silent the error ends with ``silent``. The Match a texture
+    tab takes its source from here too (match_texture.md, T2)."""
     kind = state["source"]
     if kind not in DRAWN:
-        return sources.source(state, silent="there is nothing to quilt")
+        return sources.source(state, silent=silent)
     drawing = state.get("drawing")
     if not isinstance(drawing, Mapping):
         raise ValueError(f"the {kind} tab's drawing is missing")
     module = DRAWN[kind]
     sound = module.synthesize({kind: module.FORMAT, "duration": state["duration"], "fs": state["fs"], **drawing}).mono()
     if not sound.rms > 0:
-        raise ValueError(f"the source ({kind}) is silent: there is nothing to quilt")
+        raise ValueError(f"the source ({kind}) is silent: {silent}")
     return sound
 
 

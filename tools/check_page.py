@@ -379,12 +379,12 @@ def main() -> None:
             # The arrow keys, Home and End move between the tabs (the WAI-ARIA tabs
             # pattern), and only the tab shown is in the Tab order.
             page.keyboard.press("ArrowLeft")  # from the first tab round to the last
-            expect(page.locator("#tab-quilt_sound")).to_be_visible()
-            assert page.evaluate("document.activeElement.dataset.tab") == "quilt_sound"
+            expect(page.locator("#tab-match_texture")).to_be_visible()
+            assert page.evaluate("document.activeElement.dataset.tab") == "match_texture"
             page.keyboard.press("Home")
             expect(page.locator("#tab-draw_speech")).to_be_visible()
             assert page.locator(".tabs [tabindex='0']").get_attribute("data-tab") == "draw_speech"
-            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 7
+            assert page.locator(".tabs [role=tab][tabindex='-1']").count() == 8
             expect(status).to_contain_text("Made", timeout=60_000)
             print("tabs: the arrow keys and Home move between the tabs")
 
@@ -533,6 +533,27 @@ def main() -> None:
             page.click(".tabs [data-tab=draw_speech]")
             expect(status).to_contain_text("Made", timeout=60_000)
             print("Quilt a sound: the quilt and its source are drawn; a typed segment, too few segments, New order and Scatter events as the source work")
+
+            # The Match a texture tab: the result is made and both
+            # spectrograms and the bars drawn; unticking a group is saved and
+            # its bars come out outlined; there is nothing to Clear.
+            page.click(".tabs [data-tab=match_texture]")
+            expect(page.locator("#tab-match_texture")).to_be_visible()
+            expect(status).to_contain_text("Made", timeout=120_000)
+            expect(page.locator("#clear")).to_be_disabled()
+            expect(page.locator("#tab-match_texture .texture-note")).to_contain_text("classes imposed match")
+            for canvas_name in ("source-stft", "texture-stft"):
+                assert page.evaluate(f"[...document.querySelector('#tab-match_texture canvas.{canvas_name}').getContext('2d').getImageData(120, 80, 1, 1).data].some((v) => v > 0)"), canvas_name
+            page.fill("#tab-match_texture .iterations", "2")
+            page.press("#tab-match_texture .iterations", "Enter")
+            page.uncheck("#tab-match_texture .keep[value=correlations]")
+            assert page_document_in(page)["match_texture"]["keep"] == ["marginals", "modulation"]
+            assert page_document_in(page)["match_texture"]["iterations"] == 2
+            expect(status).to_contain_text("Made", timeout=120_000)
+            expect(page.locator("#tab-match_texture .texture-note")).to_contain_text("of the 6 classes imposed")
+            page.click(".tabs [data-tab=draw_speech]")
+            expect(status).to_contain_text("Made", timeout=60_000)
+            print("Match a texture: the result, its source and the bars are drawn; iterations and the groups kept apply")
 
             # The Draw modulation tab: the example plays; clicking adds a blob,
             # dragging moves it across the seam and resizes it; a depth sonore

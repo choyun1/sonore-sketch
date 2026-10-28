@@ -6,13 +6,13 @@ experiment of McDermott & Simoncelli (2011). If a sound is a texture (rain,
 applause, a stream), its statistics are enough to make something that
 sounds like it. If it is not (speech, a melody), they are not. Each group of
 statistics you switch on adds something you can hear. The sound comes from
-`sonore.texture.synthesize`, and the tab follows sonore's
+`sonore.texture.synth.synthesize`, and the tab follows sonore's
 [Sound textures](https://choyun1.github.io/sonore/gallery/textures.html)
 gallery page, with the reader choosing the statistics.
 
-Status: proposed. Cho asked for this tab on 2026-10-28, from a list of ideas
-for new tabs ("let's do 3 first"). No code until Cho answers the decisions
-(T1-T9).
+Status: built (see "As built" at the end). Cho asked for this tab on
+2026-10-28, from a list of ideas for new tabs ("let's do 3 first"), and
+accepted every recommendation (T1-T9) the same day.
 
 This project is AI-assisted: the document and `tools/measure_texture_stats.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -55,7 +55,7 @@ sonore release.
   modulation power (`mod_power`); and two modulation correlations (`c1`,
   `c2`). A ninth, the subband variance, is the spectrum and is always
   imposed.
-- `so.texture.synthesize(target, duration=, classes=, max_iter=, rng=,
+- `sonore.texture.synth.synthesize(target, duration=, classes=, max_iter=, rng=,
   init=)` starts from Gaussian noise (or `init`) and imposes the chosen
   classes, channel by channel, once per iteration. It returns the best
   iterate and a per-class SNR report. All of its filtering is circular, so
@@ -136,6 +136,8 @@ texture.
 *Recommended:* (a). It says what happens (noise is made to match) and that
 the tab is about textures, which is also where it works.
 
+*Decided (2026-10-28):* as recommended.
+
 **T2. The source.** (a) The same Source list as Quilt a sound: sounds
 made here first (the syllable train), then the other tabs' sounds in tab
 order, then "From a file…"; (b) a list of
@@ -145,6 +147,8 @@ syllable train is not a texture and would make a poor first impression.
 Recorded textures from a file work too. (b) would add sound design that
 sonore does not have.
 
+*Decided (2026-10-28):* as recommended.
+
 **T3. Choosing statistics.** (a) Three checkboxes, all on by default:
 envelope marginals (mean, variance, skew, kurtosis), modulation power, and
 correlations (envelope correlation, C1, C2), with the spectrum always on;
@@ -153,15 +157,21 @@ correlations (envelope correlation, C1, C2), with the spectrum always on;
 in any order (unlike (c)), and eight boxes with names like C1 and C2 would
 need a glossary.
 
+*Decided (2026-10-28):* as recommended.
+
 **T4. Iterations.** A slider from 1 to 30, default 10 (V2), the same field
 as Erase modulation's.
 *Recommended:* as stated.
+
+*Decided (2026-10-28):* as recommended.
 
 **T5. Duration.** (a) The page's duration, up to 30 s, with a note when it
 will be slow, as Erase modulation has (V1); (b) a fixed length (say 2 s)
 looped to the page's duration, which is seamless (circular filtering) but
 repeats audibly; (c) a lower limit for this tab.
 *Recommended:* (a), one rule for every tab.
+
+*Decided (2026-10-28):* as recommended.
 
 **T6. The model's rate.** (a) sonore's default model at 20 kHz (20 Hz to
 10 kHz, as in the paper), resampled to and from the page's 16 kHz; (b) the
@@ -170,21 +180,49 @@ model at the page's rate, 20 Hz to 8 kHz, 30 bands.
 about the same (V1). Its bands above 8 kHz are matched to the 16 kHz
 source's silence there, so they cost a little time and change nothing.
 
+*Decided (2026-10-28):* as recommended.
+
 **T7. The plots.** The source's and the result's spectrograms side by
 side, and a bar for each of the eight classes plus the spectrum: the SNR of
 the result against the source, imposed classes solid and the rest outlined.
 *Recommended:* as stated. The bars make V3 visible: switching a group off
 drops its bars to about 0 dB.
 
+*Decided (2026-10-28):* as recommended.
+
 **T8. New draw.** The starting noise is seeded. "New draw" picks a random
 seed (`app/seed.js`), as Scatter events and Quilt a sound do.
 *Recommended:* as stated.
+
+*Decided (2026-10-28):* as recommended.
 
 **T9. What is saved.** `{"match_texture": 1, "sonore": "0.8.0", "duration",
 "fs", "source", "keep": ["marginals", "modulation", "correlations"],
 "iterations": 10, "seed"}` plus the source's own section (`draw_speech`,
 `recording` or `drawing`), as Quilt a sound saves it.
 *Recommended:* as stated.
+
+*Decided (2026-10-28):* as recommended.
+
+## As built
+
+- `src/sonore_sketch/match_texture.py` and `app/match_texture/`. The
+  source comes from `quilt_sound.source`, so the two tabs list the same
+  sounds and make them the same way. With no group kept, the classes passed
+  to sonore are the spectrum's alone (`subband_var`).
+- The bars clip each SNR to -20 to 60 dB (a perfect match would be
+  infinite), and a note under them counts the classes imposed that reach
+  20 dB. A narrow plot (a phone) gets short labels.
+- The page shows the slow-tab advisory, as Erase modulation does (T5).
+- The starting source, the Scatter events tab's starting chirps (10 a
+  second), is sparse rather than a texture: its result keeps the chirps'
+  band and some of their rhythm, and most classes stay under 20 dB.
+  A denser Scatter events setting, or a recording of rain, shows the point
+  better.
+- `tests/test_match_texture.py` checks that stepping one iteration at a
+  time gives sonore's own sound (V4) and that a group kept raises its
+  classes' match (V3); `tests/test_fingerprints.py` pins a 1 s case.
+- Not yet timed in the browser: V1's browser figures are still an estimate.
 
 ## Order of work
 

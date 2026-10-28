@@ -38,6 +38,9 @@
       <button role="tab" id="tab-button-quilt_sound" aria-selected="false" aria-controls="tab-quilt_sound" tabindex="-1" data-tab="quilt_sound"
         data-caption="Take a sound (a syllable train, a recording, or what you drew on another tab), cut it into short segments and hear them in a new order: short segments keep its texture and lose its words (after Overath et al., 2015)."
         title="A sound's segments reordered so that each join changes the sound as the sound itself changed, heard through sonore's quilt">Quilt a sound</button>
+      <button role="tab" id="tab-button-match_texture" aria-selected="false" aria-controls="tab-match_texture" tabindex="-1" data-tab="match_texture"
+        data-caption="Measure a sound's texture statistics, choose which to keep, and hear noise made to match them: rain comes back from its statistics, speech does not (after McDermott &amp; Simoncelli, 2011)."
+        title="Noise pushed until its texture statistics match the source's, heard through sonore's texture synthesis">Match a texture</button>
     </nav>
     <div class="controls">
       <button type="button" id="play" class="primary" title="Play or stop (Space)" disabled>Loading…</button>
@@ -75,6 +78,7 @@
     <section class="tab-body" id="tab-draw_path" role="tabpanel" aria-labelledby="tab-button-draw_path" hidden></section>
     <section class="tab-body" id="tab-scatter_events" role="tabpanel" aria-labelledby="tab-button-scatter_events" hidden></section>
     <section class="tab-body" id="tab-quilt_sound" role="tabpanel" aria-labelledby="tab-button-quilt_sound" hidden></section>
+    <section class="tab-body" id="tab-match_texture" role="tabpanel" aria-labelledby="tab-button-match_texture" hidden></section>
     <section class="result">
       <div class="result-row">
         <span class="result-label">Result</span>

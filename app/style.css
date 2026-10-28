@@ -109,7 +109,7 @@ kbd { font-size: 11px; color: var(--muted); }
 main { flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
 
 .draw-speech-body { display: flex; gap: 12px; align-items: flex-start; }
-.draw-spectrogram-body, .draw-modulation-body, .erase-modulation-body, .erase-spectrogram-body, .draw-path-body, .quilt-sound-body { display: flex; gap: 12px; align-items: flex-start; }
+.draw-spectrogram-body, .draw-modulation-body, .erase-modulation-body, .erase-spectrogram-body, .draw-path-body, .quilt-sound-body, .match-texture-body { display: flex; gap: 12px; align-items: flex-start; }
 .draw-path-area { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 canvas.top-view, canvas.speed, canvas.elevation {
   display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
@@ -168,6 +168,14 @@ canvas.stft {
   background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
 }
 .quilt-sound-body .quilt-note { margin: 0 10px 0 52px; }
+.match-texture-body canvas.source-stft, .match-texture-body canvas.texture-stft {
+  display: block; width: 100%; height: min(28vh, 220px); min-height: 160px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.match-texture-body canvas.match-bars { display: block; width: 100%; height: 170px; }
+.match-texture-body .texture-note { margin: 0 10px 0 52px; }
+.match-texture-body .texture-note:empty { display: none; }
+.side .check:has(> .keep), .side .check:has(> input[disabled]) { display: flex; padding: 2px 0; }
 .side .reorder { display: block; width: 100%; margin-top: 4px; }
 .side .preset-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
 .side .preset-row input { width: 3.5em; }
@@ -313,7 +321,7 @@ main[data-tab="scatter_events"] > .result { margin-right: 470px; }
 
 @media (max-width: 720px) {
   /* the side panel above the plots, which take the whole width */
-  .draw-speech-body, .draw-spectrogram-body, .draw-modulation-body, .erase-modulation-body, .erase-spectrogram-body, .draw-path-body, .quilt-sound-body { flex-direction: column-reverse; align-items: stretch; }
+  .draw-speech-body, .draw-spectrogram-body, .draw-modulation-body, .erase-modulation-body, .erase-spectrogram-body, .draw-path-body, .quilt-sound-body, .match-texture-body { flex-direction: column-reverse; align-items: stretch; }
   .side { width: 100%; flex-direction: row; flex-wrap: wrap; }
   /* the tab buttons wrap instead of running off the page */
   .tabs { flex-wrap: wrap; }

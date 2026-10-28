@@ -15,7 +15,9 @@
 // (modulationSpectrogramPicture),
 // on the Erase spectrogram tab sourceStft, resultStft: {...}
 // (spectrogramPicture; both in pictures.js), and on the Quilt a sound tab
-// sourceStft, segments (how many the quilt has) and segmentSeconds (each one's length).
+// sourceStft, segments (how many the quilt has) and segmentSeconds (each one's length),
+// and on the Match a texture tab sourceStft, match (dB per class of statistics,
+// match_texture/model.js BARS) and imposed (whether each was).
 
 import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
 
@@ -182,6 +184,8 @@ export function readResult(body) {
     clipped: body.clipped ?? null,
     segments: body.segments ?? null,
     segmentSeconds: body.segment_s ?? null,
+    match: body.match ?? null,
+    imposed: body.imposed ?? null,
     modulationFrames: body.modulation_frames && readPicture(body.modulation_frames, modulationSpectrogramPicture),
     modulationPooled: body.modulation_pooled && readPicture(body.modulation_pooled, modulationSpectrogramPicture),
   };

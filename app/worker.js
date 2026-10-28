@@ -154,6 +154,17 @@ function readPicture(result, key, make) {
   }
 }
 
+// A list in `result` under `key`, copied out, or null.
+function readList(result, key) {
+  if (!result.has(key)) return null;
+  const proxy = result.get(key);
+  try {
+    return proxy.toJs();
+  } finally {
+    proxy.destroy();
+  }
+}
+
 function convert(result) {
   try {
     return {
@@ -169,6 +180,8 @@ function convert(result) {
       clipped: result.has("clipped") ? result.get("clipped") : null,
       segments: result.has("segments") ? result.get("segments") : null,
       segmentSeconds: result.has("segment_s") ? result.get("segment_s") : null,
+      match: readList(result, "match"),
+      imposed: readList(result, "imposed"),
       modulationFrames: readPicture(result, "modulation_frames", modulationSpectrogramPicture),
       modulationPooled: readPicture(result, "modulation_pooled", modulationSpectrogramPicture),
     };
