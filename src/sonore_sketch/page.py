@@ -166,7 +166,9 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     on the Match a texture tab the source's spectrogram (``source_stft``) and
     how well the result's statistics match the source's (``match``: dB per
     class of ``match_texture.BARS``, in that order) with which were imposed
-    (``imposed``).
+    (``imposed``). A Draw a voice request with ``"measure": true`` makes the
+    source's sound instead and measures its voice (``voice``:
+    ``draw_voice.measure_steps``).
     """
     return shared.finish(handle_steps(request))
 
@@ -192,6 +194,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         sound, original, segments = yield from shared.scaled(quilt_sound.steps(request["state"]), 0.9)
     elif tab == "match_texture":
         sound, original, matched = yield from shared.scaled(match_texture.steps(request["state"]), 0.95)
+    elif tab == "draw_voice" and request.get("measure"):  # the source's voice, to take or copy from (draw_voice.md, S6)
+        sound, voice = yield from shared.scaled(draw_voice.measure_steps(request["state"]), 0.9)
     else:
         yield 0.0, "Synthesizing"
         sound = TABS[tab](request["state"])
@@ -221,6 +225,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         result["source_stft"] = spectrogram(original)
         result["match"] = [round(matched[name], 2) for name in match_texture.BARS]
         result["imposed"] = [name in kept for name in match_texture.BARS]
+    if tab == "draw_voice" and request.get("measure"):
+        result["voice"] = voice
     if tab == "erase_spectrogram":  # the source's and the result's spectrograms in the mask's own STFT (erase_spectrogram.md)
         result["source_stft"], result["result_stft"] = erase_spectrogram.pictures(source_stft, result_stft)
     return result

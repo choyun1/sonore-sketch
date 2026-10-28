@@ -9,7 +9,8 @@
 //
 // No DOM here, so this file runs under `node --test`.
 
-import { valueAt } from "../draw_speech/model.js";
+import { simplify, valueAt } from "../draw_speech/model.js";
+import { SOURCES } from "../quilt_sound/model.js";
 
 export const FORMAT = 1;
 export const F0_RANGE = [50, 500]; // Hz, the pitch line's axis; 0 is unvoiced (sonore_sketch.draw_voice.F0_RANGE)
@@ -20,6 +21,10 @@ export const MAX_BREAKPOINTS = 2000;
 export const MAX_MOMENTS = 32;
 export const MIN_GAP = 0.01; // s, how close two moments may be
 export const BREATHY_START = 0.001; // the starting share of noise (S5)
+export { SOURCES }; // S6: the sounds a voice is taken from, as on Quilt a sound (sonore_sketch.draw_voice.SOURCES)
+export const DEFAULT_SOURCE = "draw_speech";
+const TAKEN_PITCH_TOLERANCE = 1 / 48; // octaves (a quarter of a semitone) a taken pitch line may stray from the measured one
+const TAKEN_SHARE_TOLERANCE = 0.02;
 const UNVOICE_MARGIN = 0.001; // s: an unvoiced stretch keeps the line's pitch up to this close to its ends
 
 export const erbNumber = (f) => 21.4 * Math.log10(1 + 0.00437 * f);
@@ -267,6 +272,7 @@ export function check(state) {
     throw new Error(`the filter needs one curve of ${f.length} levels from ${DB_RANGE[0]} to ${DB_RANGE[1]} dB per moment`);
   }
   if (!(Number.isInteger(state.seed) && state.seed >= 0)) throw new Error("the voice's seed must be a whole number from 0 up");
+  if (state.source !== undefined && !SOURCES.includes(state.source)) throw new Error(`the Draw a voice source must be one of ${SOURCES.join(", ")}`);
   return state;
 }
 
@@ -292,4 +298,97 @@ export function drawPitch(breakpoints, stroke) {
   if (t0 - UNVOICE_MARGIN > 0 && pitchAt(breakpoints, t0) === 0) edges.push([t0 - UNVOICE_MARGIN, 0]);
   if (pitchAt(breakpoints, t1) === 0) edges.push([t1 + UNVOICE_MARGIN, 0]);
   return [...kept.filter(([t]) => !edges.some(([e]) => Math.abs(e - t) < UNVOICE_MARGIN / 2)), ...edges, ...stroke].sort((x, y) => x[0] - y[0]);
+}
+
+// --- taken from a sound (S6) -----------------------------------------------------------
+//
+// A measured voice (sonore_sketch.draw_voice.measure_steps) holds, every 5 ms
+// (t): the pitch (f0, 0 where unvoiced), the share of noise (breathiness) and
+// the filter's curve (db, at the frequencies f).
+
+// Breakpoints simplified within `tolerance`, the tolerance doubled until they
+// fit MAX_BREAKPOINTS.
+function simplified(stroke, tolerance) {
+  let out = simplify(stroke, tolerance);
+  for (let k = 2; out.length > MAX_BREAKPOINTS; k *= 2) out = simplify(stroke, tolerance * k);
+  return out;
+}
+
+// The runs of a measured pitch, [first, last, voiced], with the runs shorter
+// than `shortest` windows taken into the run before them.
+function voicingRuns(f0, shortest) {
+  const runs = [];
+  for (let i = 0; i < f0.length; ) {
+    let j = i;
+    while (j + 1 < f0.length && f0[j + 1] > 0 === f0[i] > 0) j++;
+    const last = runs[runs.length - 1];
+    if (last && (j - i + 1 < shortest || last[2] === f0[i] > 0)) last[1] = j;
+    else runs.push([i, j, f0[i] > 0]);
+    i = j + 1;
+  }
+  return runs;
+}
+
+// The pitch line of a measured voice: each voiced run simplified,
+// each unvoiced run 0 at its first and last window. A line too long for
+// MAX_BREAKPOINTS is simplified more loosely, then its shortest runs merged.
+export function takenPitch({ t, f0 }) {
+  if (!f0.some((v) => v > 0)) return [[t[0], 0], [t[t.length - 1], 0]];
+  for (let shortest = 1; ; shortest *= 2) {
+    const runs = voicingRuns(f0, shortest);
+    for (let k = 1; k <= 64; k *= 2) {
+      const line = runs.flatMap(([i, j, voiced]) => {
+        if (!voiced) return j > i ? [[t[i], 0], [t[j], 0]] : [[t[i], 0]];
+        // the run's own voiced windows (a merged run may hold unvoiced ones),
+        // in Hz as sonore reads them, within the tolerance at the run's lowest pitch
+        const run = [];
+        for (let n = i; n <= j; n++) if (f0[n] > 0) run.push([t[n], f0[n]]);
+        const lowest = Math.min(...run.map(([, v]) => v));
+        return simplify(run, lowest * (2 ** (TAKEN_PITCH_TOLERANCE * k) - 1));
+      });
+      if (line.length <= MAX_BREAKPOINTS) return line;
+    }
+  }
+}
+
+// The breathiness of a measured voice: where it is unvoiced (all noise when
+// heard) the share is drawn straight across from the voiced windows either side.
+export function takenBreathiness({ t, f0, breathiness }) {
+  const voiced = t.map((time, i) => [time, breathiness[i]]).filter((_, i) => f0[i] > 0);
+  if (!voiced.length) return [[t[0], BREATHY_START]];
+  return simplified(voiced, TAKEN_SHARE_TOLERANCE);
+}
+
+// The section with its source (pitch and breathiness) taken from a measured voice.
+export function withTakenSource(section, voice) {
+  return withTrack(withTrack(section, "f0", takenPitch(voice)), "breathiness", takenBreathiness(voice));
+}
+
+// The index of the measured window nearest t.
+export function nearestWindow(voice, t) {
+  let nearest = 0;
+  voice.t.forEach((time, i) => {
+    if (Math.abs(time - t) < Math.abs(voice.t[nearest] - t)) nearest = i;
+  });
+  return nearest;
+}
+
+// The measured voice's filter at the window nearest t, at the frequencies
+// `f` (read linearly in dB over the ERB scale, held beyond its ends).
+export function measuredCurve(voice, t, f) {
+  const curve = voice.db[nearestWindow(voice, t)];
+  const e = voice.f.map(erbNumber);
+  return f.map((frequency) => {
+    const at = erbNumber(frequency);
+    if (at <= e[0]) return curve[0];
+    const k = e.findIndex((value) => value >= at);
+    if (k === -1) return curve[curve.length - 1];
+    const w = (at - e[k - 1]) / (e[k] - e[k - 1]);
+    return curve[k - 1] + w * (curve[k] - curve[k - 1]);
+  });
+}
+
+// The section with moment i's curve copied from a measured voice, at that moment.
+export function withCopiedCurve(section, i, voice) {
+  return withCurve(section, i, measuredCurve(voice, section.filter.moments[i], section.filter.f));
 }

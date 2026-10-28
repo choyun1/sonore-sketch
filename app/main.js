@@ -9,7 +9,7 @@ import { History } from "./history.js";
 import { Log } from "./log.js";
 import { drawWaveform } from "./plot.js";
 import { encodeState, stateFromHash, tabFromHash } from "./share.js";
-import { clearTab, defaultPage, forLink, isStartingPage, openDocument, resetTab, stretchPage, tabState, withRecording, withTabState } from "./document.js";
+import { clearTab, defaultPage, forLink, isStartingPage, openDocument, resetTab, soundState, stretchPage, measureState, tabState, withRecording, withTabState } from "./document.js";
 import { createDrawModulationTab } from "./draw_modulation/tab.js";
 import { createEraseModulationTab } from "./erase_modulation/tab.js";
 import { createScatterEventsTab } from "./scatter_events/tab.js";
@@ -124,9 +124,30 @@ let opened = fromLink ? initial : null;
 const hasRecording = () => Boolean(history.present.recording);
 // `play`: hear this edit whatever its length and Auto-play (New draw asks to hear another draw)
 const commitFrom = (id) => (state, { play = false } = {}) => change(withTabState(history.present, id, state), { play });
+// Draw a voice's source, measured to take its voice from (draw_voice.md, S6),
+// kept while the source's own sound stays the same: {key, voice}.
+let measured = null;
+async function measureVoice(onStep) {
+  const state = measureState(history.present);
+  const { source, duration, fs, draw_speech, recording, drawing } = state;
+  const key = JSON.stringify({ source, duration, fs, draw_speech, recording, drawing });
+  if (measured?.key === key) return measured.voice;
+  if (!ready) throw new Error(failed ?? "sonore is still loading; try again once it has");
+  const result = await engine.synthesize({ tab: "draw_voice", state, measure: true }, onStep);
+  if (!result) return null;
+  measured = { key, voice: result.voice };
+  return result.voice;
+}
 const tabs = {
   draw_speech: createDrawSpeechTab(byId("tab-draw_speech"), { commit: commitFrom("draw_speech") }),
-  draw_voice: createDrawVoiceTab(byId("tab-draw_voice"), { commit: commitFrom("draw_voice") }),
+  draw_voice: createDrawVoiceTab(byId("tab-draw_voice"), {
+    commit: commitFrom("draw_voice"),
+    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "draw_voice")),
+    hasRecording,
+    recording: () => history.present.recording ?? null,
+    measure: measureVoice,
+    log,
+  }),
   draw_spectrogram: createDrawSpectrogramTab(byId("tab-draw_spectrogram"), { commit: commitFrom("draw_spectrogram"), log }),
   erase_spectrogram: createEraseSpectrogramTab(byId("tab-erase_spectrogram"), {
     commit: commitFrom("erase_spectrogram"),
@@ -314,7 +335,7 @@ async function madeAhead(id, key) {
 async function synthesize({ play }) {
   const page = history.present;
   const askedTab = tab;
-  const state = tabState(page, tab.id);
+  const state = soundState(page, tab.id);
   const key = `${tab.id} ${JSON.stringify(state)}`;
   if (running?.key === key) {
     // this drawing is already being made: hear it when it comes, rather than start over
@@ -383,14 +404,16 @@ async function synthesize({ play }) {
   if (!sound) return null; // a newer drawing replaced this request
   // The drawing changed while this was made, to one that asks for no sound
   // (nothing drawn) or to another tab: this sound is no longer what is shown.
-  if (tab !== askedTab || history.present !== page) return null;
+  // (A change that is not heard, such as Draw a voice's source, keeps it.)
+  const stillShown = () => tab === askedTab && `${tab.id} ${JSON.stringify(soundState(history.present, tab.id))}` === key;
+  if (!stillShown()) return null;
   result = { key, page, sound };
   showResult();
   // the whole wait, pictures of the result included; the log also has synthesis alone
   const waited = (performance.now() - askedAt) / 1000;
   status(`Made ${page.duration} s in ${waited.toFixed(2)} s.`);
   log.info(`made ${page.duration} s in ${waited.toFixed(2)} s (synthesis ${sound.synthesisSeconds.toFixed(2)} s)`);
-  if (asking.play && history.present === page) start(sound);
+  if (asking.play && stillShown()) start(sound);
   return sound;
 }
 

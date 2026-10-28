@@ -23,7 +23,7 @@ linearly in time between moments and in dB between points.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from itertools import pairwise
 from typing import Any
 
@@ -31,7 +31,8 @@ import numpy as np
 import sonore as so
 from sonore.views.aperiodicity import Aperiodicity
 
-from .shared import number
+from . import quilt_sound
+from .shared import Step, number
 
 FORMAT = 1
 MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
@@ -42,6 +43,7 @@ F_RANGE = (50.0, 8000.0)  # Hz, the page's points from the first to the last
 HOP = 0.005  # s, the synthesis grid (sonore's)
 MAX_BREAKPOINTS = 2000
 MAX_MOMENTS = 32
+SOURCES = quilt_sound.SOURCES  # S6: the sounds a voice can be taken from, as on Quilt a sound
 
 
 def erb_number(f: Any) -> np.ndarray:
@@ -102,6 +104,8 @@ def check(state: Mapping[str, Any]) -> None:
     seed = state.get("seed")
     if not (isinstance(seed, int) and not isinstance(seed, bool) and seed >= 0):
         raise ValueError(f"'seed' must be a whole number from 0 up, not {seed!r}")
+    if "source" in state and state["source"] not in SOURCES:
+        raise ValueError(f"'source' must be one of {SOURCES}, not {state['source']!r}")
 
 
 def pitch(state: Mapping[str, Any], times: np.ndarray) -> np.ndarray:
@@ -140,3 +144,43 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     f0, envelope, aperiodicity = parts(state)
     sound = so.source_filter_synthesize(f0, envelope, aperiodicity, duration=float(state["duration"]), rng=int(state["seed"]))
     return sound.normalize() if sound.rms > 0 else sound
+
+
+def measure_steps(state: Mapping[str, Any]) -> Iterator[Step]:
+    """Measure the voice of ``state``'s source (S6), one step at a time
+    (``shared.Step``), for the page to take its source or copy its filter.
+
+    The source is made as on Quilt a sound, at the page's duration and rate
+    (with its own section: ``draw_speech``, ``recording`` or ``drawing``).
+    Returns the source and, every 5 ms (``t``): its pitch (``f0``, 0 where
+    unvoiced; sonore's ``f0_track``), its noise share (``breathiness``: D4C's
+    aperiodicity averaged over frequency, weighted by the envelope's power)
+    and its filter (``db``: CheapTrick's envelope at the ``f`` points, the
+    loudest voiced value at 0 dB, held at the axis's floor)."""
+    check(state)
+    if state.get("source") is None:
+        raise ValueError("there is no source to take the voice from")
+    yield 0.0, "Making the source"
+    sound = quilt_sound.source(state, silent="there is no voice to take")
+    yield 0.15, "Tracking the pitch"
+    track = so.f0_track(sound)
+    times = np.asarray(track.t, dtype=float)
+    f0 = np.asarray(track.f0, dtype=float).reshape(-1, len(times))[0]
+    contour = (times, f0)
+    yield 0.6, "Measuring the filter"
+    envelope = so.pitch_adaptive_envelope(sound, contour)
+    yield 0.75, "Measuring the breathiness"
+    share = so.band_aperiodicity(sound, contour).bands([0.0, sound.fs / 2], envelope=envelope)[0, 0]
+    f = points()
+    db = 10 * np.log10(np.maximum(envelope(times, f)[0], 1e-30)).T  # (windows, points)
+    voiced = f0 > 0
+    db -= db[voiced].max() if voiced.any() else db.max()
+    voice = {
+        "t": np.round(times, 4).tolist(),
+        "f0": np.round(np.where(voiced, np.clip(f0, *F0_RANGE), 0.0), 1).tolist(),
+        "breathiness": np.round(np.clip(share, 0, 1), 4).tolist(),
+        "f": f.tolist(),
+        "db": np.round(np.clip(db, *DB_RANGE), 1).tolist(),
+    }
+    yield 0.95, "Measured"
+    return sound, voice

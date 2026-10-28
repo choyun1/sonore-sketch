@@ -29,8 +29,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 TABS = ["draw_speech", "draw_voice", "draw_spectrogram", "draw_modulation", "erase_modulation", "erase_spectrogram", "draw_path", "scatter_events", "quilt_sound", "match_texture"]
 
 DUMP = """
-import { defaultPage, tabState } from "./app/document.js";
-console.log(JSON.stringify(Object.fromEntries(%s.map((tab) => [tab, tabState(defaultPage(tab), tab)]))));
+import { defaultPage, soundState } from "./app/document.js";
+console.log(JSON.stringify(Object.fromEntries(%s.map((tab) => [tab, soundState(defaultPage(tab), tab)]))));
 """
 
 

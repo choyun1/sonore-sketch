@@ -154,12 +154,12 @@ function readPicture(result, key, make) {
   }
 }
 
-// A list in `result` under `key`, copied out, or null.
+// A list (or a dict, as an object) in `result` under `key`, copied out, or null.
 function readList(result, key) {
   if (!result.has(key)) return null;
   const proxy = result.get(key);
   try {
-    return proxy.toJs();
+    return proxy.toJs({ dict_converter: Object.fromEntries });
   } finally {
     proxy.destroy();
   }
@@ -182,6 +182,7 @@ function convert(result) {
       segmentSeconds: result.has("segment_s") ? result.get("segment_s") : null,
       match: readList(result, "match"),
       imposed: readList(result, "imposed"),
+      voice: readList(result, "voice"),
       modulationFrames: readPicture(result, "modulation_frames", modulationSpectrogramPicture),
       modulationPooled: readPicture(result, "modulation_pooled", modulationSpectrogramPicture),
     };
