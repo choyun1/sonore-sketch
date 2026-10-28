@@ -17,11 +17,11 @@ import numpy as np
 import sonore as so
 
 from . import (
-    draw_modulation, draw_path, draw_spectrogram, draw_speech, erase_modulation, erase_spectrogram, match_texture, quilt_sound, scatter_events, shared,
+    draw_modulation, draw_path, draw_spectrogram, draw_speech, draw_voice, erase_modulation, erase_spectrogram, match_texture, quilt_sound, scatter_events, shared,
 )
 
 TABS = {
-    "draw_speech": draw_speech.synthesize, "draw_spectrogram": draw_spectrogram.synthesize, "erase_spectrogram": erase_spectrogram.synthesize,
+    "draw_speech": draw_speech.synthesize, "draw_voice": draw_voice.synthesize, "draw_spectrogram": draw_spectrogram.synthesize, "erase_spectrogram": erase_spectrogram.synthesize,
     "draw_modulation": draw_modulation.synthesize, "erase_modulation": erase_modulation.synthesize, "draw_path": draw_path.synthesize,
     "scatter_events": scatter_events.synthesize, "quilt_sound": quilt_sound.synthesize, "match_texture": match_texture.synthesize,
 }
@@ -82,6 +82,8 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         return {"draw_spectrogram": draw_spectrogram.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["draw_spectrogram"]}
     if tab == "draw_modulation" and "draw_modulation" in page:
         return {"draw_modulation": draw_modulation.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["draw_modulation"]}
+    if tab == "draw_voice" and "draw_voice" in page:
+        return {"draw_voice": draw_voice.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["draw_voice"]}
     if tab == "scatter_events" and "scatter_events" in page:
         return {"scatter_events": scatter_events.FORMAT, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page["scatter_events"]}
     if tab == "draw_path" and "draw_path" in page:

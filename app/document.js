@@ -6,6 +6,7 @@
 //   {"app": "sonore-sketch", "version": 3, "sonore": "0.8.0",
 //    "duration": 0.6, "fs": 16000, "tab": "draw_speech",
 //    "draw_speech": {"mode": "klatt", "params": {...}},
+//    "draw_voice": {"f0": [[t, ...], [Hz, ...]], "breathiness": [...], "filter": {"f": [...], "moments": [...], "db": [...]}, "seed": 1},
 //    "draw_spectrogram": {"f_lo": 100, "f_hi": 6400, ..., "levels": "..."},
 //    "draw_modulation": {"carrier": "tones", ..., "items": [{"rate": 4, ...}]},
 //    "erase_modulation": {"source": "syllables", ..., "levels": "..."},
@@ -38,10 +39,11 @@ import * as quiltSound from "./quilt_sound/model.js";
 import * as matchTexture from "./match_texture/model.js";
 import { MAX_RECORDING_S, checkRecording } from "./sources.js";
 import * as drawSpeech from "./draw_speech/model.js";
+import * as drawVoice from "./draw_voice/model.js";
 
 export const APP = "sonore-sketch";
 export const VERSION = 3;
-export const TABS = ["draw_speech", "draw_spectrogram", "erase_spectrogram", "draw_modulation", "erase_modulation", "draw_path", "scatter_events", "quilt_sound", "match_texture"];
+export const TABS = ["draw_speech", "draw_voice", "draw_spectrogram", "erase_spectrogram", "draw_modulation", "erase_modulation", "draw_path", "scatter_events", "quilt_sound", "match_texture"];
 
 // The tabs' ids in version-2 documents (before 2026-10-20), each with the id
 // it has now; a source naming a tab used the same ids, but "speech" for Draw
@@ -79,9 +81,13 @@ export function defaultPage(tab = "draw_speech") {
     app: APP, version: VERSION, sonore, duration, fs, tab,
     draw_speech: { mode, params }, draw_spectrogram: drawSpectrogram.defaultSection(), draw_modulation: drawModulation.defaultSection(), erase_modulation: eraseModulation.defaultSection(),
     erase_spectrogram: eraseSpectrogram.defaultSection(), draw_path: drawPath.defaultSection(), scatter_events: scatterEvents.defaultSection(), quilt_sound: quiltSound.defaultSection(),
-    match_texture: matchTexture.defaultSection(),
+    match_texture: matchTexture.defaultSection(), draw_voice: voiceAt(duration),
   };
 }
+
+// The Draw a voice tab's starting voice, made for START_DURATION, stretched
+// to `duration` as any change of duration would stretch it.
+const voiceAt = (duration) => (duration === START_DURATION ? drawVoice.defaultSection() : drawVoice.stretchSection(drawVoice.defaultSection(), START_DURATION, duration));
 
 // Whether `page` is still the starting page of `tab`: nothing drawn or set
 // yet. Until then the duration follows the tab shown (main.js, switchTab).
@@ -97,7 +103,7 @@ export function upgrade(opened) {
       app: APP, version: VERSION, sonore, duration, fs, tab: "draw_speech",
       draw_speech: { mode, params }, draw_spectrogram: drawSpectrogram.defaultSection(), draw_modulation: drawModulation.defaultSection(), erase_modulation: eraseModulation.defaultSection(),
       erase_spectrogram: eraseSpectrogram.defaultSection(), draw_path: drawPath.defaultSection(), scatter_events: scatterEvents.defaultSection(), quilt_sound: quiltSound.defaultSection(),
-      match_texture: matchTexture.defaultSection(),
+      match_texture: matchTexture.defaultSection(), draw_voice: voiceAt(duration),
     };
   }
   if (opened?.app !== APP || opened.version !== VERSION) {
@@ -114,6 +120,7 @@ export function upgrade(opened) {
     scatter_events: scatterEvents.withDefaults(opened.scatter_events ?? {}),
     quilt_sound: opened.quilt_sound ?? quiltSound.defaultSection(),
     match_texture: opened.match_texture ?? matchTexture.defaultSection(),
+    draw_voice: opened.draw_voice ?? voiceAt(opened.duration),
   };
 }
 
@@ -134,6 +141,10 @@ export function tabState(page, tab) {
   if (tab === "scatter_events") {
     const { sonore, duration, fs } = page;
     return { scatter_events: scatterEvents.FORMAT, sonore, duration, fs, ...page.scatter_events };
+  }
+  if (tab === "draw_voice") {
+    const { sonore, duration, fs } = page;
+    return { draw_voice: drawVoice.FORMAT, sonore, duration, fs, ...page.draw_voice };
   }
   if (tab === "erase_modulation" || tab === "erase_spectrogram" || tab === "draw_path" || tab === "quilt_sound" || tab === "match_texture") {
     // the source's own drawing goes with the state, so a change to it is heard
@@ -166,6 +177,10 @@ export function withTabState(page, tab, state) {
   if (tab === "scatter_events") {
     const { scatter_events: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
     return { ...page, scatter_events: section };
+  }
+  if (tab === "draw_voice") {
+    const { draw_voice: _format, sonore: _sonore, duration: _duration, fs: _fs, ...section } = state;
+    return { ...page, draw_voice: section };
   }
   if (tab === "erase_modulation" || tab === "erase_spectrogram" || tab === "draw_path" || tab === "quilt_sound" || tab === "match_texture") {
     const { [tab]: _format, sonore: _sonore, duration: _duration, fs: _fs, draw_speech: _speech, recording: _recording, drawing: _drawing, ...section } = state;
@@ -201,6 +216,7 @@ export function openDocument(opened) {
   scatterEvents.check(tabState(page, "scatter_events"));
   quiltSound.check(tabState(page, "quilt_sound"));
   matchTexture.check(tabState(page, "match_texture"));
+  drawVoice.check(tabState(page, "draw_voice"));
   if (page.recording !== undefined) checkRecording(page.recording);
   return withTabState({ ...page, tab: TABS.includes(page.tab) ? page.tab : "draw_speech" }, "draw_speech", state);
 }
@@ -214,7 +230,8 @@ export function stretchPage(page, duration) {
   const stretched = withTabState({ ...page, duration }, "draw_speech", state);
   const masked = page.erase_spectrogram ? { ...stretched, erase_spectrogram: eraseSpectrogram.stretchSection(page.erase_spectrogram, page.duration, duration) } : stretched;
   const moved = page.draw_path ? { ...masked, draw_path: drawPath.stretchSection(page.draw_path, page.duration, duration) } : masked;
-  const out = page.scatter_events ? { ...moved, scatter_events: scatterEvents.stretchSection(page.scatter_events, page.duration, duration) } : moved;
+  const scattered = page.scatter_events ? { ...moved, scatter_events: scatterEvents.stretchSection(page.scatter_events, page.duration, duration) } : moved;
+  const out = page.draw_voice ? { ...scattered, draw_voice: drawVoice.stretchSection(page.draw_voice, page.duration, duration) } : scattered;
   if (!page.draw_modulation?.bands?.length) return out;
   return { ...out, draw_modulation: { ...page.draw_modulation, bands: drawModulation.stretchBands(page.draw_modulation.bands, page.duration, duration) } };
 }
@@ -235,6 +252,8 @@ export function resetTab(page, tab, start = defaultPage()) {
 // goes back to its default, which nothing on the page sets but a file or link.
 // Scatter events has no drawing but its rate track, which goes flat at its
 // default; Quilt a sound and Match a texture have none at all, and keep their settings.
+// Draw a voice cannot be blank either: a steady 100 Hz with a flat filter at
+// one moment, a buzz to draw on.
 export async function clearTab(page, tab) {
   const fresh = defaultPage();
   const cleared = { ...page, fs: fresh.fs, sonore: fresh.sonore };
@@ -245,6 +264,7 @@ export async function clearTab(page, tab) {
   if (tab === "draw_path") return { ...cleared, draw_path: { ...page.draw_path, stroke: [], elevation: 0, speed: null } };
   if (tab === "scatter_events") return { ...cleared, scatter_events: { ...page.scatter_events, rate: scatterEvents.DEFAULT_RATE } };
   if (tab === "quilt_sound" || tab === "match_texture") return cleared;
+  if (tab === "draw_voice") return { ...cleared, draw_voice: drawVoice.clearedSection(page.draw_voice, page.duration) };
   if (tab === "erase_spectrogram") {
     const { span: _span, ...section } = page.erase_spectrogram;
     return { ...cleared, erase_spectrogram: { ...section, levels: eraseSpectrogram.BLANK_LEVELS } };

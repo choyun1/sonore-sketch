@@ -17,6 +17,9 @@
       <button role="tab" id="tab-button-draw_speech" class="active" aria-selected="true" aria-controls="tab-draw_speech" tabindex="0" data-tab="draw_speech"
         data-caption="Draw formant, pitch, voicing and noise tracks over time, and hear Klatt's synthesizer speak them (after TrackDraw; Assmann et al., 1994)."
         title="Formant, F0 and amplitude tracks, synthesized by Klatt's synthesizer">Draw speech</button>
+      <button role="tab" id="tab-button-draw_voice" aria-selected="false" aria-controls="tab-draw_voice" tabindex="-1" data-tab="draw_voice"
+        data-caption="Draw a voice's source (its pitch and how breathy it is) and its filter (the vowel, as a curve of level over frequency) separately, and hear them put together: change one and the other stays (after Fant, 1960)."
+        title="A pitch line, a breathiness line and spectral-envelope curves, heard through sonore's source_filter_synthesize">Draw a voice</button>
       <button role="tab" id="tab-button-draw_spectrogram" aria-selected="false" aria-controls="tab-draw_spectrogram" tabindex="-1" data-tab="draw_spectrogram"
         data-caption="Draw loudness over time and frequency with a brush, and hear a sound whose spectrogram is your drawing."
         title="Level painted on time × log-frequency, heard through sonore's ripple_sound">Draw spectrogram</button>
@@ -71,6 +74,7 @@
   <main>
     <p class="tab-caption" id="tab-caption"></p>
     <section class="tab-body" id="tab-draw_speech" role="tabpanel" aria-labelledby="tab-button-draw_speech"></section>
+    <section class="tab-body" id="tab-draw_voice" role="tabpanel" aria-labelledby="tab-button-draw_voice" hidden></section>
     <section class="tab-body" id="tab-draw_spectrogram" role="tabpanel" aria-labelledby="tab-button-draw_spectrogram" hidden></section>
     <section class="tab-body" id="tab-erase_spectrogram" role="tabpanel" aria-labelledby="tab-button-erase_spectrogram" hidden></section>
     <section class="tab-body" id="tab-draw_modulation" role="tabpanel" aria-labelledby="tab-button-draw_modulation" hidden></section>

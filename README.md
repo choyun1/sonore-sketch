@@ -6,14 +6,14 @@
 
 sonore-sketch gives each of [sonore](https://github.com/choyun1/sonore)'s
 routes back to sound a point-and-click surface: draw speech as formant and
-pitch tracks, draw a spectrogram with a brush or a modulation spectrum with blobs, and hear
+pitch tracks, or a voice as its source and its filter apart, draw a spectrogram with a brush or a modulation spectrum with blobs, and hear
 what sonore makes of it; or open a recording and erase parts of its
 spectrogram or its modulation spectrum; or copy one short event at a drawn
 rate and hear separate events pile up into a texture; or cut a sound into
 short segments and hear them put back in a new order, as a sound quilt. sonore does the synthesis, in your
 browser (Python under Pyodide); this project is only the interface.
 
-**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: nine tabs, each a different
+**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: ten tabs, each a different
 route to sound, with nothing to install.
 
 **[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
@@ -54,6 +54,7 @@ different sound from it.
 | Tab | You draw | You hear | State |
 |---|---|---|---|
 | **[Draw speech](https://choyun1.github.io/sonore-sketch/#tab=draw-speech)** | tracks over time: formants (F1–F5) and their bandwidths, F0, voicing (AV), frication (AF), aspiration (AH) and the nasal zero (FNZ) | the speech Klatt's (1980) synthesizer makes from them, after Track-Draw (Assmann et al., 1994) | built |
+| **[Draw a voice](https://choyun1.github.io/sonore-sketch/#tab=draw-a-voice)** | the source and the filter apart: a pitch line (with unvoiced stretches) and how breathy the voice is, over time; and the filter as a curve of level over frequency at a few moments | the voice they make together, its vowel following the curves and its pitch the line (sonore's `source_filter_synthesize`; Fant, 1960) | built |
 | **[Draw spectrogram](https://choyun1.github.io/sonore-sketch/#tab=draw-spectrogram)** | level painted on time × log-frequency | a sound whose spectrogram is the painting (sonore's `ripple_sound`) | built |
 | **[Erase spectrogram](https://choyun1.github.io/sonore-sketch/#tab=erase-spectrogram)** | erasures on a sound's spectrogram (a syllable train, the Draw speech tab's sound, or a recording) | what is left of the sound (sonore's least-squares STFT resynthesis) | built |
 | **[Draw modulation](https://choyun1.github.io/sonore-sketch/#tab=draw-modulation)** | blobs on a modulation spectrum (rate × density), and optional frequency bands | a sound with that modulation (sonore's `ModulationSpectrum.from_blobs`), confined to the bands | built |
@@ -111,6 +112,24 @@ Draw speech starts with sonore saying its name. Its consonants come from three m
 (frication, the hiss of /s/, through the high formants) and **AH** (aspiration, breath) in the Noise
 strip, and **FNZ**, the nasal zero, drawn with the formants (raised above 250 Hz for /n/ or /m/).
 Drawing AF in a drawing with the high formants' levels all off turns them on, at the /s/'s settings.
+
+**Draw a voice.** The voice is drawn in two parts that do not touch: its
+**source** (the larynx) and its **filter** (the vocal tract). On the source's
+tracks, drag to draw the **pitch** (50 to 500 Hz, in octaves), or with the
+**Unvoice** brush drag across a stretch to take its pitch out: there the
+filter shapes noise alone, as in a whisper. Under it, the **breathiness**
+is the share of the voice's power that is noise, at every frequency. The
+filter is a curve of level over frequency (on the ERB scale of Glasberg &
+Moore, 1990, 50 Hz to
+8 kHz, 60 dB tall) at each of a few **moments**, the marks on the strip
+under the tracks, and between two moments the curve blends from one to the
+other. Press a mark to choose its moment and draw its curve below (the
+others show faint, and while the sound plays, a dashed curve shows the one
+heard); drag a mark to move it; double-click the strip, or **Add moment**,
+to add one with the curve heard there; **Set to a vowel** gives the chosen
+moment a vowel's curve (Peterson & Barney's, 1952, men's formants). It starts as ah, ee, oo on a falling pitch. Change
+the pitch and the vowels stay; change the curves and the pitch stays.
+**Clear** leaves a steady 100 Hz buzz through one flat curve.
 
 **Draw spectrogram.** It starts with "sonore" written by hand on the
 harmonic carrier at 50 Hz. Drag to paint at the brush's level (0 dB is the
@@ -248,6 +267,23 @@ each choice; this section is the method in one place, one tab at a time.
 The tracks are parameters of Klatt's (1980) cascade/parallel formant
 synthesizer, given as breakpoints and interpolated in time
 (`so.klatt_synthesize`). There is no iteration.
+
+### Draw a voice
+
+1. The pitch line is read every 5 ms, linearly between breakpoints; between
+   two breakpoints at 0 the voice is unvoiced, and between a voiced one and
+   one at 0 the voiced one's pitch is held, so it never glides down to 0.
+2. The filter's curves (48 points equally spaced on the ERB scale) are a
+   spectral envelope made by hand, `so.SpectralEnvelope`, which sonore reads
+   linearly in time between moments and in dB between points; the
+   breathiness is an aperiodicity made by hand, all noise where unvoiced.
+3. `so.source_filter_synthesize` adds harmonics on the pitch, carrying
+   `1 - breathiness` of the envelope's power, and white noise shaped to the
+   rest (Fant, 1960, as WORLD resynthesizes: Morise et al., 2016). The
+   harmonics follow the curve to within about 1 dB
+   (`docs/design/tabs/draw_voice.md`, V2). They start in cosine phase, so
+   each period is a sharp pulse, a little buzzier than a voice. The result
+   is brought to one RMS.
 
 ### Draw spectrogram
 
@@ -496,8 +532,14 @@ the number of points required to represent a digitized line or its
 caricature. *Cartographica*, *10*(2), 112–122.
 https://doi.org/10.3138/FM57-6770-U75U-7727
 
+Fant, G. (1960). *Acoustic theory of speech production*. Mouton.
+
 Gardner, W. G., & Martin, K. D. (1995). HRTF measurements of a KEMAR.
 *The Journal of the Acoustical Society of America*, *97*(6), 3907–3908.
+
+Glasberg, B. R., & Moore, B. C. J. (1990). Derivation of auditory filter
+shapes from notched-noise data. *Hearing Research*, *47*(1–2), 103–138.
+https://doi.org/10.1016/0378-5955(90)90170-T
 
 Griffin, D. W., & Lim, J. S. (1984). Signal estimation from modified
 short-time Fourier transform. *IEEE Transactions on Acoustics, Speech, and
@@ -516,10 +558,19 @@ McDermott, J. H., & Simoncelli, E. P. (2011). Sound texture perception via
 statistics of the auditory periphery: Evidence from sound synthesis.
 *Neuron*, *71*(5), 926–940. https://doi.org/10.1016/j.neuron.2011.06.032
 
+Morise, M., Yokomori, F., & Ozawa, K. (2016). WORLD: A vocoder-based
+high-quality speech synthesis system for real-time applications. *IEICE
+Transactions on Information and Systems*, *E99-D*(7), 1877–1884.
+https://doi.org/10.1587/transinf.2015EDP7457
+
 Overath, T., McDermott, J. H., Zarate, J. M., & Poeppel, D. (2015). The
 cortical analysis of speech-specific temporal structure revealed by
 responses to sound quilts. *Nature Neuroscience*, *18*(6), 903–911.
 https://doi.org/10.1038/nn.4021
+
+Peterson, G. E., & Barney, H. L. (1952). Control methods used in a study
+of the vowels. *The Journal of the Acoustical Society of America*, *24*(2),
+175–184. https://doi.org/10.1121/1.1906875
 
 The Pyodide development team. (2021). *pyodide/pyodide* [Computer
 software]. Zenodo. https://doi.org/10.5281/zenodo.5156931
@@ -543,6 +594,7 @@ and its design document.
 | Tab | Page (JavaScript) | Sound (Python) | Tests |
 |---|---|---|---|
 | Draw speech | `app/draw_speech/` | `draw_speech.py` | `test_draw_speech.py`, `draw_speech.test.mjs` |
+| Draw a voice | `app/draw_voice/` | `draw_voice.py` | `test_draw_voice.py`, `draw_voice.test.mjs` |
 | Draw spectrogram | `app/draw_spectrogram/` | `draw_spectrogram.py` | `test_draw_spectrogram.py`, `draw_spectrogram.test.mjs` |
 | Erase spectrogram | `app/erase_spectrogram/` | `erase_spectrogram.py` | `test_erase_spectrogram.py`, `erase_spectrogram.test.mjs` |
 | Draw modulation | `app/draw_modulation/` | `draw_modulation.py` | `test_draw_modulation.py`, `draw_modulation.test.mjs` |
@@ -611,7 +663,7 @@ Six things to keep in step:
 ## Design documents
 
 Every tab is designed before it is built, in `docs/design/`: `app.md` for
-the page as a whole, and `tabs/` for each tab (`draw_speech.md` for Draw speech,
+the page as a whole, and `tabs/` for each tab (`draw_speech.md` for Draw speech, `draw_voice.md` for Draw a voice,
 `draw_spectrogram.md` for Draw spectrogram, `draw_modulation.md` and `bands.md` for Draw modulation,
 `erase_spectrogram.md` for Erase spectrogram, `erase_modulation.md` for Erase modulation, `draw_path.md`
 for Draw path, `scatter_events.md` for Scatter events, `match_texture.md` for Match a texture).
