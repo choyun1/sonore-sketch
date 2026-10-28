@@ -11,7 +11,8 @@ went on, joined with cross-fades: a sound quilt (Overath et al., 2015)::
      "drawing": {...}}  # with source "draw_spectrogram", "draw_modulation" or "scatter_events": that tab's section
 
 The source is one of the Erase tabs' (``sources.source``: a Klatt syllable
-train, the Draw speech tab's sound, or the page's recording) or the sound
+train, the Draw speech tab's sound, or the page's recording), rain made
+here (``sources.rain``), or the sound
 of the Draw spectrogram, Draw modulation or Scatter events tab, made from
 its drawing as that tab makes it, all at the page's duration. The quilt is ``sonore.quilt`` of it, with sonore's defaults for
 everything but the segment length and the seed: it uses each segment at
@@ -34,7 +35,7 @@ from .shared import number
 FORMAT = 1
 MAX_DURATION = 30.0  # seconds, the whole app's limit (docs/design/app.md, D10)
 DRAWN = {"draw_spectrogram": draw_spectrogram, "draw_modulation": draw_modulation, "scatter_events": scatter_events}  # the tabs whose sound can be quilted
-SOURCES = (*sources.SOURCES, *DRAWN)  # the Erase tabs', and those
+SOURCES = (*sources.SOURCES, "rain", *DRAWN)  # the Erase tabs', rain, and those
 SEGMENT_RANGE = (0.03, 0.96)  # s: the paper's shortest and longest segments
 MIN_SEGMENTS = 3  # sonore keeps one spare, and one segment alone is no new order
 
@@ -59,18 +60,20 @@ def check(state: Mapping[str, Any]) -> None:
         raise ValueError(f"'seed' must be a whole number from 0 up, not {seed!r}")
 
 
-def source(state: Mapping[str, Any]) -> so.Sound:
-    """The sound the quilt is made from, at the page's duration and rate."""
+def source(state: Mapping[str, Any], silent: str = "there is nothing to quilt") -> so.Sound:
+    """The sound the quilt is made from, at the page's duration and rate;
+    when it is silent the error ends with ``silent``. The Match a texture
+    tab takes its source from here too (match_texture.md, T2)."""
     kind = state["source"]
     if kind not in DRAWN:
-        return sources.source(state, silent="there is nothing to quilt")
+        return sources.source(state, silent=silent)
     drawing = state.get("drawing")
     if not isinstance(drawing, Mapping):
         raise ValueError(f"the {kind} tab's drawing is missing")
     module = DRAWN[kind]
     sound = module.synthesize({kind: module.FORMAT, "duration": state["duration"], "fs": state["fs"], **drawing}).mono()
     if not sound.rms > 0:
-        raise ValueError(f"the source ({kind}) is silent: there is nothing to quilt")
+        raise ValueError(f"the source ({kind}) is silent: {silent}")
     return sound
 
 

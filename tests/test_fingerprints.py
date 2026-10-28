@@ -79,6 +79,9 @@ def _cases() -> dict[str, dict]:
         "draw_modulation, harmonic, band, 1 iteration": ("draw_modulation", {**drawing, "carrier": "harmonic", "bands": band, "iterations": 1}),
         "erase_modulation, source, 2 iterations": ("erase_modulation", editing),
         "erase_modulation, tones": ("erase_modulation", {**editing, "carrier": "tones", "iterations": 0}),
+        "match_texture, syllables, 2 iterations": ("match_texture", {
+            "match_texture": 1, **common, "source": "syllables", "keep": ["marginals", "modulation", "correlations"], "iterations": 2, "seed": 1,
+        }),
     }
 
 

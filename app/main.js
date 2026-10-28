@@ -17,6 +17,7 @@ import { createEraseSpectrogramTab } from "./erase_spectrogram/tab.js";
 import { createDrawSpectrogramTab } from "./draw_spectrogram/tab.js";
 import { createDrawPathTab } from "./draw_path/tab.js";
 import { createQuiltSoundTab } from "./quilt_sound/tab.js";
+import { createMatchTextureTab } from "./match_texture/tab.js";
 import { SONORE_VERSION, clampDuration } from "./draw_speech/model.js";
 import { createDrawSpeechTab } from "./draw_speech/tab.js";
 
@@ -147,6 +148,12 @@ const tabs = {
     hasRecording,
     log,
   }),
+  match_texture: createMatchTextureTab(byId("tab-match_texture"), {
+    commit: commitFrom("match_texture"),
+    openRecording: (recording, seconds) => change(withRecording(history.present, recording, seconds, "match_texture")),
+    hasRecording,
+    log,
+  }),
 };
 // The tab shown is not an edit (undo does not switch tabs); it is saved with
 // the document, so a link opens on the tab it was made on.
@@ -164,7 +171,7 @@ function showTab() {
   // a tab that draws the result's waveform itself (the Draw modulation tab, in its Result box)
   document.querySelector("main > .result").hidden = Boolean(tab.ownWaveform);
   document.querySelector("main").dataset.tab = tab.id; // the waveform's width follows the tab's plots (style.css)
-  ui.clear.disabled = tab.clearable === false; // a tab with nothing drawn on it (Quilt a sound)
+  ui.clear.disabled = tab.clearable === false; // a tab with nothing drawn on it (Quilt a sound, Match a texture)
   byId("tab-caption").textContent = tabButtons.find((button) => button.dataset.tab === tab.id)?.dataset.caption ?? "";
 }
 

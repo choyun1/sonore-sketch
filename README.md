@@ -13,7 +13,7 @@ rate and hear separate events pile up into a texture; or cut a sound into
 short segments and hear them put back in a new order, as a sound quilt. sonore does the synthesis, in your
 browser (Python under Pyodide); this project is only the interface.
 
-**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: eight tabs, each a different
+**[▶ Try it in your browser](https://choyun1.github.io/sonore-sketch/)**: nine tabs, each a different
 route to sound, with nothing to install.
 
 **[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
@@ -60,7 +60,8 @@ different sound from it.
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 | **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
 | **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and their modulation spectrogram, which follows the sound as it plays (sonore's `ModulationSpectrogram`; Atlas & Shamma, 2003) | built |
-| **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, a recording, or the sound of the Draw speech, Draw spectrogram, Draw modulation or Scatter events tab), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
+| **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, rain, a recording, or the sound of the Draw speech, Draw spectrogram, Draw modulation or Scatter events tab), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
+| **[Match a texture](https://choyun1.github.io/sonore-sketch/#tab=match-a-texture)** | nothing: a sound (as on Quilt a sound), which groups of its texture statistics to keep, the iterations and a seed | noise made to have those statistics of the sound and nothing else (sonore's texture synthesis; McDermott & Simoncelli, 2011), and how well each class matches | built |
 
 ## Using the page
 
@@ -194,7 +195,7 @@ rises and falls at each rate up to 64 Hz, pooled over frequency
 bands over time, and beside it each band at one moment, which follows the
 sound as it plays (click the spectrogram to choose the moment).
 
-**Quilt a sound.** Choose a **source**: a syllable train made at the
+**Quilt a sound.** Choose a **source**: a syllable train or rain made at the
 page's duration, a recording (**Open audio file…**), or the sound of the
 Draw speech, Draw spectrogram, Draw modulation or Scatter events tab, made
 from what is drawn there (go back to that tab to change it). The source is cut into **segments** of
@@ -206,6 +207,24 @@ source's spectrogram cut into its segments, the **Result** panel the
 quilt's, with lines where the segments are joined. A quilt needs at least
 three whole segments, so at long segments lengthen the duration. Clear has
 nothing to blank here.
+
+**Match a texture.** Choose a **source**, as on Quilt a sound; it starts
+on rain made here (drops at random times over a soft bed of noise). Its texture
+statistics are measured over the whole sound, and the result starts as
+noise and is pushed, one **iteration** at a time, until it has the
+statistics you **keep**: the spectrum always, and any of the envelope
+marginals (each band's envelope mean, variance, skew and kurtosis), the
+modulation power (how much each band's envelope moves at each rate), and the
+correlations (between bands' envelopes, and between modulation bands). A
+texture such as rain or applause comes back from its statistics; speech
+does not. The **seed** draws the starting noise, and **New draw** draws a
+random one and hears it. The **Result** panel shows the result's
+spectrogram and, for each class of statistics, how well it matches the
+source's (sonore's SNR in dB): solid bars were imposed, outlined ones were
+not, and the dashed line is the paper's 20 dB mark of a good match. Each
+iteration analyzes and resynthesizes the whole sound, so the tab is slow:
+an estimated 10 to 15 s for 10 iterations of a 2 s sound. Clear has nothing to
+blank here.
 
 ## The same sound in Python
 
@@ -437,6 +456,25 @@ without it: removing every rate above 4 Hz leaves 2.5 dB less power at
    source's whole segments. The rest of the page's duration, less than two
    segments, is silent.
 
+### Match a texture
+
+1. The source is made at the page's duration, as on Quilt a sound, and
+   sonore's `TextureStats.measure` measures its statistics with the paper's
+   model (McDermott & Simoncelli, 2011) at 20 kHz: 30 cochlear bands from
+   20 Hz to 10 kHz, envelopes compressed (power 0.3) and taken at 400 Hz,
+   20 modulation bands on each.
+2. sonore's texture synthesis starts from Gaussian noise drawn from the
+   seed and, in each iteration, imposes the statistics kept on each band
+   in turn, then sets each band's variance to the source's (the spectrum,
+   imposed whatever is kept) and resynthesizes. The page runs one
+   iteration at a time, each starting from the last, so it can show
+   progress; that gives the same sound as running them together
+   (`docs/design/tabs/match_texture.md`, V4). All its filtering is
+   circular, so the result loops seamlessly.
+3. The result is brought back to the page's rate and level, and its
+   statistics are measured again and compared with the source's: the bars
+   are sonore's SNR per class, from -20 to 60 dB.
+
 ## References
 
 Assmann, P. F., Ballard, W. J., Bornstein, L., & Paschall, D. D. (1994).
@@ -512,6 +550,7 @@ and its design document.
 | Draw path | `app/draw_path/` | `draw_path.py` | `test_draw_path.py`, `draw_path.test.mjs` |
 | Scatter events | `app/scatter_events/` | `scatter_events.py` | `test_scatter_events.py`, `scatter_events.test.mjs` |
 | Quilt a sound | `app/quilt_sound/` | `quilt_sound.py` | `test_quilt_sound.py`, `quilt_sound.test.mjs` |
+| Match a texture | `app/match_texture/` | `match_texture.py` | `test_match_texture.py`, `match_texture.test.mjs` |
 
 In each tab's folder, `model.js` holds the tab's state and the edits to it,
 with no DOM, so `npm test` can run it; `tab.js` draws the tab and handles
@@ -575,7 +614,7 @@ Every tab is designed before it is built, in `docs/design/`: `app.md` for
 the page as a whole, and `tabs/` for each tab (`draw_speech.md` for Draw speech,
 `draw_spectrogram.md` for Draw spectrogram, `draw_modulation.md` and `bands.md` for Draw modulation,
 `erase_spectrogram.md` for Erase spectrogram, `erase_modulation.md` for Erase modulation, `draw_path.md`
-for Draw path, `scatter_events.md` for Scatter events).
+for Draw path, `scatter_events.md` for Scatter events, `match_texture.md` for Match a texture).
 Each records the measurements behind it, made by the scripts in `tools/`,
 and the decisions Cho made.
 

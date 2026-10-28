@@ -17,13 +17,13 @@ import numpy as np
 import sonore as so
 
 from . import (
-    draw_modulation, draw_path, draw_spectrogram, draw_speech, erase_modulation, erase_spectrogram, quilt_sound, scatter_events, shared,
+    draw_modulation, draw_path, draw_spectrogram, draw_speech, erase_modulation, erase_spectrogram, match_texture, quilt_sound, scatter_events, shared,
 )
 
 TABS = {
     "draw_speech": draw_speech.synthesize, "draw_spectrogram": draw_spectrogram.synthesize, "erase_spectrogram": erase_spectrogram.synthesize,
     "draw_modulation": draw_modulation.synthesize, "erase_modulation": erase_modulation.synthesize, "draw_path": draw_path.synthesize,
-    "scatter_events": scatter_events.synthesize, "quilt_sound": quilt_sound.synthesize,
+    "scatter_events": scatter_events.synthesize, "quilt_sound": quilt_sound.synthesize, "match_texture": match_texture.synthesize,
 }
 
 # The page's document (docs/design/tabs/draw_spectrogram.md, "Data model"), as
@@ -92,15 +92,18 @@ def tab_state(document: Mapping[str, Any], tab: str | None = None) -> dict[str, 
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
         return state
-    if tab in ("erase_modulation", "erase_spectrogram", "quilt_sound") and tab in page:
+    if tab in ("erase_modulation", "erase_spectrogram", "quilt_sound", "match_texture") and tab in page:
         # the source's own drawing goes with the state: the Draw speech tab's, or the page's recording
-        section_format = {"erase_modulation": erase_modulation.FORMAT, "erase_spectrogram": erase_spectrogram.FORMAT, "quilt_sound": quilt_sound.FORMAT}[tab]
+        section_format = {
+            "erase_modulation": erase_modulation.FORMAT, "erase_spectrogram": erase_spectrogram.FORMAT, "quilt_sound": quilt_sound.FORMAT,
+            "match_texture": match_texture.FORMAT,
+        }[tab]
         state = {tab: section_format, "sonore": page.get("sonore"), "duration": page["duration"], "fs": page["fs"], **page[tab]}
         if state.get("source") == "draw_speech":
             state["draw_speech"] = page["draw_speech"]
         if state.get("source") == "file" and "recording" in page:
             state["recording"] = page["recording"]
-        if tab == "quilt_sound" and state.get("source") in quilt_sound.DRAWN and state["source"] in page:
+        if tab in ("quilt_sound", "match_texture") and state.get("source") in quilt_sound.DRAWN and state["source"] in page:
             state["drawing"] = page[state["source"]]  # the tab's own drawing, made into its sound
         return state
     if tab in TABS:
@@ -157,7 +160,11 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     own STFT (``erase_spectrogram.pictures``); on the Scatter events tab the result's
     modulation spectrogram (``scatter_events.modulation``); on the Quilt a sound tab
     the source's spectrogram (:func:`spectrogram`, as ``source_stft``) and
-    how many segments the quilt has (``segments``), each ``segment_s`` long.
+    how many segments the quilt has (``segments``), each ``segment_s`` long;
+    on the Match a texture tab the source's spectrogram (``source_stft``) and
+    how well the result's statistics match the source's (``match``: dB per
+    class of ``match_texture.BARS``, in that order) with which were imposed
+    (``imposed``).
     """
     return shared.finish(handle_steps(request))
 
@@ -181,6 +188,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         sound, modulation = yield from shared.scaled(scatter_events.steps(request["state"]), 0.9)
     elif tab == "quilt_sound":
         sound, original, segments = yield from shared.scaled(quilt_sound.steps(request["state"]), 0.9)
+    elif tab == "match_texture":
+        sound, original, matched = yield from shared.scaled(match_texture.steps(request["state"]), 0.95)
     else:
         yield 0.0, "Synthesizing"
         sound = TABS[tab](request["state"])
@@ -205,6 +214,11 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
     if tab == "quilt_sound":  # the source, to compare the quilt with, and the segments the quilt is made of
         result["source_stft"], result["segments"] = spectrogram(original), segments
         result["segment_s"] = round(float(request["state"]["segment"]) * sound.fs) / sound.fs
+    if tab == "match_texture":  # the source, to compare with, and how well each class of statistics matches it (match_texture.md, T7)
+        kept = match_texture.classes(list(request["state"]["keep"])) + (match_texture.SPECTRUM,)
+        result["source_stft"] = spectrogram(original)
+        result["match"] = [round(matched[name], 2) for name in match_texture.BARS]
+        result["imposed"] = [name in kept for name in match_texture.BARS]
     if tab == "erase_spectrogram":  # the source's and the result's spectrograms in the mask's own STFT (erase_spectrogram.md)
         result["source_stft"], result["result_stft"] = erase_spectrogram.pictures(source_stft, result_stft)
     return result

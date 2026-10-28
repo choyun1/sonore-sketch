@@ -46,6 +46,30 @@ def syllables(duration: float, fs: float) -> so.Sound:
     return draw_speech.synthesize(document)
 
 
+RAIN_RATE = 300.0  # drops per second
+RAIN_BED_DB = -12.0  # the distant patter under the drops, relative to them
+
+
+def rain(duration: float, fs: float) -> so.Sound:
+    """Rain made here, the starting source of Match a texture (Cho,
+    2026-10-28): drops at random times, ``RAIN_RATE`` a second on average,
+    each a burst of noise dying away in 4 ms through a 1.2-7.5 kHz band,
+    their levels spread by 8 dB and their pitches by 600 cents
+    (``so.event_train``), over a bed of noise from 100 Hz to 2 kHz at
+    ``RAIN_BED_DB``. Always the same rain (seeds 0 and 1): a texture, unlike
+    the syllable train."""
+    from scipy import stats
+
+    n = int(round(0.03 * fs))
+    burst = np.random.default_rng(0).standard_normal(n) * np.exp(-np.arange(n) / fs / 0.004)
+    drop = so.bandpass(so.Sound(burst, fs), 1200, min(7500, 0.45 * fs), zero_phase=False)
+    drops = so.event_train(drop, duration, stats.expon(scale=1 / RAIN_RATE), level_db=stats.norm(0, 8), pitch_cents=stats.norm(0, 600),
+                           lead=drop.duration, rng=0)
+    bed = so.gaussian_noise(duration, fs, band=(100, min(2000, 0.45 * fs)), rng=1)
+    samples = drops.normalize().data[:, 0] + bed.normalize().data[:, 0] * 10 ** (RAIN_BED_DB / 20)
+    return so.Sound(samples, fs).normalize()
+
+
 def recording(state: Mapping[str, Any]) -> so.Sound:
     """The recording opened in the page (E1, c), mono, at the page's rate,
     cut or padded with silence to the page's duration."""
@@ -77,6 +101,8 @@ def source(state: Mapping[str, Any], silent: str = "there is no modulation to er
     kind = state["source"]
     if kind == "syllables":
         sound = syllables(duration, fs)
+    elif kind == "rain":  # Quilt a sound's and Match a texture's only
+        sound = rain(duration, fs)
     elif kind == "draw_speech":
         speech = state.get("draw_speech")
         if not isinstance(speech, Mapping):

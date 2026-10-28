@@ -35,6 +35,7 @@ export const TAB_NAMES = {
   "draw-path": "draw_path",
   "scatter-events": "scatter_events",
   "quilt-a-sound": "quilt_sound",
+  "match-a-texture": "match_texture",
 };
 
 // The tab id a location hash names, or null if it names none.
