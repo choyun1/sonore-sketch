@@ -104,7 +104,7 @@ double-click removes it. **Line** replaces a span with a straight line.
 tolerance (Douglas & Peucker, 1973). With any tool, dragging a breakpoint's circle up or down moves
 it; with Line or Freehand, dragging from a circle along time draws from it
 instead. **Bandwidths** shows a strip for the selected formant's bandwidth, and the **F0 axis** can be
-spaced in octaves (Log, from 20 to 800 Hz) or in Hz (Linear). **Formants up to** shows the formants and the spectrogram under them up to 4 kHz
+spaced in octaves (Log, from 20 to 800 Hz) or in Hz (Linear). **Spectrogram up to** sets the top of the spectrogram's frequency axis, and so how high formants can be drawn: 4 kHz
 (the most room for F1–F3), 5 kHz (the default, with F4 and F5) or 8 kHz, where most of the hiss of /s/ is. Unticking **Show formant tracks** hides
 F1–F5 to show the spectrogram under them; they still shape the sound, and selecting one shows them again.
 Draw speech starts with sonore saying its name. Its consonants come from three more tracks: **AF**

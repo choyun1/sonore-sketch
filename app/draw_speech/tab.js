@@ -113,7 +113,7 @@ export function createDrawSpeechTab(root, { commit }) {
         <fieldset class="track-group"><legend>Track</legend></fieldset>
         <label class="check" title="Show F1–F5 over the spectrogram; hidden, they still shape the sound"><input type="checkbox" class="show-formants" checked> Show formant tracks</label>
         <label class="check"><input type="checkbox" class="show-bandwidths"> Bandwidths</label>
-        <fieldset class="formant-top-group" title="How high the formants and the spectrogram under them reach; /s/ hisses mostly above 4 kHz"><legend>Formants up to</legend>
+        <fieldset class="formant-top-group" title="The top of the spectrogram's frequency axis; formants can be drawn up to it. /s/ hisses mostly above 4 kHz"><legend>Spectrogram up to</legend>
           <label class="choice"><input type="radio" name="draw-speech-formant-top" value="4000"> 4 kHz</label>
           <label class="choice"><input type="radio" name="draw-speech-formant-top" value="5000"> 5 kHz</label>
           <label class="choice"><input type="radio" name="draw-speech-formant-top" value="8000"> 8 kHz</label>
