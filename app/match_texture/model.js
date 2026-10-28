@@ -31,7 +31,7 @@ export const ITERATION_RANGE = [1, 30]; // T4
 export const SNR_RANGE = [-20, 60]; // dB, the bars' axis (sonore_sketch.match_texture.SNR_RANGE)
 
 export function defaultSection() {
-  return { source: "scatter_events", keep: Object.keys(GROUPS), iterations: 10, seed: 1 };
+  return { source: "rain", keep: Object.keys(GROUPS), iterations: 10, seed: 1 };
 }
 
 // `keep` with `group` switched on or off, in GROUPS's order.

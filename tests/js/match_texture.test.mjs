@@ -20,14 +20,12 @@ test("the groups, bars, ranges and sources are the Python half's", () => {
   assert.deepEqual([...theirs[4]].sort(), Object.keys(LABELS).sort());
 });
 
-test("the tab starts on the Scatter events tab's sound, keeping everything, 10 iterations, at 2 s", () => {
+test("the tab starts on rain made here, keeping everything, 10 iterations, at 2 s", () => {
   const state = tabState(defaultPage("match_texture"), "match_texture");
-  const { drawing, ...rest } = state;
-  assert.deepEqual(rest, {
-    match_texture: 1, sonore: state.sonore, duration: 2, fs: 16000, source: "scatter_events",
+  assert.deepEqual(state, {
+    match_texture: 1, sonore: state.sonore, duration: 2, fs: 16000, source: "rain",
     keep: ["marginals", "modulation", "correlations"], iterations: 10, seed: 1,
   });
-  assert.deepEqual(drawing, defaultPage().scatter_events);
 });
 
 test("its sources are Quilt a sound's", () => {

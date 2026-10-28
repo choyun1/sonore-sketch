@@ -88,3 +88,10 @@ def test_a_silent_source_says_so():
     recording = {"name": "x.wav", "fs": 16000, "pcm16": base64.b64encode(np.zeros(16000, "<i2").tobytes()).decode()}
     with pytest.raises(ValueError, match="silent: there is no texture to match"):
         match_texture.synthesize({**STATE, "source": "file", "recording": recording})
+
+
+def test_the_starting_rain_is_a_texture_its_statistics_bring_back():
+    # Cho, 2026-10-28: the tab starts on rain, so most classes match well
+    sound, original, matched = match_texture.shared.finish(match_texture.steps({**STATE, "duration": 2.0, "source": "rain", "iterations": 5}))
+    assert original.rms == pytest.approx(1)
+    assert sum(db >= 20 for db in matched.values()) >= 6

@@ -6,11 +6,12 @@
 
 import { SOURCE_LABELS } from "../sources.js";
 
-// The Erase tabs' sources, and the tabs whose drawing's sound can be quilted
+// The Erase tabs' sources, rain (made here, sonore_sketch.sources.rain), and the tabs whose drawing's sound can be quilted
 // (sonore_sketch.quilt_sound.SOURCES, DRAWN).
 export const DRAWN = ["draw_spectrogram", "draw_modulation", "scatter_events"];
 export const LABELS = {
   syllables: SOURCE_LABELS.syllables,
+  rain: "Rain",
   draw_speech: SOURCE_LABELS.draw_speech,
   draw_spectrogram: "Draw spectrogram tab's sound",
   draw_modulation: "Draw modulation tab's sound",

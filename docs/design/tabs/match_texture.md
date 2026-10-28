@@ -214,11 +214,16 @@ seed (`app/seed.js`), as Scatter events and Quilt a sound do.
   infinite), and a note under them counts the classes imposed that reach
   20 dB. A narrow plot (a phone) gets short labels.
 - The page shows the slow-tab advisory, as Erase modulation does (T5).
-- The starting source, the Scatter events tab's starting chirps (10 a
-  second), is sparse rather than a texture: its result keeps the chirps'
-  band and some of their rhythm, and most classes stay under 20 dB.
-  A denser Scatter events setting, or a recording of rain, shows the point
-  better.
+- T2 changed after the first build (Cho, 2026-10-28): the tab starts on
+  rain made here (`sources.rain`), not the Scatter events tab's sound,
+  whose starting chirps (10 a second) are sparse rather than a texture:
+  their result matched 1 of the 9 classes to 20 dB. The rain is drops (a
+  4 ms noise burst through 1.2-7.5 kHz, 300 a second at random, levels
+  spread 8 dB and pitches 600 cents, by `so.event_train`) over a 100 Hz to
+  2 kHz noise bed at -12 dB; after 10 iterations 8 of the 9 classes match
+  to 20 dB or better. A recording was not used: none could be fetched
+  here, and it would need a license to redistribute. Rain is in Quilt a
+  sound's list too, after the syllable train.
 - `tests/test_match_texture.py` checks that stepping one iteration at a
   time gives sonore's own sound (V4) and that a group kept raises its
   classes' match (V3); `tests/test_fingerprints.py` pins a 1 s case.

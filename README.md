@@ -60,7 +60,7 @@ different sound from it.
 | **[Erase modulation](https://choyun1.github.io/sonore-sketch/#tab=erase-modulation)** | erasures on a sound's modulation spectrum (a syllable train, the Draw speech tab's sound, or a recording) | the sound with that modulation taken out (sonore's `ModulationSpectrum.with_gain`) | built |
 | **[Draw path](https://choyun1.github.io/sonore-sketch/#tab=draw-path)** | a path around the listener on a view from above, its speed along the path, and its elevation over time | the sound moving along it, one channel per ear, for headphones (sonore's `move_sound`, through the MIT KEMAR HRIRs; Gardner & Martin, 1995) | built |
 | **[Scatter events](https://choyun1.github.io/sonore-sketch/#tab=scatter-events)** | the rate of one short event over time (a chirp, a tone pip, a noise burst or an impact), with sliders for the timing's regularity and the spread of levels and pitches | the copies, from single events to a texture (sonore's `event_train`), and their modulation spectrogram, which follows the sound as it plays (sonore's `ModulationSpectrogram`; Atlas & Shamma, 2003) | built |
-| **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, a recording, or the sound of the Draw speech, Draw spectrogram, Draw modulation or Scatter events tab), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
+| **[Quilt a sound](https://choyun1.github.io/sonore-sketch/#tab=quilt-a-sound)** | nothing: a sound (a syllable train, rain, a recording, or the sound of the Draw speech, Draw spectrogram, Draw modulation or Scatter events tab), the segment length and a seed | the sound's segments in a new order, each join chosen to change the sound as the sound itself changed (sonore's `quilt`; Overath et al., 2015) | built |
 | **[Match a texture](https://choyun1.github.io/sonore-sketch/#tab=match-a-texture)** | nothing: a sound (as on Quilt a sound), which groups of its texture statistics to keep, the iterations and a seed | noise made to have those statistics of the sound and nothing else (sonore's texture synthesis; McDermott & Simoncelli, 2011), and how well each class matches | built |
 
 ## Using the page
@@ -195,7 +195,7 @@ rises and falls at each rate up to 64 Hz, pooled over frequency
 bands over time, and beside it each band at one moment, which follows the
 sound as it plays (click the spectrogram to choose the moment).
 
-**Quilt a sound.** Choose a **source**: a syllable train made at the
+**Quilt a sound.** Choose a **source**: a syllable train or rain made at the
 page's duration, a recording (**Open audio file…**), or the sound of the
 Draw speech, Draw spectrogram, Draw modulation or Scatter events tab, made
 from what is drawn there (go back to that tab to change it). The source is cut into **segments** of
@@ -208,7 +208,8 @@ quilt's, with lines where the segments are joined. A quilt needs at least
 three whole segments, so at long segments lengthen the duration. Clear has
 nothing to blank here.
 
-**Match a texture.** Choose a **source**, as on Quilt a sound. Its texture
+**Match a texture.** Choose a **source**, as on Quilt a sound; it starts
+on rain made here (drops at random times over a soft bed of noise). Its texture
 statistics are measured over the whole sound, and the result starts as
 noise and is pushed, one **iteration** at a time, until it has the
 statistics you **keep**: the spectrum always, and any of the envelope
