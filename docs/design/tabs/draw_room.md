@@ -8,10 +8,10 @@ rate, which listeners cannot tell from a real room's. The tab lets the
 reader bend the curve away from a real room's and hear when the room
 stops sounding real.
 
-Status: proposed (2026-10-28). Cho asked for this tab on 2026-10-28 ("draw
-a voice and draw a room sound nice"). Nothing is built yet: the decisions
-R1-R11 below are for Cho, and the tab needs one small change in sonore
-first (R2).
+Status: decided (2026-10-28). Cho asked for this tab on 2026-10-28 ("draw
+a voice and draw a room sound nice") and accepted every recommendation
+(R1-R11) the same day. Nothing is built yet: the tab waits for the sonore
+change in R2 and a sonore release.
 
 This project is AI-assisted: the document and `tools/measure_draw_room.py`
 were drafted by Claude (Claude Code), for Cho to review.
@@ -154,6 +154,8 @@ room; (b) Draw reverberation; (c) Draw an echo.
 what is drawn without the word "reverberation". (c) is wrong: there are no
 echoes, only a smooth decay.
 
+*Decided (2026-10-28):* as recommended.
+
 **R2. How a drawn curve reaches sonore.** (a) A change in sonore: the
 `rt60` of `synth_ir` and `band_rt60s` also takes a pair `(freqs, rt60s)`,
 read off at each band by linear interpolation in log frequency and log
@@ -176,6 +178,8 @@ synthesis code and private data back in sonore-sketch, which the
 repository is not reachable from this session, so the sonore pull
 request is a separate piece of work.
 
+*Decided (2026-10-28):* as recommended.
+
 **R3. How the curve is drawn.** (a) Freehand, as a track is drawn on Draw
 speech: drag across, and each column takes the value under the pointer,
 on a log-frequency axis from 50 Hz to 8 kHz and a log RT60 axis from
@@ -185,6 +189,8 @@ dragged up and down, like an equalizer.
 bumps easy. Eight octave points would hide the fact that the curve can be
 anything. 50 Hz to 8 kHz is what `measure_rt60` can check at 16 kHz; the
 IR's bands below 50 Hz take the value at 50 Hz.
+
+*Decided (2026-10-28):* as recommended.
 
 **R4. Where the curve starts.** A "Start from" list redraws the curve: (a)
 a real room (sonore's ecological profile), (b) flat, (c) inverted (a real
@@ -196,6 +202,8 @@ example of a room listeners hear as wrong. 1 s is a classroom or a small
 hall, long enough to hear the shape at a glance. Changing the RT60 box
 after drawing scales the drawn curve rather than replacing it.
 
+*Decided (2026-10-28):* as recommended.
+
 **R5. The source.** (a) Quilt a sound's list (the syllable train, rain,
 the Draw speech tab's sound and the other drawn tabs' sounds, a file),
 with "A clap" added at the top: one short click, so the room is heard
@@ -203,6 +211,8 @@ alone; (b) the same list without a clap.
 *Recommended:* (a), starting on the syllable train. Speech is where
 listeners know reverberation best, and its gaps let the tail be heard.
 The clap answers "what does this room sound like" in one second.
+
+*Decided (2026-10-28):* as recommended.
 
 **R6. Direct sound.** A slider for the direct-to-reverberant ratio, from
 -20 dB (far away) to +20 dB (close), default 0 dB, passed to `synth_ir`
@@ -212,12 +222,16 @@ source clear while the room is plainly audible. The ratio is one number
 for the whole IR, as in sonore; a drawn ratio by frequency would be a
 second curve and a second sonore change, not worth it now.
 
+*Decided (2026-10-28):* as recommended.
+
 **R7. Channels.** (a) Two independent tails, one in each ear, with the
 same direct sound (`n_channels=2`), played in stereo as Draw path's
 result is; (b) mono.
 *Recommended:* (a). In headphones the decorrelated tails sound like a
 space around the listener; in mono the same room sounds narrower, as if
 heard through a doorway. It costs 2x on the IR (V1), well under a second.
+
+*Decided (2026-10-28):* as recommended.
 
 **R8. The tail.** (a) The result runs on until the room has died away
 (the page's duration plus the IR's length), as Draw path's result with a
@@ -227,6 +241,8 @@ short fade.
 at the end of the source would hide the last word's decay, the part most
 worth hearing. At RT60 10 s and a 30 s source the result is about 46 s.
 
+*Decided (2026-10-28):* as recommended.
+
 **R9. The plots.** The drawing, with the RT60 measured from the IR made
 (`measure_rt60`) as dots over it; the IR's spectrogram, which shows each
 frequency's decay as a slope; and the result's spectrogram beside it.
@@ -234,11 +250,15 @@ frequency's decay as a slope; and the result's spectrogram beside it.
 cannot follow the drawing (V3, at low frequencies and in very short
 rooms) instead of implying every wiggle is heard.
 
+*Decided (2026-10-28):* as recommended.
+
 **R10. New draw.** The IR's noise is seeded; "New draw" picks a random
 seed (`app/seed.js`), as Scatter events, Quilt a sound and Match a
 texture do. Different seeds give different rooms with the same curve,
 which sound the same.
 *Recommended:* as stated.
+
+*Decided (2026-10-28):* as recommended.
 
 **R11. What is saved.** `{"draw_room": 1, "sonore": "0.9.0", "duration",
 "fs", "source", "rt60": [64 numbers, s], "drr_db": 0, "seed"}` plus the
@@ -247,10 +267,12 @@ sound saves it. The 64 frequencies are fixed (R3), so only the RT60s are
 saved.
 *Recommended:* as stated.
 
+*Decided (2026-10-28):* as recommended.
+
 ## Order of work
 
-1. Cho answers R1-R11.
-2. If R2 (a): the sonore pull request (`synth_ir` and `band_rt60s` take a
+1. Cho answers R1-R11 (done, 2026-10-28).
+2. R2 (a): the sonore pull request (`synth_ir` and `band_rt60s` take a
    pair, with tests and a CHANGELOG line) and a sonore release.
 3. The tab: `src/sonore_sketch/draw_room.py`, `app/draw_room/`, the
    freehand curve, tests, an output fingerprint, the worker's file list,
