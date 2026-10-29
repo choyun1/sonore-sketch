@@ -2,7 +2,7 @@
 
 A document is plain data (docs/design/tabs/draw_speech.md, D5)::
 
-    {"trackdraw": 1, "sonore": "0.9.0", "duration": 0.8, "fs": 16000,
+    {"trackdraw": 1, "sonore": "0.10.0", "duration": 0.8, "fs": 16000,
      "mode": "klatt", "params": {"F1": [[0, 0.2, 0.8], [300, 650, 350]],
                                  "B1": 60, ...}}
 

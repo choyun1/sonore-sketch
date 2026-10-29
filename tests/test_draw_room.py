@@ -6,7 +6,7 @@ from sonore_sketch import draw_room, page
 
 F = draw_room.points()
 STATE = {
-    "draw_room": 1, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "source": "clap",
+    "draw_room": 1, "sonore": "0.10.0", "duration": 1.0, "fs": 16000, "source": "clap",
     "rt60": np.round(so.band_rt60s(0.6, F), 3).tolist(), "drr_db": 0.0, "seed": 1,
 }
 

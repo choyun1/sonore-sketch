@@ -10,7 +10,7 @@ from sonore_sketch import draw_speech, page
 from test_draw_speech import DOCUMENT
 
 PAGE = {
-    "app": "sonore-sketch", "version": 3, "sonore": "0.9.0",
+    "app": "sonore-sketch", "version": 3, "sonore": "0.10.0",
     "duration": DOCUMENT["duration"], "fs": DOCUMENT["fs"], "tab": "draw_speech",
     "draw_speech": {"mode": "klatt", "params": DOCUMENT["params"]},
 }
@@ -31,7 +31,7 @@ def test_a_saved_page_sounds_as_its_tab_does():
 def test_a_version_2_document_opens_with_the_tabs_renamed():
     # before 2026-10-20 the tabs had other ids, in files and links as in the code
     old = {
-        "app": "sonore-sketch", "version": 2, "sonore": "0.9.0", "duration": DOCUMENT["duration"], "fs": DOCUMENT["fs"],
+        "app": "sonore-sketch", "version": 2, "sonore": "0.10.0", "duration": DOCUMENT["duration"], "fs": DOCUMENT["fs"],
         "tab": "edit", "tracks": PAGE["draw_speech"], "edit": {"source": "speech", "iterations": 2},
         "quilt": {"source": "blobs", "segment": 0.06, "seed": 1}, "mask": {"source": "file"},
     }

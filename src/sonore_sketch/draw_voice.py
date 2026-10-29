@@ -3,7 +3,7 @@
 A voice drawn as its source and its filter, separately, and put together by
 ``so.source_filter_synthesize`` (docs/design/tabs/draw_voice.md)::
 
-    {"draw_voice": 1, "sonore": "0.9.0", "duration": 2.0, "fs": 16000,
+    {"draw_voice": 1, "sonore": "0.10.0", "duration": 2.0, "fs": 16000,
      "f0": [[0, 0.9, 1.2, 2.0], [130, 115, 125, 95]],
      "breathiness": [[0, 2.0], [0.001, 0.001]],
      "filter": {"f": [50.0, ..., 8000.0], "moments": [0.2, 1.0, 1.8],

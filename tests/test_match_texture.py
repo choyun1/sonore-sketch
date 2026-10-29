@@ -5,7 +5,7 @@ from sonore.texture import TextureStats
 from sonore_sketch import match_texture, page
 
 STATE = {
-    "match_texture": 1, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "source": "syllables",
+    "match_texture": 1, "sonore": "0.10.0", "duration": 1.0, "fs": 16000, "source": "syllables",
     "keep": ["marginals", "modulation", "correlations"], "iterations": 2, "seed": 1,
 }
 
@@ -63,7 +63,7 @@ def test_the_page_result_holds_the_source_and_the_match():
 def test_a_page_document_gives_the_state_its_source():
     tracks = {"mode": "klatt", "params": {"F0": 120}}
     section = {"source": "draw_speech", "keep": [], "iterations": 1, "seed": 1}
-    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "tab": "match_texture",
+    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.10.0", "duration": 1.0, "fs": 16000, "tab": "match_texture",
                 "draw_speech": tracks, "match_texture": section, "scatter_events": {"event": "chirp"}}
     state = page.tab_state(document)
     assert state["draw_speech"] == tracks and "drawing" not in state and state["match_texture"] == match_texture.FORMAT

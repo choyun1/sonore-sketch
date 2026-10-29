@@ -5,7 +5,7 @@ sound heard in it: sonore's ``synth_ir`` makes the room's impulse response
 from the curve (Traer & McDermott, 2016), and the source is convolved with
 it (docs/design/tabs/draw_room.md)::
 
-    {"draw_room": 1, "sonore": "0.9.0", "duration": 2.0, "fs": 16000,
+    {"draw_room": 1, "sonore": "0.10.0", "duration": 2.0, "fs": 16000,
      "source": "syllables", "rt60": [1.05, ..., 0.62], "drr_db": 0.0, "seed": 1,
      "draw_speech": {...}, "recording": {...}, "drawing": {...}}  # the source's own, as on Quilt a sound
 

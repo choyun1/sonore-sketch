@@ -3,7 +3,7 @@
 // sampling rate belong to the page; each tab keeps its own section, so you
 // can switch tabs and come back to what you drew.
 //
-//   {"app": "sonore-sketch", "version": 3, "sonore": "0.9.0",
+//   {"app": "sonore-sketch", "version": 3, "sonore": "0.10.0",
 //    "duration": 0.6, "fs": 16000, "tab": "draw_speech",
 //    "draw_speech": {"mode": "klatt", "params": {...}},
 //    "draw_voice": {"f0": [[t, ...], [Hz, ...]], "breathiness": [...], "filter": {"f": [...], "moments": [...], "db": [...]}, "seed": 1},
