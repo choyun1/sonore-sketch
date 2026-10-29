@@ -8,7 +8,7 @@ from sonore_sketch import erase_spectrogram, page, sources
 
 FS = 16000
 STATE = {
-    "erase_spectrogram": 1, "sonore": "0.9.0", "duration": 1.0, "fs": FS, "source": "syllables",
+    "erase_spectrogram": 1, "sonore": "0.10.0", "duration": 1.0, "fs": FS, "source": "syllables",
     "rows": erase_spectrogram.ROWS, "columns": erase_spectrogram.COLUMNS, "floor_db": erase_spectrogram.FLOOR_DB, "window": erase_spectrogram.WINDOW_S,
     "levels": erase_spectrogram.BLANK_LEVELS,
 }
@@ -67,7 +67,7 @@ def test_the_speech_source_is_the_speech_tabs_sound():
 
 def test_a_page_document_gives_the_mask_state_its_source():
     section = {k: v for k, v in STATE.items() if k not in ("erase_spectrogram", "sonore", "duration", "fs")}
-    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.9.0", "duration": 1.0, "fs": FS, "tab": "erase_spectrogram",
+    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.10.0", "duration": 1.0, "fs": FS, "tab": "erase_spectrogram",
                 "draw_speech": {"mode": "klatt", "params": {"F0": 120}}, "erase_spectrogram": {**section, "source": "file"}, "recording": noise_file(1.0)}
     state = page.tab_state(document)
     assert state["erase_spectrogram"] == 1 and state["recording"]["name"] == "noise.wav"

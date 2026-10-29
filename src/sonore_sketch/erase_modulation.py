@@ -4,7 +4,7 @@ Take a sound, analyze its modulation spectrum, cut parts of it with a mask
 painted on rate x density, and hear the sound rebuilt from what is left
 (docs/design/tabs/erase_modulation.md)::
 
-    {"erase_modulation": 1, "sonore": "0.9.0", "duration": 3.0, "fs": 16000,
+    {"erase_modulation": 1, "sonore": "0.10.0", "duration": 3.0, "fs": 16000,
      "source": "syllables", "carrier": "source", "iterations": 5, "seed": 1,
      "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
      "columns": 193, "rows": 48, "floor_db": -60, "levels": "<base64 of deflated bytes>",

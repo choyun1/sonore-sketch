@@ -3,7 +3,7 @@
 A drawing is a list of Gaussian blobs on a modulation spectrum, rate [Hz,
 signed] by density [cycles/octave] (docs/design/tabs/draw_modulation.md)::
 
-    {"draw_modulation": 1, "sonore": "0.9.0", "duration": 3.0, "fs": 16000,
+    {"draw_modulation": 1, "sonore": "0.10.0", "duration": 3.0, "fs": 16000,
      "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
      "carrier": "tones", "f0": 100, "iterations": 0, "rms_depth": 0.2, "seed": 1,
      "items": [{"rate": 4, "density": 0, "rate_width": 0.5,

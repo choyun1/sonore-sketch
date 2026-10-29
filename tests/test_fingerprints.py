@@ -45,7 +45,7 @@ def _speech_params() -> dict:
 
 
 def _cases() -> dict[str, dict]:
-    common = {"sonore": "0.9.0", "duration": DURATION, "fs": FS}
+    common = {"sonore": "0.10.0", "duration": DURATION, "fs": FS}
     painting = {
         "draw_spectrogram": draw_spectrogram.FORMAT, **common, "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256,
         "floor_db": -60, "f0": draw_spectrogram.EXAMPLE_F0, "seed": 1, "levels": draw_spectrogram.encode_levels(draw_spectrogram.example_levels()),

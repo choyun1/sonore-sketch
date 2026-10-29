@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def state(levels_db=None, **changes):
     levels_db = draw_spectrogram.example_levels() if levels_db is None else levels_db
     return {
-        "draw_spectrogram": 1, "sonore": "0.9.0", "duration": 0.6, "fs": 16000,
+        "draw_spectrogram": 1, "sonore": "0.10.0", "duration": 0.6, "fs": 16000,
         "f_lo": 100, "f_hi": 6400, "rows_per_octave": 12, "columns": 256, "floor_db": -60,
         "carrier": "tones", "f0": 100, "seed": 1, "levels": draw_spectrogram.encode_levels(levels_db),
     } | changes
@@ -83,7 +83,7 @@ def test_bad_states_are_refused(changes, message):
 def test_a_saved_page_on_the_painted_tab_sounds_as_the_tab_does():
     section = {k: v for k, v in state().items() if k not in ("draw_spectrogram", "sonore", "duration", "fs")}
     document = {
-        "app": "sonore-sketch", "version": 3, "sonore": "0.9.0", "duration": 0.6, "fs": 16000,
+        "app": "sonore-sketch", "version": 3, "sonore": "0.10.0", "duration": 0.6, "fs": 16000,
         "tab": "draw_spectrogram", "draw_speech": {"mode": "klatt", "params": {}}, "draw_spectrogram": section,
     }
     assert np.array_equal(page.synthesize(document).data, draw_spectrogram.synthesize(state()).data)

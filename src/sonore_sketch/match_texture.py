@@ -5,7 +5,7 @@ chosen, and nothing else of the sound: McDermott & Simoncelli's (2011)
 synthesis, as ``sonore.texture.synth.synthesize`` does it
 (docs/design/tabs/match_texture.md)::
 
-    {"match_texture": 1, "sonore": "0.9.0", "duration": 2.0, "fs": 16000,
+    {"match_texture": 1, "sonore": "0.10.0", "duration": 2.0, "fs": 16000,
      "source": "rain", "keep": ["marginals", "modulation", "correlations"],
      "iterations": 10, "seed": 1,
      "draw_speech": {...}, "recording": {...}, "drawing": {...}}  # the source's own, as on Quilt a sound

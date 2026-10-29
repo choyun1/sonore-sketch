@@ -4,7 +4,7 @@ import sonore as so
 
 from sonore_sketch import page, quilt_sound, sources
 
-STATE = {"quilt_sound": 1, "sonore": "0.9.0", "duration": 2.0, "fs": 16000, "source": "syllables", "segment": 0.06, "seed": 1}
+STATE = {"quilt_sound": 1, "sonore": "0.10.0", "duration": 2.0, "fs": 16000, "source": "syllables", "segment": 0.06, "seed": 1}
 
 
 def test_the_quilt_is_sonores_of_the_source_padded_to_the_duration():
@@ -50,7 +50,7 @@ def test_the_page_result_holds_the_source_and_the_segments():
 def test_a_page_document_gives_the_quilt_state_its_source():
     tracks = {"mode": "klatt", "params": {"F0": 120}}
     section = {"source": "draw_speech", "segment": 0.06, "seed": 1}
-    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "tab": "quilt_sound",
+    document = {"app": "sonore-sketch", "version": 3, "sonore": "0.10.0", "duration": 1.0, "fs": 16000, "tab": "quilt_sound",
                 "draw_speech": tracks, "quilt_sound": section, "recording": {"name": "x", "fs": 16000, "pcm16": ""}}
     state = page.tab_state(document)
     assert state["draw_speech"] == tracks and "recording" not in state and state["quilt_sound"] == quilt_sound.FORMAT

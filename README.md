@@ -285,7 +285,7 @@ sound = page.synthesize(json.load(open("sketch.json")))
 
 ## How the sound is made
 
-Every sound is made by sonore 0.9, in `src/sonore_sketch/` (one module per
+Every sound is made by sonore 0.10, in `src/sonore_sketch/` (one module per
 tab). The design documents in `docs/design/` hold the measurements behind
 each choice; this section is the method in one place, one tab at a time.
 

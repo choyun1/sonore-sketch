@@ -21,7 +21,7 @@ def bumps(*peaks):
 
 
 STATE = {
-    "draw_voice": 1, "sonore": "0.9.0", "duration": 1.0, "fs": 16000,
+    "draw_voice": 1, "sonore": "0.10.0", "duration": 1.0, "fs": 16000,
     "f0": [[0, 1.0], [120, 120]], "breathiness": [[0], [0.001]],
     "filter": {"f": F, "moments": [0.5], "db": [bumps(700, 1200)]}, "seed": 1,
 }
@@ -60,7 +60,7 @@ def test_the_voice_is_at_the_pages_duration_and_level():
     assert sound.fs == 16000 and sound.n_samples == 16000
     assert sound.rms == pytest.approx(1) and np.isfinite(sound.data).all()
     np.testing.assert_array_equal(sound.data, page.synthesize({
-        "app": "sonore-sketch", "version": 3, "sonore": "0.9.0", "duration": 1.0, "fs": 16000, "tab": "draw_voice",
+        "app": "sonore-sketch", "version": 3, "sonore": "0.10.0", "duration": 1.0, "fs": 16000, "tab": "draw_voice",
         "draw_voice": {key: STATE[key] for key in ("f0", "breathiness", "filter", "seed")},
     }).data)
 
