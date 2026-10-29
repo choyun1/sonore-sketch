@@ -51,7 +51,12 @@ class PyodideEngine {
     this.nextId = 0;
     this.worker.onmessage = ({ data }) => {
       if (data.type === "progress") return onProgress(data.text);
-      if (data.type === "live") return this.picturing?.onColumns(data.columns);
+      if (data.type === "live") {
+        if (data.columns) this.picturing?.onColumns(data.columns);
+        if (data.pitch) this.picturing?.onPitch?.(data.pitch);
+        return;
+      }
+      if (data.type === "live-done") return this.picturing?.onDone?.();
       if (data.type === "live-error") return this.picturing?.onError(data.message);
       if (data.type === "ready") return onReady(data.versions, `loaded in ${data.seconds} s: ${data.phases}`);
       if (data.type === "failed") {
@@ -80,13 +85,14 @@ class PyodideEngine {
   }
 
   // A recording's picture as it is made (live.py; streaming.md, L6): start(fs,
-  // {onColumns, onError}), then block(samples) for each block (handed over),
-  // then stop(). The worker waits for Python if it is still loading.
+  // {onColumns, onPitch, onDone, onError}, {pitch}), then block(samples) for
+  // each block (handed over), then stop(); with pitch, its pitch is tracked
+  // too (L7). The worker waits for Python if it is still loading.
   get live() {
     return {
-      start: (fs, handlers) => {
+      start: (fs, handlers, { pitch = false } = {}) => {
         this.picturing = handlers;
-        this.worker.postMessage({ live: "start", fs });
+        this.worker.postMessage({ live: "start", fs, pitch });
       },
       block: (samples) => this.worker.postMessage({ live: "block", samples }, [samples.buffer]),
       stop: () => this.worker.postMessage({ live: "stop" }),

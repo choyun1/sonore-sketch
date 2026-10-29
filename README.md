@@ -142,7 +142,9 @@ from a sound: choose it in the **Source** list (as on Quilt a sound) and
 **Take the source** to make the pitch and breathiness its own, or **Copy
 the filter here** to make the chosen moment's curve its filter at that
 time. Put one voice's source under another's filter, or a voice's filter
-over a drawn pitch.
+over a drawn pitch. **Record** here and the pitch is tracked as you sing or
+speak, drawn in gray on the pitch track, so Take the source does not have
+to track it again.
 
 **Draw spectrogram.** It starts with "sonore" written by hand on the
 harmonic carrier at 50 Hz. Drag to paint at the brush's level (0 dB is the

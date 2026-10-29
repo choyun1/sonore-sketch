@@ -93,8 +93,12 @@ export function sourceFieldset(title, labels = SOURCE_LABELS) {
 // The Source fieldset under `root` brought to life. `state()` is the tab's
 // state, `commit` keeps a new one, `openRecording(recording, seconds)` gives
 // the page a recording and `hasRecording()` says whether it holds one.
+// `pitch`, if given, follows a recording's pitch as it is made (streaming.md,
+// L7): start(), part({t, f0}) for each stretch tracked, recorded(recording)
+// once it is the page's, done() when the last stretch has come, or
+// unavailable(why) when the pitch is not tracked live.
 // Returns show(), which shows the state's source and its recording.
-export function attachSourceControls(root, { state, commit, openRecording, hasRecording, log }) {
+export function attachSourceControls(root, { state, commit, openRecording, hasRecording, log, pitch }) {
   const sourceList = root.querySelector(".source");
   const openAudio = root.querySelector(".open-audio");
   const audioFile = root.querySelector(".audio-file");
@@ -169,13 +173,28 @@ export function attachSourceControls(root, { state, commit, openRecording, hasRe
     recordButton.disabled = true;
     const live = liveAnalysis();
     let picturing = false;
+    const pageFs = state().fs;
     try {
       recorder = await recordMicrophone({
+        fs: pageFs,
         maxSeconds: MAX_RECORDING_S,
         onBlock: (samples, fs) => {
           if (!live) return;
           if (!picturing) {
-            live.start(fs, { onColumns: drawColumns, onError: (message) => log?.error(`the recording's picture failed: ${message}`) });
+            // the pitch only at the page's rate, up to 16 kHz: faster rates fall behind (L7)
+            const tracking = Boolean(pitch) && fs === pageFs && fs <= 16000;
+            if (pitch && !tracking) pitch.unavailable(`the microphone records at ${fs} Hz`);
+            live.start(
+              fs,
+              {
+                onColumns: drawColumns,
+                onPitch: tracking ? (part) => pitch.part(part) : undefined,
+                onDone: tracking ? () => pitch.done() : undefined,
+                onError: (message) => log?.error(`the recording's picture failed: ${message}`),
+              },
+              { pitch: tracking },
+            );
+            if (tracking) pitch.start();
             picturing = true;
           }
           live.block(samples);
@@ -211,7 +230,9 @@ export function attachSourceControls(root, { state, commit, openRecording, hasRe
       const atPageRate = await resample(samples, micFs, state().fs);
       const name = `Recording ${++recordings}`;
       recorder = null;
-      openRecording({ name, fs: state().fs, pcm16: encodePcm16(atPageRate) }, seconds);
+      const made = { name, fs: state().fs, pcm16: encodePcm16(atPageRate) };
+      pitch?.recorded(made);
+      openRecording(made, seconds);
       show();
       log?.info(`recorded ${name} (${seconds.toFixed(2)} s at ${micFs} Hz)`);
     } catch (error) {

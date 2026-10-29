@@ -250,3 +250,29 @@ works there. Checked in headless Chromium with a stand-in microphone: under
 Pyodide, a recording started while Python loaded ran 17.1 s and its
 picture caught up to every one of its 1712 columns; `tools/check_page.py`
 now records 1.5 s on Erase spectrogram (local engine).
+
+**L7** (2026-10-29). Timed first under Pyodide 314.0.7 in headless
+Chromium in the cloud container (3 s of syllables, one run), ms per 10 ms
+of sound, with the slowest single block:
+
+| Stream | 16 kHz, 10 ms blocks | 16 kHz, 50 ms blocks | 48 kHz, 10 ms | 48 kHz, 50 ms |
+|---|---|---|---|---|
+| F0 track, decided 50 ms late | 14.4 (worst 40) | 6.6 (worst 74) | 21.7 (worst 54) | 16.4 (worst 146) |
+| live.py's STFT | 0.71 (worst 17) | 0.22 (worst 1.9) | 0.39 (worst 1.0) | 0.18 (worst 3.6) |
+
+So the pitch keeps up only at 16 kHz in 50 ms blocks (two thirds of real
+time), and batch `f0_track` on 3 s at 48 kHz ran out of memory under
+Pyodide. Record therefore asks Web Audio for the page's rate (16 kHz)
+and falls back to the microphone's own where the browser refuses; the
+pitch is tracked only when the recording is at the page's rate. On Draw a
+voice, `live.LivePitch` (sonore's `F0TrackStream`) runs beside the
+picture; each stretch is drawn as gray dots on the pitch track as it is
+heard, and once the recording is the page's and its last stretch has come,
+Take the source and Copy the filter here send it with the measuring
+request (`pitch`), and `draw_voice.measure_steps` uses it instead of
+tracking the pitch again (`recorded_pitch`: cut or padded, unvoiced, to the
+sound's length). It is `f0_track(..., delay=0.05)` of the recording as
+recorded (before its peak is scaled to full scale for saving), so it can
+differ from a fresh track by rounding. Checked with a stand-in microphone
+under Pyodide: 4.8 s recorded, the pitch drawn while recording, and Take
+the source done in 2.4 s with no pitch step.

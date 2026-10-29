@@ -67,3 +67,36 @@ class LiveSpectrogram:
             "t_step": HOP_S,
             "floor_db": FLOOR_DB,
         }
+
+
+class LivePitch:
+    """sonore's streamed F0 track of a recording at ``fs``, block by block
+    (streaming.md, L7): each time window decided 50 ms after it
+    (``F0TrackStream``; ``f0_track(..., delay=0.05)`` of the whole recording).
+    Only at the page's 16 kHz: at 48 kHz it falls behind the microphone in a
+    browser (tools/measure_streaming.py)."""
+
+    def __init__(self, fs: float):
+        self.fs = float(fs)
+        self.view = so.F0TrackStream()
+        self.state = self.view.start(self.fs)
+
+    def step(self, samples: Any) -> dict[str, list] | None:
+        """The pitch of the time windows this block decided: ``t`` and ``f0``
+        (0 where unvoiced), or None."""
+        if hasattr(samples, "to_bytes"):  # a Pyodide JsProxy
+            samples = samples.to_bytes()
+        block = so.Sound(np.frombuffer(samples, dtype="<f4").astype(float), self.fs)
+        self.state, part = self.view.step(self.state, block)
+        return self._track(part)
+
+    def finish(self) -> dict[str, list] | None:
+        """The last time windows, which needed the end of the recording."""
+        return self._track(self.view.finish(self.state))
+
+    @staticmethod
+    def _track(part: so.F0Track) -> dict[str, list] | None:
+        times = np.asarray(part.t, dtype=float)
+        if times.size == 0:
+            return None
+        return {"t": times.tolist(), "f0": np.asarray(part.f0, dtype=float).reshape(-1, times.size)[0].tolist()}

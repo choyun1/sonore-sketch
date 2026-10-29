@@ -146,7 +146,18 @@ def synthesize(state: Mapping[str, Any]) -> so.Sound:
     return sound.normalize() if sound.rms > 0 else sound
 
 
-def measure_steps(state: Mapping[str, Any]) -> Iterator[Step]:
+def recorded_pitch(pitch: Mapping[str, list], duration: float) -> tuple[np.ndarray, np.ndarray]:
+    """A pitch tracked while recording (``t`` every 5 ms from 0, ``f0``), as
+    ``(times, f0)`` covering ``duration``: cut there, or unvoiced past its end."""
+    hop = 0.005  # f0_track's and F0TrackStream's
+    times = np.arange(int(np.floor(duration / hop + 1e-9))) * hop  # as f0_track gives them
+    f0 = np.zeros(times.size)
+    known = np.asarray(pitch["f0"], dtype=float)[: times.size]
+    f0[: known.size] = known
+    return times, f0
+
+
+def measure_steps(state: Mapping[str, Any], pitch: Mapping[str, list] | None = None) -> Iterator[Step]:
     """Measure the voice of ``state``'s source (S6), one step at a time
     (``shared.Step``), for the page to take its source or copy its filter.
 
@@ -156,16 +167,24 @@ def measure_steps(state: Mapping[str, Any]) -> Iterator[Step]:
     unvoiced; sonore's ``f0_track``), its noise share (``breathiness``: D4C's
     aperiodicity averaged over frequency, weighted by the envelope's power)
     and its filter (``db``: CheapTrick's envelope at the ``f`` points, the
-    loudest voiced value at 0 dB, held at the axis's floor)."""
+    loudest voiced value at 0 dB, held at the axis's floor).
+
+    ``pitch`` (``t`` and ``f0``), when given, is the recording's pitch tracked
+    while it was recorded (``live.LivePitch``; streaming.md, L7): it is used
+    instead of tracking the pitch again, cut or padded (unvoiced) to the
+    sound's length."""
     check(state)
     if state.get("source") is None:
         raise ValueError("there is no source to take the voice from")
     yield 0.0, "Making the source"
     sound = quilt_sound.source(state, silent="there is no voice to take")
-    yield 0.15, "Tracking the pitch"
-    track = so.f0_track(sound)
-    times = np.asarray(track.t, dtype=float)
-    f0 = np.asarray(track.f0, dtype=float).reshape(-1, len(times))[0]
+    if pitch is not None and state.get("source") == "file":
+        times, f0 = recorded_pitch(pitch, sound.duration)
+    else:
+        yield 0.15, "Tracking the pitch"
+        track = so.f0_track(sound)
+        times = np.asarray(track.t, dtype=float)
+        f0 = np.asarray(track.f0, dtype=float).reshape(-1, len(times))[0]
     contour = (times, f0)
     yield 0.6, "Measuring the filter"
     envelope = so.pitch_adaptive_envelope(sound, contour)

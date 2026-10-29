@@ -64,8 +64,9 @@ const PITCH_TOLERANCE = 0.01; // octaves a simplified pitch stroke may stray
 const SHARE_TOLERANCE = 0.01; // of the share
 const GRAB_PX = 8; // how near a moment's mark a press grabs it
 
-// `measure(onStep)` measures the voice of the chosen source (S6), or gives
-// null when a newer sound took its place; `recording()` is the page's.
+// `measure(onStep, pitch)` measures the voice of the chosen source (S6), with
+// `pitch` ({t, f0}) as its pitch when given, or gives null when a newer sound
+// took its place; `recording()` is the page's.
 export function createDrawVoiceTab(root, { commit, openRecording, hasRecording, recording, measure, log }) {
   let state = null;
   let sound = null;
@@ -76,6 +77,14 @@ export function createDrawVoiceTab(root, { commit, openRecording, hasRecording, 
   let lastOnCurve = null; // [ERB-number, dB] of the last pointer position on the filter
   let dragged = null; // {index, moved, section} while a moment's mark is dragged
   let playhead = null;
+  // The pitch of the recording being made, tracked as it comes (streaming.md,
+  // L7): {t, f0, pcm16 (once it is the page's recording), done}, or null.
+  let heard = null;
+  // the recording's pitch, once all of it has come, if the source is that recording
+  const heardPitch = () => {
+    const shown = recording();
+    return heard?.done && state.source === "file" && shown && shown.pcm16 === heard.pcm16 ? { t: heard.t, f0: heard.f0 } : null;
+  };
 
   root.innerHTML = `
     <div class="draw-voice-body">
@@ -126,6 +135,28 @@ export function createDrawVoiceTab(root, { commit, openRecording, hasRecording, 
     openRecording,
     hasRecording,
     log,
+    pitch: {
+      start: () => {
+        heard = { t: [], f0: [], pcm16: null, done: false };
+        ui.measureNote.textContent = "Sing or speak: the pitch is drawn in gray as it is heard.";
+      },
+      part: ({ t, f0 }) => {
+        if (!heard) return;
+        heard.t.push(...t);
+        heard.f0.push(...f0);
+        renderPitch();
+      },
+      recorded: ({ pcm16 }) => heard && (heard.pcm16 = pcm16),
+      done: () => {
+        if (!heard) return;
+        heard.done = true;
+        ui.measureNote.textContent = "Its pitch is ready: Take the source uses it without tracking it again.";
+      },
+      unavailable: (why) => {
+        heard = null;
+        ui.measureNote.textContent = `The pitch is tracked once you take it (${why}).`;
+      },
+    },
   });
 
   // Measure the source, then make the change `apply(section, voice)` gives
@@ -136,7 +167,7 @@ export function createDrawVoiceTab(root, { commit, openRecording, hasRecording, 
     try {
       const voice = await measure((fraction, text) => {
         if (typeof fraction === "number") ui.measureNote.textContent = `${text}… ${Math.round(100 * fraction)}%`;
-      });
+      }, heardPitch());
       if (!voice) {
         ui.measureNote.textContent = "Another sound was made first: press again.";
         return;
@@ -297,6 +328,14 @@ export function createDrawVoiceTab(root, { commit, openRecording, hasRecording, 
       const ts = stroke.points.map(([t]) => t);
       context.fillStyle = "rgba(128, 128, 128, 0.2)";
       context.fillRect(plot.x(Math.min(...ts)), plot.y0, plot.x(Math.max(...ts)) - plot.x(Math.min(...ts)), plot.y1 - plot.y0);
+    }
+    // the recording's pitch as it was heard (L7): gray dots where it was voiced
+    if (heard && (!heard.pcm16 || heardPitch())) {
+      context.fillStyle = style("--muted", "#6b7280");
+      for (let i = 0; i < heard.t.length; i++) {
+        const [t, f0] = [heard.t[i], heard.f0[i]];
+        if (f0 > 0 && t <= state.duration) context.fillRect(plot.x(t) - 1, plot.y(f0) - 1, 2, 2);
+      }
     }
     if (playhead !== null) drawPlayhead(context, plot, plot.x(playhead), playColor());
   }
