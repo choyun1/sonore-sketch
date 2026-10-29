@@ -5,21 +5,32 @@
 
 const BLOCK_S = 0.05;
 
-// Starts recording at once (the browser asks for the microphone first).
-// onBlock(samples, fs) gets each block as it is recorded; recording stops
-// by itself after maxSeconds (onEnd). Resolves to {stop(), fs, seconds()}:
-// stop() resolves to the whole recording's mono samples at the microphone's
-// rate `fs`.
-export async function recordMicrophone({ maxSeconds, onBlock, onEnd }) {
+// Starts recording at once (the browser asks for the microphone first), at
+// `fs` where the browser can resample the microphone to it, else at the
+// microphone's own rate. onBlock(samples, fs) gets each block as it is
+// recorded; recording stops by itself after maxSeconds (onEnd). Resolves to
+// {stop(), fs, seconds()}: stop() resolves to the whole recording's mono
+// samples at the rate `fs` it was recorded at.
+export async function recordMicrophone({ fs: wanted, maxSeconds, onBlock, onEnd }) {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("this browser cannot record");
   // the raw sound: no echo cancellation, noise suppression or level control
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-  const context = new AudioContext();
+  let context, source;
   try {
+    // the page's rate if the browser resamples the microphone to it (the live
+    // pitch needs it: streaming.md, L7); some browsers refuse a rate not the microphone's
+    try {
+      context = new AudioContext(wanted ? { sampleRate: wanted } : {});
+      source = context.createMediaStreamSource(stream);
+    } catch {
+      context?.close();
+      context = new AudioContext();
+      source = context.createMediaStreamSource(stream);
+    }
     await context.audioWorklet.addModule(new URL("./recorder-worklet.js", import.meta.url));
   } catch (error) {
     stream.getTracks().forEach((track) => track.stop());
-    context.close();
+    context?.close();
     throw error;
   }
   const fs = context.sampleRate;
@@ -31,7 +42,6 @@ export async function recordMicrophone({ maxSeconds, onBlock, onEnd }) {
   let pendingLength = 0;
   let stopped = null;
 
-  const source = context.createMediaStreamSource(stream);
   const node = new AudioWorkletNode(context, "recorder");
   node.port.onmessage = ({ data }) => {
     if (stopped) return;

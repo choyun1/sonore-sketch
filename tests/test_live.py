@@ -37,3 +37,48 @@ def test_levels_are_below_a_full_scale_sine_up_to_8_khz():
     quiet = columns(fs, 0.01 * np.sin(2 * np.pi * 1000 * t), [2205])
     assert abs(int(quiet.max()) - round(255 * (1 - 40 / 70))) <= 1  # 40 dB down
     assert columns(fs, np.zeros(1000), [1000]).max() == 0
+
+
+def test_the_live_pitch_is_f0_track_decided_50_ms_late_whatever_the_blocks():
+    fs = 16000
+    sound = syllables(1.0, fs)
+    samples = sound.data[:, 0]
+
+    def tracked(sizes):
+        pitch, parts, at, i = live.LivePitch(fs), [], 0, 0
+        while at < len(samples):
+            block = samples[at : at + sizes[i % len(sizes)]]
+            at, i = at + len(block), i + 1
+            parts.append(pitch.step(np.asarray(block, dtype="<f4").tobytes()))
+        parts = [part for part in [*parts, pitch.finish()] if part is not None]
+        return np.concatenate([part["t"] for part in parts]), np.concatenate([part["f0"] for part in parts])
+
+    batch = so.f0_track(so.Sound(np.asarray(samples, dtype="<f4").astype(float), fs), delay=0.05)
+    for sizes in ([800], [160, 1000, 37]):
+        t, f0 = tracked(sizes)
+        np.testing.assert_array_equal(t, batch.t)
+        np.testing.assert_array_equal(f0, np.asarray(batch.f0).reshape(-1))
+    assert (f0 > 0).any()
+
+
+def test_a_recordings_live_pitch_is_used_instead_of_tracking_it_again():
+    import base64
+
+    from sonore_sketch import draw_voice
+
+    fs = 16000
+    sound = syllables(1.0, fs)
+    pcm = np.round(sound.data[:, 0] / np.abs(sound.data).max() * 32000).astype("<i2")
+    from test_draw_voice import STATE
+
+    state = {**STATE, "source": "file", "recording": {"name": "Recording 1", "fs": fs, "pcm16": base64.b64encode(pcm.tobytes()).decode()}}
+    pitch = {"t": [0.0, 0.005], "f0": [140.0, 0.0]}  # cut short on purpose: the rest is unvoiced
+    work, texts = draw_voice.measure_steps(state, pitch), []
+    while True:
+        try:
+            texts.append(next(work)[1])
+        except StopIteration as done:
+            _sound, voice = done.value
+            break
+    assert "Tracking the pitch" not in texts
+    assert voice["f0"][:2] == [140.0, 0.0] and not any(voice["f0"][2:]) and len(voice["t"]) == 200

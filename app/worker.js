@@ -4,7 +4,8 @@
 // the folder named by ?pyodide=<URL> on the page (served locally only; engine.js).
 //
 // Messages in:  {id, request: {tab, state}},
-//               or for a recording's live picture (streaming.md, L6) {live: "start", fs},
+//               or for a recording's live picture (streaming.md, L6) {live: "start", fs, pitch}
+//               (pitch: also track its pitch, L7),
 //               {live: "block", samples: Float32Array} and {live: "stop"}
 // Messages out: {type: "progress", text} while loading,
 //               {type: "ready", versions},
@@ -14,8 +15,8 @@
 //               (page.MEASURED_AFTER): the sound alone, before the result (streaming.md, L4),
 //               {id, type: "result", result} or {id, type: "error", message, detail},
 //               or {id, type: "dropped"} when a newer request arrived first;
-//               {type: "live", columns} as a recording's picture grows (live.py),
-//               or {type: "live-error", message}.
+//               {type: "live", columns, pitch} as a recording's picture grows (live.py;
+//               either may be null), {type: "live-done"} after "stop", or {type: "live-error", message}.
 
 import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
 
@@ -40,8 +41,10 @@ const FOLDER = "/home/pyodide/sonore_sketch";
 const HRIR_FILE = "data/mit_kemar.npz";
 let hrirs = null;
 let latest = -1; // the newest request's id: an older one stops at its next step
-let LiveSpectrogram = null; // live.py's class, once Python has loaded
+let LiveSpectrogram = null; // live.py's classes, once Python has loaded
+let LivePitch = null;
 let live = null; // the recording's LiveSpectrogram while one is being made
+let livePitch = null; // and its LivePitch, when its pitch is tracked
 
 function progress(text) {
   postMessage({ type: "progress", text });
@@ -127,6 +130,7 @@ from sonore_sketch.page import handle_steps
 lambda text: handle_steps(json.loads(text))
 `);
   LiveSpectrogram = pyodide.runPython("from sonore_sketch.live import LiveSpectrogram\nLiveSpectrogram");
+  LivePitch = pyodide.runPython("from sonore_sketch.live import LivePitch\nLivePitch");
   const versions = pyodide.runPython("import sonore, sys; f'sonore {sonore.__version__}, Python {sys.version.split()[0]}'");
   phase("import");
   postMessage({
@@ -221,29 +225,53 @@ const between = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 // A recording's picture, block by block. Blocks that come while Python
 // loads wait for it, in order; then the picture catches up.
-async function onLive({ live: what, fs, samples }) {
+async function onLive({ live: what, fs, pitch, samples }) {
   try {
     await loading;
     if (what === "start") {
-      live?.destroy();
+      stopLive();
       live = LiveSpectrogram(fs);
+      if (pitch) livePitch = LivePitch(fs);
       return;
     }
-    if (!live) return;
-    const columns = what === "block" ? live.step(new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength)) : live.finish();
-    if (columns) {
-      const picture = readColumns(columns);
-      postMessage({ type: "live", columns: picture }, [picture.data.buffer]);
-    }
+    if (!live) return what === "stop" && postMessage({ type: "live-done" });
+    const bytes = what === "block" ? new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength) : null;
+    const columns = bytes ? live.step(bytes) : live.finish();
+    const track = livePitch ? (bytes ? livePitch.step(bytes) : livePitch.finish()) : null;
+    const picture = columns ? readColumns(columns) : null;
+    const heard = track ? readTrack(track) : null;
+    if (picture || heard) postMessage({ type: "live", columns: picture, pitch: heard }, picture ? [picture.data.buffer] : []);
     if (what === "stop") {
-      live.destroy();
-      live = null;
+      stopLive();
+      postMessage({ type: "live-done" });
     }
   } catch (error) {
-    live?.destroy();
-    live = null;
+    stopLive();
     const lines = String(error?.message ?? error).trim().split("\n");
     postMessage({ type: "live-error", message: lines[lines.length - 1] });
+  }
+}
+
+function stopLive() {
+  live?.destroy();
+  livePitch?.destroy();
+  live = livePitch = null;
+}
+
+// live.py's pitch ({t, f0}), copied out of Python (and the dict destroyed).
+function readTrack(track) {
+  try {
+    const copy = (name) => {
+      const list = track.get(name);
+      try {
+        return list.toJs();
+      } finally {
+        list.destroy();
+      }
+    };
+    return { t: copy("t"), f0: copy("f0") };
+  } finally {
+    track.destroy();
   }
 }
 

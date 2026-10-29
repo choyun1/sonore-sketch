@@ -209,7 +209,7 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step | shared.So
     elif tab == "draw_room":
         sound, ir = yield from shared.scaled(draw_room.steps(request["state"]), 0.8)
     elif tab == "draw_voice" and request.get("measure"):  # the source's voice, to take or copy from (draw_voice.md, S6)
-        sound, voice = yield from shared.scaled(draw_voice.measure_steps(request["state"]), 0.9)
+        sound, voice = yield from shared.scaled(draw_voice.measure_steps(request["state"], request.get("pitch")), 0.9)
     else:
         yield 0.0, "Synthesizing"
         sound = TABS[tab](request["state"])

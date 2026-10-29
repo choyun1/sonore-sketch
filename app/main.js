@@ -130,13 +130,14 @@ const commitFrom = (id) => (state, { play = false } = {}) => change(withTabState
 // Draw a voice's source, measured to take its voice from (draw_voice.md, S6),
 // kept while the source's own sound stays the same: {key, voice}.
 let measured = null;
-async function measureVoice(onStep) {
+// `pitch`: the recording's pitch, tracked while it was made (streaming.md, L7).
+async function measureVoice(onStep, pitch = null) {
   const state = measureState(history.present);
   const { source, duration, fs, draw_speech, recording, drawing } = state;
-  const key = JSON.stringify({ source, duration, fs, draw_speech, recording, drawing });
+  const key = JSON.stringify({ source, duration, fs, draw_speech, recording, drawing, tracked: Boolean(pitch) });
   if (measured?.key === key) return measured.voice;
   if (!ready) throw new Error(failed ?? "sonore is still loading; try again once it has");
-  const result = await engine.synthesize({ tab: "draw_voice", state, measure: true }, onStep);
+  const result = await engine.synthesize({ tab: "draw_voice", state, measure: true, ...(pitch && { pitch }) }, onStep);
   if (!result) return null;
   measured = { key, voice: result.voice };
   return result.voice;
