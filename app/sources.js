@@ -7,6 +7,8 @@
 // runs under `node --test`.
 
 import { absolutePeak } from "./audio.js";
+import { magma } from "./colormap.js";
+import { recordMicrophone, resample } from "./recorder.js";
 
 export const SOURCES = ["syllables", "draw_speech", "file"];
 // The order every Source list keeps (Cho, 2026-10-17): sounds made here
@@ -63,6 +65,16 @@ export async function decodeAudio(file, fs) {
 
 // --- the Source controls -----------------------------------------------------------
 
+// The engine's live pictures of a recording (engine.js, `live`), or null;
+// main.js sets it, since the engine is the page's (streaming.md, L6).
+let liveAnalysis = () => null;
+export function useLiveAnalysis(get) {
+  liveAnalysis = get;
+}
+
+let recordings = 0; // recordings made on this page, to name them
+let recordingNow = null; // the Source controls recording now, if any: one at a time
+
 // The Source fieldset's HTML; `title` is the source list's tooltip and
 // `labels` the sources offered, by id.
 export function sourceFieldset(title, labels = SOURCE_LABELS) {
@@ -71,7 +83,9 @@ export function sourceFieldset(title, labels = SOURCE_LABELS) {
             ${Object.entries(labels).map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
           </select>
           <button type="button" class="open-audio" title="Open a sound file (WAV, MP3, …) to erase from; it sets the duration, up to ${MAX_RECORDING_S} s">Open audio file…</button>
+          <button type="button" class="record" title="Record from the microphone, up to ${MAX_RECORDING_S} s; it sets the duration">● Record</button>
           <input type="file" class="audio-file" accept="audio/*" hidden>
+          <canvas class="live-picture" hidden title="The recording's spectrogram as it is made (0 to 8 kHz)"></canvas>
           <p class="hint recording-note"></p>
         </fieldset>`;
 }
@@ -85,8 +99,13 @@ export function attachSourceControls(root, { state, commit, openRecording, hasRe
   const openAudio = root.querySelector(".open-audio");
   const audioFile = root.querySelector(".audio-file");
   const recordingNote = root.querySelector(".recording-note");
+  const recordButton = root.querySelector(".record");
+  const livePicture = root.querySelector(".live-picture");
+  let recorder = null; // recordMicrophone's, while recording
+  let clock = null;
 
   function show() {
+    if (recorder) return; // the note says how the recording goes
     const { source, recording, duration } = state();
     sourceList.value = source;
     recordingNote.textContent =
@@ -119,6 +138,93 @@ export function attachSourceControls(root, { state, commit, openRecording, hasRe
       log?.error(`could not open the recording ${file.name}: ${error.message}`);
     }
   });
+
+  // The recording's spectrogram, drawn column by column as sonore streams it
+  // (live.py): one canvas pixel per column, 0 Hz at the bottom.
+  function drawColumns({ data, nFreqs, nWindows, first, tStep }) {
+    const width = Math.round(MAX_RECORDING_S / tStep);
+    if (livePicture.width !== width || livePicture.height !== nFreqs) {
+      livePicture.width = width;
+      livePicture.height = nFreqs;
+    }
+    const image = new ImageData(nWindows, nFreqs);
+    for (let window = 0; window < nWindows; window++) {
+      for (let row = 0; row < nFreqs; row++) {
+        const [r, g, b] = magma(data[row * nWindows + window] / 255);
+        const at = 4 * ((nFreqs - 1 - row) * nWindows + window);
+        image.data.set([r, g, b, 255], at);
+      }
+    }
+    livePicture.getContext("2d").putImageData(image, first, 0);
+  }
+
+  function showClock() {
+    const seconds = recorder?.seconds() ?? 0;
+    recordButton.textContent = `■ Stop recording (${seconds.toFixed(1)} s)`;
+  }
+
+  async function startRecording() {
+    if (recordingNow) return;
+    recordingNow = root;
+    recordButton.disabled = true;
+    const live = liveAnalysis();
+    let picturing = false;
+    try {
+      recorder = await recordMicrophone({
+        maxSeconds: MAX_RECORDING_S,
+        onBlock: (samples, fs) => {
+          if (!live) return;
+          if (!picturing) {
+            live.start(fs, { onColumns: drawColumns, onError: (message) => log?.error(`the recording's picture failed: ${message}`) });
+            picturing = true;
+          }
+          live.block(samples);
+        },
+        onEnd: () => stopRecording(),
+      });
+    } catch (error) {
+      recordingNow = null;
+      recordButton.disabled = false;
+      recordingNote.textContent = `Could not record: ${error.message}`;
+      log?.error(`could not record: ${error.message}`);
+      return;
+    }
+    livePicture.width = livePicture.width; // clears the last recording's picture
+    livePicture.hidden = !live;
+    recordingNote.textContent = live ? `Recording, up to ${MAX_RECORDING_S} s; its spectrogram fills in as it goes.` : `Recording, up to ${MAX_RECORDING_S} s.`;
+    recordButton.disabled = false;
+    showClock();
+    clock = setInterval(showClock, 100);
+    recorder.stopPicture = () => picturing && live.stop();
+  }
+
+  async function stopRecording() {
+    if (!recorder || recorder.stopping) return;
+    recorder.stopping = true;
+    clearInterval(clock);
+    const { fs: micFs } = recorder;
+    try {
+      const samples = await recorder.stop();
+      recorder.stopPicture();
+      const seconds = samples.length / micFs;
+      if (!samples.some((sample) => sample !== 0)) throw new Error("it is silent (is the microphone muted?)");
+      const atPageRate = await resample(samples, micFs, state().fs);
+      const name = `Recording ${++recordings}`;
+      recorder = null;
+      openRecording({ name, fs: state().fs, pcm16: encodePcm16(atPageRate) }, seconds);
+      show();
+      log?.info(`recorded ${name} (${seconds.toFixed(2)} s at ${micFs} Hz)`);
+    } catch (error) {
+      recorder = null;
+      recordingNote.textContent = `Could not keep the recording: ${error.message}`;
+      log?.error(`could not keep the recording: ${error.message}`);
+    } finally {
+      recordingNow = null;
+      recordButton.textContent = "● Record";
+    }
+  }
+
+  recordButton.addEventListener("click", () => (recorder ? stopRecording() : startRecording()));
 
   return show;
 }

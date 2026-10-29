@@ -9,6 +9,7 @@ import { History } from "./history.js";
 import { Log } from "./log.js";
 import { drawWaveform } from "./plot.js";
 import { encodeState, stateFromHash, tabFromHash } from "./share.js";
+import { useLiveAnalysis } from "./sources.js";
 import { clearTab, defaultPage, forLink, isStartingPage, openDocument, resetTab, soundState, stretchPage, measureState, tabState, withRecording, withTabState } from "./document.js";
 import { createDrawModulationTab } from "./draw_modulation/tab.js";
 import { createEraseModulationTab } from "./erase_modulation/tab.js";
@@ -98,6 +99,7 @@ const engine = new LatestOnly(
     },
   }),
 );
+useLiveAnalysis(() => engine.live); // a recording's spectrogram as it is made (streaming.md, L6)
 
 const player = new Player();
 let result = null; // {key, page, sound}: the last sound made, from which tab's state
