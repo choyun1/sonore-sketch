@@ -131,8 +131,31 @@ def test_handle_steps_says_what_it_does_next():
 
     state = {"draw_modulation": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
              "carrier": "tones", "iterations": 2, "rms_depth": 0.2, "seed": 1, "items": draw_modulation.EXAMPLE_ITEMS}
-    texts = [text for _, text in page.handle_steps({"tab": "draw_modulation", "state": state})]
+    texts = [step[1] for step in page.handle_steps({"tab": "draw_modulation", "state": state}) if len(step) == 2]
     assert texts == ["Synthesizing", "Iteration 1 of 2", "Iteration 2 of 2", "Measuring the result"]
+
+
+def test_handle_steps_gives_the_sound_before_its_pictures():
+    # streaming.md, L4: on the tabs whose pictures take a while, one step holds the sound alone
+    from sonore_sketch import draw_modulation
+
+    state = {"draw_modulation": 1, "duration": 0.5, "fs": 16000, "f_lo": 100, "f_hi": 6400, "bands_per_octave": 12,
+             "carrier": "tones", "iterations": 1, "rms_depth": 0.2, "seed": 1, "items": draw_modulation.EXAMPLE_ITEMS}
+    work, early = page.handle_steps({"tab": "draw_modulation", "state": state}), []
+    while True:
+        try:
+            step = next(work)
+        except StopIteration as done:
+            result = done.value
+            break
+        if len(step) == 3:
+            early.append(step)
+    assert len(early) == 1
+    fraction, text, sound = early[0]
+    assert fraction == page.MEASURED_AFTER["draw_modulation"] and text == "Measuring the result"
+    assert sound["samples"] == result["samples"] and sound["spectrogram"] == result["spectrogram"] and "modulation" not in sound
+    quick = [step for step in page.handle_steps({"tab": "draw_speech", "state": DOCUMENT}) if len(step) == 3]
+    assert quick == []  # the other tabs' pictures come with the sound
 
 
 def test_a_document_without_its_tabs_section_says_so():

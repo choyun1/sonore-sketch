@@ -208,3 +208,19 @@ recordings to Draw a voice.
 - sonore 0.10.0 CHANGELOG, and docs/design/streaming.md and
   docs/design/live-page.md in sonore's repository.
 - `docs/design/app.md` (D10, browser timings at 30 s).
+
+## As built
+
+**L4** (2026-10-29). `page.MEASURED_AFTER` names the tabs whose pictures
+take a while after the sound (Draw modulation, Erase modulation, Draw a
+room); on those, `page.handle_steps` yields one step with the sound alone
+(`shared.SoundStep`: the result's `fs`, samples, spectrogram and
+`synthesis_s`). The worker posts it as a `sound` message, the Pyodide
+engine hands it to `onSound`, and the page shows and plays it ("Made 10 s
+in 11.79 s; measuring it…") and draws the pictures when the whole result
+comes ("Made 10 s in 11.79 s, measured in 18.82 s."). Play pressed while
+the pictures are measured plays the sound at once. The server and local
+engines still answer in one piece. Checked under Pyodide 314.0.7 in
+headless Chromium (served locally): Draw modulation at 10 s played at
+11.8 s instead of 18.8 s; Draw a room and Erase modulation at 4 s also
+played before their pictures; Draw spectrogram is unchanged.

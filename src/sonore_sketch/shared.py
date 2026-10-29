@@ -42,6 +42,9 @@ def modulation_carrier(name: str, duration: float, fs: float, seed: int) -> str 
 # A tab's steps yield ``(fraction done, what it does next)``, such as
 # ``(0.4, "Iteration 2 of 5")``; the page shows both while it waits.
 Step = tuple[float, str]
+# ``page.handle_steps`` also yields the sound alone, before its pictures:
+# ``(fraction done, what it does next, the result so far)``.
+SoundStep = tuple[float, str, dict]
 
 
 def scaled(steps: Iterator[Step], factor: float) -> Iterator[Step]:

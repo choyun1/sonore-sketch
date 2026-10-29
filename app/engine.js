@@ -61,6 +61,7 @@ class PyodideEngine {
       const waiting = this.waiting.get(data.id);
       if (!waiting) return; // a request already settled, as when a failure cleared them all
       if (data.type === "step") return waiting.onStep?.(data.fraction, data.text);
+      if (data.type === "sound") return waiting.onSound?.(data.result);
       const { resolve, reject } = waiting;
       this.waiting.delete(data.id);
       if (data.type === "result") resolve(data.result);
@@ -78,11 +79,13 @@ class PyodideEngine {
 
   // A newer request stops this one at its next step (it resolves to null),
   // and onStep(fraction, text) follows its progress: the fraction done and
-  // what it does next.
-  synthesize(request, onStep) {
+  // what it does next. On the tabs whose pictures take a while, onSound(sound)
+  // has the sound (a result without those pictures) before the request
+  // resolves to the whole result (docs/design/streaming.md, L4).
+  synthesize(request, onStep, onSound) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.waiting.set(id, { resolve, reject, onStep });
+      this.waiting.set(id, { resolve, reject, onStep, onSound });
       this.worker.postMessage({ id, request });
     });
   }
@@ -158,7 +161,7 @@ class FallbackEngine {
     this.pyodide = new PyodideEngine(this.callbacks);
   }
 
-  async synthesize(request, onStep) {
+  async synthesize(request, onStep, onSound) {
     if (!this.pyodide) {
       try {
         return await this.server.synthesize(request);
@@ -167,7 +170,7 @@ class FallbackEngine {
         this.fallBack(error);
       }
     }
-    return this.pyodide.synthesize(request, onStep); // the worker waits until Pyodide has loaded
+    return this.pyodide.synthesize(request, onStep, onSound); // the worker waits until Pyodide has loaded
   }
 }
 
@@ -221,8 +224,8 @@ export class LatestOnly {
     this.pending = null;
   }
 
-  synthesize(request, onStep) {
-    if (this.engine.supersedes) return this.engine.synthesize(request, onStep);
+  synthesize(request, onStep, onSound) {
+    if (this.engine.supersedes) return this.engine.synthesize(request, onStep, onSound);
     return new Promise((resolve, reject) => {
       this.pending?.resolve(null);
       this.pending = { request, resolve, reject };

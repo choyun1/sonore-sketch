@@ -177,11 +177,19 @@ def handle(request: Mapping[str, Any]) -> dict[str, Any]:
     return shared.finish(handle_steps(request))
 
 
-def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
+# The tabs whose pictures take a while after the sound is made, with the
+# fraction done when it is: their handle_steps also yields the sound alone.
+MEASURED_AFTER = {"draw_modulation": 0.65, "erase_modulation": 0.9, "draw_room": 0.8}
+
+
+def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step | shared.SoundStep]:
     """``handle`` one step at a time: yields the fraction done with what
     comes next (``shared.Step``; synthesis takes most of it, the pictures
     the rest) and returns ``handle``'s result. The Pyodide worker runs it between messages, so the page can
-    show progress and drop a request the drawing has outgrown."""
+    show progress and drop a request the drawing has outgrown. On the tabs in
+    ``MEASURED_AFTER`` one step also holds the sound (``shared.SoundStep``:
+    the result's ``fs``, samples, spectrogram and ``synthesis_s``), so the page
+    can play it while the pictures measured from it are made (streaming.md, L4)."""
     tab = request.get("tab")
     if tab not in TABS:
         raise ValueError(f"unknown tab {tab!r}; known: {sorted(TABS)}")
@@ -215,6 +223,8 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
     }
     if sound.n_channels == 2:  # the Draw path tab's two ears
         result["samples_right"] = np.ascontiguousarray(sound.data[:, 1], dtype="<f4").tobytes()
+    if tab in MEASURED_AFTER:  # the sound before the pictures measured from it, so the page can play it (streaming.md, L4)
+        yield MEASURED_AFTER[tab], "Measuring the room" if tab == "draw_room" else "Measuring the result", dict(result)
     if tab == "draw_modulation":  # the result's measured modulation spectrum, for under the plane (draw_modulation.md, B7)
         result["modulation"] = draw_modulation.measured_picture(draw_modulation.measured(sound, request["state"]))
     if tab == "erase_modulation":  # the source's modulation spectrum and the result's, on the plane (erase_modulation.md, E7, E9)
@@ -232,7 +242,6 @@ def handle_steps(request: Mapping[str, Any]) -> Iterator[shared.Step]:
         result["match"] = [round(matched[name], 2) for name in match_texture.BARS]
         result["imposed"] = [name in kept for name in match_texture.BARS]
     if tab == "draw_room":  # the room, as a spectrogram and as the RT60 it was measured to have (draw_room.md, R9)
-        yield 0.85, "Measuring the room"
         result["room_stft"], result["measured"] = spectrogram(ir), draw_room.measured(ir)
     if tab == "draw_voice" and request.get("measure"):
         result["voice"] = voice
