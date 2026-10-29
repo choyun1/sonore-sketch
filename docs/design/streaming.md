@@ -224,3 +224,7 @@ engines still answer in one piece. Checked under Pyodide 314.0.7 in
 headless Chromium (served locally): Draw modulation at 10 s played at
 11.8 s instead of 18.8 s; Draw a room and Erase modulation at 4 s also
 played before their pictures; Draw spectrogram is unchanged.
+
+**L8** (2026-10-29). The README links sonore's live page
+(https://choyun1.github.io/sonore/live/, the address Cho gave) beside the
+gallery link.
