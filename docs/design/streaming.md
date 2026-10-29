@@ -228,3 +228,25 @@ played before their pictures; Draw spectrogram is unchanged.
 **L8** (2026-10-29). The README links sonore's live page
 (https://choyun1.github.io/sonore/live/, the address Cho gave) beside the
 gallery link.
+
+**L6** (2026-10-29). Every Source list (Erase spectrogram, Erase
+modulation, Draw a voice, Draw a room, Quilt a sound, Match a texture) has
+**● Record** under **Open audio file…**. `app/recorder.js` takes the
+microphone with Web Audio (an AudioWorklet, `app/recorder-worklet.js`; no
+echo cancellation, noise suppression or level control) at its own rate,
+in blocks of 50 ms, up to 30 s, and at the end resamples it to the page's
+rate (`OfflineAudioContext`); it then opens like a file ("Recording 1").
+While it records, each block goes to the worker, where
+`src/sonore_sketch/live.py` (`LiveSpectrogram`) runs sonore's streamed
+STFT (5 ms windows every 10 ms, 0 to 8 kHz, dB below a full-scale sine,
+floor -70 dB) and returns the columns each block completed; the Source box
+draws them on a strip spanning the 30 s limit. The picture is the
+recording's own STFT at the microphone's rate, not the tab's (that comes
+when the sound is made). A recording started before Python has loaded
+keeps recording, and the picture catches up once it has
+(`tests/test_live.py`: any cut into blocks gives the same columns). The
+synthesis server and the local engine make no live picture; Record still
+works there. Checked in headless Chromium with a stand-in microphone: under
+Pyodide, a recording started while Python loaded ran 17.1 s and its
+picture caught up to every one of its 1712 columns; `tools/check_page.py`
+now records 1.5 s on Erase spectrogram (local engine).

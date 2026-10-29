@@ -189,7 +189,9 @@ canvas.stft {
 .side .reorder { display: block; width: 100%; margin-top: 4px; }
 .side .preset-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
 .side .preset-row input { width: 3.5em; }
-.side .no-down, .side .no-up, .side .open-audio { display: block; width: 100%; margin-top: 4px; }
+.side .no-down, .side .no-up, .side .open-audio, .side .record { display: block; width: 100%; margin-top: 4px; }
+.side .live-picture { display: block; width: 100%; height: 48px; margin-top: 4px; background: #000; border-radius: 4px; image-rendering: pixelated; }
+.side .live-picture[hidden] { display: none; }
 .side select.source { width: 100%; }
 .side .recording-note:empty { display: none; }
 .side .recording-note { margin-top: 4px; }

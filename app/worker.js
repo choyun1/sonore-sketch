@@ -3,7 +3,9 @@
 // worker, which loads Pyodide's ES module (pyodide.mjs) from its CDN, or from
 // the folder named by ?pyodide=<URL> on the page (served locally only; engine.js).
 //
-// Messages in:  {id, request: {tab, state}}
+// Messages in:  {id, request: {tab, state}},
+//               or for a recording's live picture (streaming.md, L6) {live: "start", fs},
+//               {live: "block", samples: Float32Array} and {live: "stop"}
 // Messages out: {type: "progress", text} while loading,
 //               {type: "ready", versions},
 //               {id, type: "step", fraction, text} as synthesis goes (page.handle_steps:
@@ -11,7 +13,9 @@
 //               {id, type: "sound", result} on the tabs whose pictures take a while
 //               (page.MEASURED_AFTER): the sound alone, before the result (streaming.md, L4),
 //               {id, type: "result", result} or {id, type: "error", message, detail},
-//               or {id, type: "dropped"} when a newer request arrived first.
+//               or {id, type: "dropped"} when a newer request arrived first;
+//               {type: "live", columns} as a recording's picture grows (live.py),
+//               or {type: "live-error", message}.
 
 import { modulationPicture, modulationSpectrogramPicture, spectrogramPicture } from "./pictures.js";
 
@@ -36,6 +40,8 @@ const FOLDER = "/home/pyodide/sonore_sketch";
 const HRIR_FILE = "data/mit_kemar.npz";
 let hrirs = null;
 let latest = -1; // the newest request's id: an older one stops at its next step
+let LiveSpectrogram = null; // live.py's class, once Python has loaded
+let live = null; // the recording's LiveSpectrogram while one is being made
 
 function progress(text) {
   postMessage({ type: "progress", text });
@@ -120,6 +126,7 @@ sys.path.insert(0, "/home/pyodide")
 from sonore_sketch.page import handle_steps
 lambda text: handle_steps(json.loads(text))
 `);
+  LiveSpectrogram = pyodide.runPython("from sonore_sketch.live import LiveSpectrogram\nLiveSpectrogram");
   const versions = pyodide.runPython("import sonore, sys; f'sonore {sonore.__version__}, Python {sys.version.split()[0]}'");
   phase("import");
   postMessage({
@@ -212,7 +219,54 @@ const loading = load().catch((error) => {
 // messages in, so a newer drawing stops this one instead of waiting for it.
 const between = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-onmessage = async ({ data: { id, request } }) => {
+// A recording's picture, block by block. Blocks that come while Python
+// loads wait for it, in order; then the picture catches up.
+async function onLive({ live: what, fs, samples }) {
+  try {
+    await loading;
+    if (what === "start") {
+      live?.destroy();
+      live = LiveSpectrogram(fs);
+      return;
+    }
+    if (!live) return;
+    const columns = what === "block" ? live.step(new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength)) : live.finish();
+    if (columns) {
+      const picture = readColumns(columns);
+      postMessage({ type: "live", columns: picture }, [picture.data.buffer]);
+    }
+    if (what === "stop") {
+      live.destroy();
+      live = null;
+    }
+  } catch (error) {
+    live?.destroy();
+    live = null;
+    const lines = String(error?.message ?? error).trim().split("\n");
+    postMessage({ type: "live-error", message: lines[lines.length - 1] });
+  }
+}
+
+// live.py's columns, copied out of Python (and the dict destroyed).
+function readColumns(columns) {
+  try {
+    const field = (name) => columns.get(name);
+    return {
+      data: toBytes(field("data")),
+      nFreqs: field("n_freqs"),
+      nWindows: field("n_windows"),
+      first: field("first"),
+      fMax: field("f_max"),
+      tStep: field("t_step"),
+    };
+  } finally {
+    columns.destroy();
+  }
+}
+
+onmessage = async ({ data }) => {
+  if (data.live) return onLive(data);
+  const { id, request } = data;
   latest = id;
   let work = null;
   try {

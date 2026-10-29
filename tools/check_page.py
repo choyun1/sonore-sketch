@@ -85,7 +85,9 @@ def main() -> None:
     errors: list[str] = []
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=not args.headed, executable_path=args.chromium)
+            # a stand-in microphone that says yes, for Record
+            fake_microphone = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
+            browser = playwright.chromium.launch(headless=not args.headed, executable_path=args.chromium, args=fake_microphone)
             page = browser.new_page(viewport={"width": 1280, "height": 900})
             page.on("console", lambda m: m.type == "error" and errors.append(m.text))
             page.on("pageerror", lambda e: errors.append(str(e)))
@@ -1007,6 +1009,18 @@ def main() -> None:
             assert linked["duration"] == 1.5 and linked["erase_spectrogram"]["source"] == "file" and linked["erase_modulation"]["source"] == "draw_speech", (linked["erase_spectrogram"], linked["erase_modulation"]["source"])
             expect(page.locator("#tab-erase_spectrogram .recording-note")).to_contain_text("pulse.wav: 1.50 s")
             print("Erase spectrogram: a WAV file opened here is this tab's source, set the duration and was heard")
+            # Record (streaming.md, L6), from Chromium's stand-in microphone (a tone)
+            record = page.locator("#tab-erase_spectrogram .record")
+            record.click()
+            expect(record).to_contain_text("Stop recording", timeout=10_000)
+            page.wait_for_timeout(1500)
+            record.click()
+            expect(page.locator("#tab-erase_spectrogram .recording-note")).to_contain_text("Recording 1", timeout=30_000)
+            expect(record).to_have_text("● Record")
+            recorded = page_document_in(page)
+            assert recorded["erase_spectrogram"]["source"] == "file" and 1.0 < recorded["duration"] < 5, recorded["duration"]
+            expect(status).to_contain_text("Made", timeout=120_000)
+            print(f"Erase spectrogram: Record took {recorded['duration']} s from the microphone and was heard")
             if args.screenshot:
                 page.screenshot(path=args.screenshot)
             browser.close()

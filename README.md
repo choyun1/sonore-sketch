@@ -156,7 +156,7 @@ paint between them is silent.
 
 **Erase spectrogram.** Choose a **source**, as on Erase modulation: a
 syllable train, the Draw speech tab's sound, or a recording (**Open audio
-file…**); a recording opened on either tab can be the other's source too.
+file…** or **Record**); a recording opened on either tab can be the other's source too.
 The plane shows the source's spectrogram from 0 Hz to half the sampling
 rate, on a linear axis so harmonics are evenly spaced lines. Paint on it to
 erase that part of the sound (right-drag or **Restore** brings it back);
@@ -180,7 +180,9 @@ carrier (tones, harmonic or noise), the modulation depth, and the seed
 
 **Erase modulation.** Choose a **source**: a syllable train made at the
 page's duration, the Draw speech tab's sound, or a recording (**Open audio
-file…**, which sets the duration to the recording's, up to 30 s). Each
+file…**, or **Record** from the microphone, which shows the recording's
+spectrogram as it is made; either sets the duration to the recording's, up
+to 30 s). Each
 sound made shows the source's modulation spectrum on the plane, with a
 center strip for rates under 1 Hz. Paint on it to erase that modulation
 (right-drag or **Restore** brings it back; E and R switch between them);

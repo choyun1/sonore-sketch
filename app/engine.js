@@ -51,6 +51,8 @@ class PyodideEngine {
     this.nextId = 0;
     this.worker.onmessage = ({ data }) => {
       if (data.type === "progress") return onProgress(data.text);
+      if (data.type === "live") return this.picturing?.onColumns(data.columns);
+      if (data.type === "live-error") return this.picturing?.onError(data.message);
       if (data.type === "ready") return onReady(data.versions, `loaded in ${data.seconds} s: ${data.phases}`);
       if (data.type === "failed") {
         onFailed(data.message);
@@ -74,6 +76,20 @@ class PyodideEngine {
       // nothing more will come back for the requests under way
       for (const { reject } of this.waiting.values()) reject(new Error(message));
       this.waiting.clear();
+    };
+  }
+
+  // A recording's picture as it is made (live.py; streaming.md, L6): start(fs,
+  // {onColumns, onError}), then block(samples) for each block (handed over),
+  // then stop(). The worker waits for Python if it is still loading.
+  get live() {
+    return {
+      start: (fs, handlers) => {
+        this.picturing = handlers;
+        this.worker.postMessage({ live: "start", fs });
+      },
+      block: (samples) => this.worker.postMessage({ live: "block", samples }, [samples.buffer]),
+      stop: () => this.worker.postMessage({ live: "stop" }),
     };
   }
 
@@ -155,6 +171,10 @@ class FallbackEngine {
     return this.pyodide !== null;
   }
 
+  get live() {
+    return this.pyodide?.live ?? null; // the synthesis server makes no live pictures
+  }
+
   fallBack(error) {
     if (this.pyodide) return;
     this.callbacks.onProgress(`The synthesis server is unavailable (${error.message}); loading Python in the browser instead…`);
@@ -222,6 +242,11 @@ export class LatestOnly {
     this.engine = engine;
     this.running = false;
     this.pending = null;
+  }
+
+  // the engine's live pictures of a recording, or null where it has none (the servers)
+  get live() {
+    return this.engine.live ?? null;
   }
 
   synthesize(request, onStep, onSound) {
