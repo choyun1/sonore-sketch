@@ -2,10 +2,10 @@
 
 What sonore 0.10.0's streams change on the page, and what they could add.
 
-Status: proposed. Cho asked on 2026-10-29 to upgrade to sonore 0.10.0
+Status: accepted. Cho asked on 2026-10-29 to upgrade to sonore 0.10.0
 (PR #100) and "consider what its new live streaming feature enables, or
-changes in sonore-sketch". Nothing here is built until Cho accepts the
-decisions below (L1-L8).
+changes in sonore-sketch", and accepted every recommendation (L1-L8) the
+same day. L1 is built (PR #100); the rest follow "Order of work".
 
 This project is AI-assisted: the document and `tools/measure_streaming.py`
 were drafted by Claude (Claude Code), for Cho to review.
