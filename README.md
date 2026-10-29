@@ -19,6 +19,9 @@ route to sound, with nothing to install.
 **[▶ Listen to sonore's gallery](https://choyun1.github.io/sonore/gallery/)**: what sonore, the library
 that makes every sound here, can do, each sound playable next to its plots.
 
+**[▶ sonore, live](https://choyun1.github.io/sonore/live/)**: sonore's streaming analyses run on
+your microphone in the browser, one block of sound at a time.
+
 <table><tr>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-speech"><img alt="The Draw speech tab: formant tracks over the spectrogram of sonore saying its name, with the F0 and voicing tracks below" src="docs/screenshots/draw-speech.png"></a><br><sub><b>Draw speech</b>: formant, F0, voicing and noise tracks, spoken by Klatt's synthesizer</sub></td>
 <td width="33%"><a href="https://choyun1.github.io/sonore-sketch/#tab=draw-spectrogram"><img alt="The Draw spectrogram tab: &quot;sonore&quot; written by hand on a spectrogram, and the waveform of the sound it makes" src="docs/screenshots/draw-spectrogram.png"></a><br><sub><b>Draw spectrogram</b>: a sound whose spectrogram is the painting</sub></td>

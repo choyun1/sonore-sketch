@@ -8,6 +8,8 @@
 //               {type: "ready", versions},
 //               {id, type: "step", fraction, text} as synthesis goes (page.handle_steps:
 //               the fraction done and what it does next),
+//               {id, type: "sound", result} on the tabs whose pictures take a while
+//               (page.MEASURED_AFTER): the sound alone, before the result (streaming.md, L4),
 //               {id, type: "result", result} or {id, type: "error", message, detail},
 //               or {id, type: "dropped"} when a newer request arrived first.
 
@@ -193,6 +195,14 @@ function convert(result) {
   }
 }
 
+// The buffers a converted result can hand over to the page without copying.
+function transfers(result) {
+  const transfer = [result.samples.buffer, result.spectrogram.data.buffer];
+  if (result.right) transfer.push(result.right.buffer);
+  for (const picture of [result.modulation, result.sourceModulation, result.sourceStft, result.resultStft, result.modulationFrames, result.modulationPooled, result.roomStft]) if (picture) transfer.push(picture.data.buffer);
+  return transfer;
+}
+
 const loading = load().catch((error) => {
   postMessage({ type: "failed", message: String(error?.message ?? error) });
   throw error;
@@ -217,16 +227,16 @@ onmessage = async ({ data: { id, request } }) => {
         result = convert(step.value); // destroys the Python result
         break;
       }
-      const [fraction, text] = step.value.toJs(); // a Python (fraction, text) tuple
+      // a Python (fraction, text) tuple, or (fraction, text, the result so far) once the sound is made
+      const [fraction, text] = [step.value.get(0), step.value.get(1)];
+      const sound = step.value.length === 3 ? convert(step.value.get(2)) : null; // convert destroys the Python dict
       step.value.destroy();
       postMessage({ id, type: "step", fraction, text });
+      if (sound) postMessage({ id, type: "sound", result: sound }, transfers(sound));
       await between();
       if (id !== latest) return postMessage({ id, type: "dropped" });
     }
-    const transfer = [result.samples.buffer, result.spectrogram.data.buffer];
-    if (result.right) transfer.push(result.right.buffer);
-    for (const picture of [result.modulation, result.sourceModulation, result.sourceStft, result.resultStft, result.modulationFrames, result.modulationPooled]) if (picture) transfer.push(picture.data.buffer);
-    postMessage({ id, type: "result", result }, transfer);
+    postMessage({ id, type: "result", result }, transfers(result));
   } catch (error) {
     // A PythonError's message is the traceback, ending with the exception's
     // own line: that line is the message, the whole traceback the detail.

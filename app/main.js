@@ -345,6 +345,11 @@ async function synthesize({ play }) {
   const state = soundState(page, tab.id);
   const key = `${tab.id} ${JSON.stringify(state)}`;
   if (running?.key === key) {
+    // this drawing's sound is made and its pictures are being measured: hear it now
+    if (play && result?.key === key) {
+      start(result.sound);
+      return result.sound;
+    }
     // this drawing is already being made: hear it when it comes, rather than start over
     running.play ||= play;
     return running.made.catch(() => null);
@@ -389,8 +394,26 @@ async function synthesize({ play }) {
   }
   status(page.duration > 1 ? `Synthesizing ${page.duration} s…` : "Synthesizing…");
   const askedAt = performance.now();
-  const made = engine.synthesize({ tab: tab.id, state }, (fraction, text) => thisRequest === latestRequest && showProgress(fraction, text));
-  const asking = (running = { play, key, made });
+  // The drawing changed while this was made, to one that asks for no sound
+  // (nothing drawn) or to another tab: this sound is no longer what is shown.
+  // (A change that is not heard, such as Draw a voice's source, keeps it.)
+  const stillShown = () => tab === askedTab && `${tab.id} ${JSON.stringify(soundState(history.present, tab.id))}` === key;
+  let heardAfter = null; // seconds until the sound came, when it came before its pictures
+  // On the tabs whose pictures take a while, the sound comes first: show and
+  // play it, and draw the pictures when the whole result comes (streaming.md, L4).
+  const onSound = (early) => {
+    if (thisRequest !== latestRequest || !stillShown()) return;
+    heardAfter = (performance.now() - askedAt) / 1000;
+    result = { key, page, sound: early };
+    showResult();
+    status(`Made ${page.duration} s in ${heardAfter.toFixed(2)} s; measuring it…`);
+    if (asking.play) {
+      asking.play = false; // heard now, not again when the pictures come
+      start(early);
+    }
+  };
+  const asking = (running = { play, key, made: null });
+  const made = (asking.made = engine.synthesize({ tab: tab.id, state }, (fraction, text) => thisRequest === latestRequest && showProgress(fraction, text), onSound));
   showProgress(undefined);
   let sound;
   try {
@@ -409,16 +432,16 @@ async function synthesize({ play }) {
     showProgress(null);
   }
   if (!sound) return null; // a newer drawing replaced this request
-  // The drawing changed while this was made, to one that asks for no sound
-  // (nothing drawn) or to another tab: this sound is no longer what is shown.
-  // (A change that is not heard, such as Draw a voice's source, keeps it.)
-  const stillShown = () => tab === askedTab && `${tab.id} ${JSON.stringify(soundState(history.present, tab.id))}` === key;
   if (!stillShown()) return null;
   result = { key, page, sound };
   showResult();
   // the whole wait, pictures of the result included; the log also has synthesis alone
   const waited = (performance.now() - askedAt) / 1000;
-  status(`Made ${page.duration} s in ${waited.toFixed(2)} s.`);
+  status(
+    heardAfter === null
+      ? `Made ${page.duration} s in ${waited.toFixed(2)} s.`
+      : `Made ${page.duration} s in ${heardAfter.toFixed(2)} s, measured in ${waited.toFixed(2)} s.`,
+  );
   log.info(`made ${page.duration} s in ${waited.toFixed(2)} s (synthesis ${sound.synthesisSeconds.toFixed(2)} s)`);
   if (asking.play && stillShown()) start(sound);
   return sound;
